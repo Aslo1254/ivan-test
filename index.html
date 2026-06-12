@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Vercel — IVAN S4</title>
+<style>
+:root{--void:#060a0f;--panel:#0f1d2a;--frost:#7dd3fc;--glow:#38bdf8;--crystal:#e0f2fe;--txt2:#8babc9;--ok:#34d399;--err:#fb7185}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,sans-serif;background:var(--void);color:var(--crystal);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 30% 20%,rgba(56,189,248,.1),transparent 50%),radial-gradient(circle at 70% 80%,rgba(125,211,252,.08),transparent 50%);pointer-events:none}
+.card{position:relative;background:linear-gradient(160deg,#0f1d2a,#0a1420);border:1px solid rgba(125,211,252,.2);border-radius:20px;padding:44px 38px;max-width:480px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,.6);text-align:center}
+.mark{width:60px;height:60px;border-radius:15px;background:linear-gradient(135deg,#38bdf8,#7dd3fc,#e0f2fe);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:26px;color:var(--void);margin:0 auto 18px;box-shadow:0 0 28px rgba(56,189,248,.4)}
+h1{font-size:22px;font-weight:800;margin-bottom:6px;background:linear-gradient(135deg,#38bdf8,#e0f2fe);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:12px;color:var(--txt2);letter-spacing:2px;text-transform:uppercase;margin-bottom:28px}
+#status{font-size:15px;line-height:1.7;padding:18px;border-radius:12px;background:var(--void);border:1px solid rgba(125,211,252,.14);min-height:80px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px}
+.spin{width:28px;height:28px;border:3px solid rgba(125,211,252,.2);border-top-color:var(--glow);border-radius:50%;animation:s 1s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+.ok{color:var(--ok);font-weight:600}
+.err{color:var(--err);font-weight:600}
+.detail{font-size:12px;color:var(--txt2);margin-top:6px;font-family:monospace}
+button{margin-top:20px;padding:12px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#38bdf8,#7dd3fc);color:var(--void);font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="mark">IV</div>
+  <h1>Test de connexion serveur</h1>
+  <div class="sub">IVAN S4 &middot; Validation Vercel</div>
+  <div id="status"><div class="spin"></div><div>Test en cours...</div></div>
+  <button onclick="runTest()">Relancer le test</button>
+</div>
+<script>
+function runTest(){
+  var s = document.getElementById("status");
+  s.innerHTML = '<div class="spin"></div><div>Test en cours...</div>';
+  // Call the hidden server API. This is the critical test:
+  // does the Maersk network allow the browser to talk to the Vercel server?
+  fetch("/api/ping?t=" + Date.now(), {cache:"no-store"})
+    .then(function(r){ if(!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function(data){
+      s.innerHTML = '<div class="ok">&#10003; Le serveur r&eacute;pond correctement !</div>' +
+        '<div class="detail">Message : ' + data.message + '</div>' +
+        '<div class="detail">Calcul serveur (secret) : ' + data.secretComputation + '</div>' +
+        '<div class="detail">Heure serveur : ' + data.time + '</div>';
+    })
+    .catch(function(err){
+      s.innerHTML = '<div class="err">&#10007; Le serveur ne r&eacute;pond pas</div>' +
+        '<div class="detail">Erreur : ' + err.message + '</div>' +
+        '<div class="detail">Le r&eacute;seau Maersk bloque peut-&ecirc;tre les appels API.</div>';
+    });
+}
+runTest();
+</script>
+</body>
+</html>
