@@ -1,9 +1,0 @@
-{
-  "name": "ivan-s4",
-  "version": "1.0.0",
-  "description": "IVAN S4 - Maersk Cote d'Ivoire Facturation",
-  "private": true,
-  "dependencies": {
-    "@upstash/redis": "^1.38.0"
-  }
-}
