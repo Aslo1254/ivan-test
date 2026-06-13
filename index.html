@@ -187,6 +187,17 @@ textarea.ip{resize:vertical;min-height:70px}
 .echr-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--glow);cursor:pointer}
 .echr-head{display:grid;grid-template-columns:32px 1.6fr 0.7fr 0.5fr 0.7fr 0.9fr 1fr;gap:8px;padding:8px;font-size:11px;color:var(--txt3);text-transform:uppercase;font-weight:600}
 .csv-prev{background:var(--void);border:1px solid var(--ice-line);border-radius:8px;padding:12px;font-family:monospace;font-size:10.5px;color:var(--txt2);overflow-x:auto;white-space:pre;max-height:300px;overflow-y:auto}
+
+.home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.home-tile{background:linear-gradient(160deg,rgba(19,40,58,.7) 0%,rgba(10,20,32,.7) 100%);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--ice-line);border-radius:18px;padding:26px 24px;cursor:pointer;transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease;position:relative;overflow:hidden}
+.home-tile:hover{transform:translateY(-4px);border-color:var(--ice-line2);box-shadow:0 14px 44px rgba(56,189,248,.16)}
+.home-tile:active{transform:translateY(-1px)}
+.home-tile-ic{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:16px;border:1px solid var(--ice-line)}
+.home-tile-title{font-size:17px;font-weight:700;color:var(--crystal);margin-bottom:8px}
+.home-tile-desc{font-size:13px;color:var(--txt2);line-height:1.6;margin-bottom:16px}
+.home-tile-arrow{font-size:13px;font-weight:600;color:var(--frost);transition:color .2s}
+.home-tile:hover .home-tile-arrow{color:var(--glow)}
+@media(max-width:640px){.home-grid{grid-template-columns:1fr}.home-tile{padding:20px}}
 </style>
 </head>
 <body>
@@ -232,6 +243,7 @@ textarea.ip{resize:vertical;min-height:70px}
         <div class="sub">Maersk C&ocirc;te d'Ivoire &middot; Facturation S/4HANA</div>
       </div>
       <div style="margin-left:auto;display:flex;align-items:center;gap:16px">
+        <div id="modeBadge" onclick="toggleMode()" title="Cliquer pour basculer Test/Production" style="cursor:pointer;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;margin-right:14px;border:1px solid;transition:.2s"></div>
         <div class="user-chip">
           <div>
             <div class="u-name" id="curUser">&mdash;</div>
@@ -245,8 +257,9 @@ textarea.ip{resize:vertical;min-height:70px}
 
   <!-- TABS -->
   <div class="tabs">
+    <div class="tab" data-tab="home" onclick="sw('home')">&#127968; Accueil</div>
     <div class="tab" data-tab="dashboard" data-mgr="1" onclick="sw('dashboard')" style="display:none">&#128202; Tableau de bord</div>
-    <div class="tab on" data-tab="invoice" onclick="sw('invoice')">&#10052; Facturation</div>
+    <div class="tab" data-tab="invoice" onclick="sw('invoice')">&#10052; Facturation</div>
     <div class="tab" data-tab="echange" onclick="sw('echange')">&#8644; &Eacute;change</div>
     <div class="tab" data-tab="history" onclick="sw('history')">&#128220; Historique</div>
     <div class="tab" data-tab="fne" onclick="sw('fne')">&#9889; FNE</div>
@@ -290,7 +303,7 @@ textarea.ip{resize:vertical;min-height:70px}
       <div class="grid g2" style="margin-top:16px">
         <div class="fld">
           <label>Contract Account <span class="req">*</span> <span data-mgr="1" style="display:none;float:right"><a href="#" onclick="openCaAdmin(_factCurrentBp);return false;" style="font-size:11px;color:var(--sky)">&#9881; g&eacute;rer</a></span></label>
-          <input class="ip mono" id="contractAcc" placeholder="saisie manuelle ou auto si rattach&eacute;">
+          <input class="ip mono" id="contractAcc" placeholder="saisie manuelle ou auto si rattach&eacute;"><div style="font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.4">Num&eacute;ro de compte SAP du client (VKONT). Se remplit automatiquement si le client est connu.</div>
           <div id="factCaChooser"></div>
         </div>
         <div class="fld">
@@ -325,7 +338,7 @@ textarea.ip{resize:vertical;min-height:70px}
         </div>
         <div class="fld">
           <label>UBLI</label>
-          <input class="ip mono" id="ubli" value="MAEU" placeholder="MAEU">
+          <input class="ip mono" id="ubli" value="MAEU" placeholder="MAEU"><div style="font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.4">Identifiant interne SAP, g&eacute;n&eacute;r&eacute; automatiquement (MAEU + n&deg; BL).</div>
         </div>
       </div>
       <div class="grid g3" style="margin-top:16px">
@@ -427,16 +440,16 @@ textarea.ip{resize:vertical;min-height:70px}
           </div>
           <div>
             <label class="lb">Compte Contrat (VKONT) <span data-mgr="1" style="display:none"><a href="#" onclick="openCaAdmin(echSelectedBp?echSelectedBp.bp:null);return false;" style="font-size:11px;color:var(--sky)">&#9881; g&eacute;rer</a></span></label>
-            <input class="ip" id="echContractAcc" placeholder="Ex: 200010718138">
+            <input class="ip" id="echContractAcc" placeholder="Ex: 200010718138"><div style="font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.4">Num&eacute;ro de compte SAP du client. Se remplit automatiquement si le client est connu.</div>
             <div id="echCaChooser"></div>
           </div>
           <div>
             <label class="lb">N&deg; BL <span style="color:var(--txt3)">(= Ref / PO / Booking)</span></label>
-            <input class="ip" id="echBl" placeholder="N&deg; connaissement" oninput="onEchBlChange()">
+            <input class="ip" id="echBl" placeholder="N&deg; connaissement" oninput="onEchBlChange()"><div style="font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.4">Num&eacute;ro de connaissement. Sert aussi de r&eacute;f&eacute;rence, PO et booking.</div>
           </div>
           <div>
             <label class="lb">UBLI <span style="color:var(--txt3)">(auto MAEU+BL)</span></label>
-            <input class="ip" id="echUbli" placeholder="MAEU..." readonly style="opacity:.8">
+            <input class="ip" id="echUbli" placeholder="MAEU..." readonly style="opacity:.8"><div style="font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.4">Identifiant interne SAP, calcul&eacute; automatiquement (MAEU + n&deg; BL).</div>
           </div>
           <div id="echArrivalWrap">
             <label class="lb">Arrival date <span style="color:var(--txt3)">(import)</span></label>
@@ -448,7 +461,7 @@ textarea.ip{resize:vertical;min-height:70px}
           </div>
           <div>
             <label class="lb">Collection Business Unit (CBU)</label>
-            <input class="ip" id="echCbu" value="81360">
+            <input class="ip" id="echCbu" value="81360"><div style="font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.4">Unit&eacute; de facturation (CBU). C&ocirc;te d&rsquo;Ivoire = 81360.</div>
           </div>
           <div>
             <label class="lb">Client final</label>
@@ -506,6 +519,171 @@ textarea.ip{resize:vertical;min-height:70px}
     </div>
   </div>
 
+  <div id="tab-bp" class="hid">
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Base Business Partners</div>
+      <p style="font-size:13.5px;color:var(--txt2);margin-bottom:16px">
+        <span id="bpCount" class="mono" style="color:var(--frost);font-weight:600">0</span> Business Partners enregistr&eacute;s.
+        Recherchez par ancien code client (ECC) ou par nom.
+      </p>
+      <input class="ip" id="bpTableSearch" placeholder="Rechercher un code ECC ou un nom..." oninput="bpRenderTable(this.value)" style="margin-bottom:16px">
+      <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
+        <table class="adm-table" id="bpTable">
+          <thead style="position:sticky;top:0;background:var(--panel2)">
+            <tr><th>Code ECC</th><th>Business Partner</th><th>Nom</th><th>Contract Account</th></tr>
+          </thead>
+          <tbody id="bpTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Contract Account management (manager) -->
+    <div class="cd" data-mgr="1" style="display:none">
+      <div class="ct"><span class="dot"></span> Gestion des Comptes Contrat</div>
+      <p style="font-size:13.5px;color:var(--txt2);margin-bottom:14px">
+        Recherchez un Business Partner pour voir, ajouter, modifier ou supprimer ses comptes contrat.
+        Les changements sont sauvegard&eacute;s sur le serveur pour toute l'&eacute;quipe.
+      </p>
+      <div style="position:relative;max-width:480px;margin-bottom:14px">
+        <input class="ip" id="caBpSearch" placeholder="Rechercher un BP (code ou nom)..." oninput="caBpSearch(this.value)" autocomplete="off">
+        <div id="caBpAc" class="ac-list"></div>
+      </div>
+      <div id="caManageArea" style="display:none">
+        <div style="padding:12px;background:var(--void);border-radius:10px;margin-bottom:14px">
+          <span style="color:var(--txt2);font-size:12px">BP s&eacute;lectionn&eacute; :</span>
+          <span id="caManageBp" class="mono" style="color:var(--frost);font-weight:600"></span>
+          <span id="caManageName" style="color:var(--txt2)"></span>
+        </div>
+        <div id="caManageList"></div>
+        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+          <button class="bt bt-ghost" style="font-size:12px;padding:8px 14px" onclick="caManageAdd()">&#43; Ajouter un compte</button>
+          <button class="bt bt-ice" style="font-size:12px;padding:8px 14px" onclick="caManageSave()">&#128190; Enregistrer</button>
+          <button class="bt bt-ghost" style="font-size:12px;padding:8px 14px" onclick="caManageReset()">&#8635; R&eacute;initialiser (d&eacute;faut)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ UPLOAD TAB ============ -->
+  <div id="tab-upload" class="hid">
+    <div class="cd" style="border-left:3px solid var(--glow)">
+      <div class="ct"><span class="dot"></span> Synchronisation OneDrive</div>
+      <p style="font-size:13.5px;color:var(--txt2);line-height:1.7;margin-bottom:16px">
+        Partagez comptes, Business Partners, Contract Accounts et brouillons avec l'&eacute;quipe via un fichier <b class="mono">ivan_data.json</b> dans votre dossier <b class="mono">IVAN_Sync/</b> OneDrive.<br>
+        <b style="color:var(--frost)">Exporter</b> = sauvegarder vos donn&eacute;es vers le fichier. <b style="color:var(--frost)">Importer</b> = charger les donn&eacute;es de l'&eacute;quipe.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <button class="bt bt-ice" onclick="exportData()">&#11015; Exporter les donn&eacute;es (JSON)</button>
+        <button class="bt bt-ghost" onclick="document.getElementById('importDataInput').click()">&#11014; Importer les donn&eacute;es</button>
+        <input type="file" id="importDataInput" accept=".json" style="display:none" onchange="importData(this.files[0])">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt2);cursor:pointer">
+          <input type="checkbox" id="syncReminder" style="width:16px;height:16px"> Me rappeler d'exporter en quittant
+        </label>
+      </div>
+      <div id="syncStatus" style="margin-top:12px;font-size:12px"></div>
+    </div>
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Import 1 &mdash; Ajouter des Business Partners</div>
+      <p style="font-size:13.5px;color:var(--txt2);line-height:1.7;margin-bottom:16px">
+        Importez un fichier (Excel/CSV) avec colonnes <b>Code ECC</b>, <b>Business Partner</b>, <b>Nom</b> pour enrichir la base.
+        Les nouveaux BP s'ajoutent &agrave; ceux existants (les doublons sont mis &agrave; jour).
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+        <button class="bt bt-ghost" onclick="bpTemplate()">&#11015; Mod&egrave;le BP</button>
+      </div>
+      <div class="drop-zone" id="bpUploadDrop" onclick="document.getElementById('bpUploadInput').click()">
+        <div style="font-size:34px;margin-bottom:8px">&#9819;</div>
+        <div style="font-size:14px;font-weight:600;color:var(--crystal)">Glissez le fichier Business Partners ici</div>
+        <div style="font-size:12px;color:var(--txt3);margin-top:4px">colonnes: Code ECC, Business Partner, Nom</div>
+        <input type="file" id="bpUploadInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="bpUpload(this.files[0])">
+      </div>
+      <div id="bpUploadResult" style="margin-top:14px;font-size:13px"></div>
+    </div>
+
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Import 2 &mdash; Rattacher des Contract Accounts</div>
+      <p style="font-size:13.5px;color:var(--txt2);line-height:1.7;margin-bottom:16px">
+        Importez un fichier (Excel/CSV) avec colonnes <b>Business Partner</b> (ou <b>Code ECC</b>) et <b>Contract Account</b>
+        pour rattacher automatiquement les comptes contractuels. Une fois rattach&eacute;, le Contract Account se remplit tout seul en facturation.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+        <button class="bt bt-ghost" onclick="caTemplate()">&#11015; Mod&egrave;le Contract Account</button>
+      </div>
+      <div class="drop-zone" id="caUploadDrop" onclick="document.getElementById('caUploadInput').click()">
+        <div style="font-size:34px;margin-bottom:8px">&#128279;</div>
+        <div style="font-size:14px;font-weight:600;color:var(--crystal)">Glissez le fichier Contract Accounts ici</div>
+        <div style="font-size:12px;color:var(--txt3);margin-top:4px">colonnes: Business Partner (ou Code ECC), Contract Account</div>
+        <input type="file" id="caUploadInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="caUpload(this.files[0])">
+      </div>
+      <div id="caUploadResult" style="margin-top:14px;font-size:13px"></div>
+    </div>
+  </div>
+
+  <!-- ============ ACCOUNTS TAB (manager only) ============ -->
+  <div id="tab-accounts" class="hid">
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Gestion des comptes</div>
+      <p style="font-size:13.5px;color:var(--txt2);margin-bottom:18px">Ajoutez ou supprimez des comptes utilisateurs. R&ocirc;le <b>Manager</b> = acc&egrave;s complet, <b>Agent</b> = facturation seulement.</p>
+      <div class="grid g3" style="margin-bottom:16px">
+        <div class="fld"><label>Nom d'utilisateur</label><input class="ip" id="newUser" placeholder="prenom.nom"></div>
+        <div class="fld"><label>Mot de passe</label><input class="ip" id="newPass" placeholder="mot de passe"></div>
+        <div class="fld"><label>R&ocirc;le</label><select class="ip" id="newRole"><option value="agent">Agent</option><option value="manager">Manager</option></select></div>
+      </div>
+      <div class="grid g2" style="margin-bottom:16px">
+        <div class="fld"><label>Email agent (clerk email)</label><input class="ip" id="newEmail" placeholder="prenom.nom@maersk.com"></div>
+        <div class="fld"><label>Nom agent (clerk name)</label><input class="ip" id="newName" placeholder="NOM Pr&eacute;nom"></div>
+      </div>
+      <button class="bt bt-ice" onclick="addAccount()">&#43; Cr&eacute;er le compte</button>
+      <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--ice-line)">
+        <div style="font-size:12px;color:var(--txt2);margin-bottom:8px">Espace de stockage : <span id="storageInfo" class="mono" style="color:var(--frost)">&mdash;</span></div>
+        <button class="bt bt-ghost" style="font-size:12px;padding:8px 14px" onclick="cleanStorage()">&#9851; Nettoyer le stockage (garde comptes &amp; donn&eacute;es)</button>
+      </div>
+    </div>
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Comptes existants</div>
+      <table class="adm-table">
+        <thead><tr><th>Utilisateur</th><th>R&ocirc;le</th><th>Action</th></tr></thead>
+        <tbody id="accountsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-home" class="hid">
+    <div style="margin-bottom:24px">
+      <h1 style="font-size:26px;font-weight:800;color:var(--crystal);letter-spacing:-.5px;margin-bottom:4px">Bonjour <span id="homeUserName">—</span></h1>
+      <p style="font-size:14px;color:var(--txt2)">Que souhaitez-vous faire aujourd'hui ?</p>
+    </div>
+    <div class="home-grid">
+      <div class="home-tile" onclick="sw('invoice')">
+        <div class="home-tile-ic" style="background:rgba(56,189,248,.12)">&#10052;</div>
+        <div class="home-tile-title">Cr&eacute;er une facture S/4HANA</div>
+        <div class="home-tile-desc">Facturation standard : choisir le type, le client, les charges, puis g&eacute;n&eacute;rer le fichier CSV.</div>
+        <div class="home-tile-arrow">Commencer &rarr;</div>
+      </div>
+      <div class="home-tile" onclick="sw('echange')">
+        <div class="home-tile-ic" style="background:rgba(125,211,252,.12)">&#8644;</div>
+        <div class="home-tile-title">Cr&eacute;er une facture &Eacute;change</div>
+        <div class="home-tile-desc">Factures d'&eacute;change import/export avec marchandises et charges forfaitaires (Abidjan, San Pedro).</div>
+        <div class="home-tile-arrow">Commencer &rarr;</div>
+      </div>
+      <div class="home-tile" onclick="sw('fne')">
+        <div class="home-tile-ic" style="background:rgba(251,191,36,.12)">&#9889;</div>
+        <div class="home-tile-title">Lancer un batch FNE</div>
+        <div class="home-tile-desc">G&eacute;n&eacute;rer des factures FNE automatiquement &agrave; partir de PDFs Solar/IFS sur le portail DGI.</div>
+        <div class="home-tile-arrow">Commencer &rarr;</div>
+      </div>
+      <div class="home-tile" onclick="sw('history')">
+        <div class="home-tile-ic" style="background:rgba(52,211,153,.12)">&#128220;</div>
+        <div class="home-tile-title">Consulter l'historique</div>
+        <div class="home-tile-desc">Voir toutes les factures &eacute;mises par l'&eacute;quipe, rechercher, et suivre l'activit&eacute;.</div>
+        <div class="home-tile-arrow">Commencer &rarr;</div>
+      </div>
+    </div>
+    <div style="margin-top:24px">
+      <div id="homeQuickStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px"></div>
+    </div>
+  </div>
+
   <div id="tab-dashboard" class="hid">
     <div class="cd">
       <div class="ct"><span class="dot"></span> Tableau de bord</div>
@@ -544,247 +722,136 @@ textarea.ip{resize:vertical;min-height:70px}
 
   <!-- ============ AIDE TAB ============ -->
   <div id="tab-fne" class="hid">
-  <div class="cd" style="background:linear-gradient(135deg,var(--panel2) 0%,var(--void) 100%);color:#fff;border:none">
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
-      <div style="width:48px;height:48px;background:rgba(0,212,255,.2);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px">&#9889;</div>
-      <div>
-        <div style="font-size:20px;font-weight:800;letter-spacing:.5px">FNE Batch Auto</div>
-        <div style="font-size:12px;color:rgba(0,212,255,.9);margin-top:2px">N PDFs Solar/IFS &rarr; N factures FNE g&#233;n&#233;r&#233;es automatiquement sur le portail DGI</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TUTORIEL FNE -->
-  <div class="cd" style="background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);border-left:4px solid #d97706">
-    <div style="font-weight:800;font-size:16px;color:#78350f;display:flex;align-items:center;gap:10px;margin-bottom:14px">
-      <span style="font-size:22px">&#128218;</span> Comment &#231;a marche &mdash; Mode d'emploi FNE Batch Auto
-    </div>
-
-    <div style="font-size:13.5px;color:#451a03;line-height:1.7;background:rgba(255,255,255,.5);padding:14px 18px;border-radius:8px;margin-bottom:14px">
-      <strong>&#127919; Objectif :</strong> transformer une pile de PDFs Solar/IFS en factures FNE officielles cr&#233;&#233;es automatiquement sur le portail DGI <code>services.fne.dgi.gouv.ci</code>, sans saisie manuelle.
-    </div>
-
-    <!-- ETAPE 1: BOOKMARKLET -->
-    <div style="background:#fff;border-radius:10px;padding:16px 18px;margin-bottom:12px;border-left:4px solid #7c3aed">
-      <div style="font-weight:800;color:#5b21b6;font-size:14px;margin-bottom:10px">
-        <span style="background:#7c3aed;color:#fff;padding:3px 10px;border-radius:50%;font-size:13px;margin-right:8px">1</span>
-        Installer le bookmarklet (une seule fois)
-      </div>
-      <ol style="margin:0 0 12px 0;padding-left:24px;font-size:13.5px;color:#1f2937;line-height:1.9">
-        <li>Affichez la barre de favoris de votre navigateur : <kbd style="background:#f3f4f6;padding:2px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:12px;font-family:monospace">Ctrl + Maj + B</kbd></li>
-        <li>Glissez le bouton orange ci-dessous <strong>directement dans votre barre de favoris</strong></li>
-        <li>C'est install&#233;. &#192; refaire seulement si vous changez de PC ou de navigateur.</li>
-      </ol>
-      <div style="background:#fef3c7;padding:12px;border-radius:8px;text-align:center;border:2px dashed #d97706">
-        <div style="font-size:12px;color:#92400e;margin-bottom:8px;font-weight:600">&#8595; GLISSEZ CE BOUTON DANS VOS FAVORIS &#8595;</div>
-        <a id="fneBookmarklet" href="#" draggable="true" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;text-decoration:none;border-radius:10px;font-weight:800;font-size:16px;box-shadow:0 4px 14px rgba(245,158,11,.4);cursor:grab">&#9889; IVAN-FNE-BATCH</a>
-      </div>
-    </div>
-
-    <!-- ETAPE 2: CHARGER LES PDFs -->
-    <div style="background:#fff;border-radius:10px;padding:16px 18px;margin-bottom:12px;border-left:4px solid #0891b2">
-      <div style="font-weight:800;color:#0e7490;font-size:14px;margin-bottom:10px">
-        <span style="background:#0891b2;color:#fff;padding:3px 10px;border-radius:50%;font-size:13px;margin-right:8px">2</span>
-        Charger les PDFs dans IVAN
-      </div>
-      <ol style="margin:0;padding-left:24px;font-size:13.5px;color:#1f2937;line-height:1.9">
-        <li>Descendez sur la <strong>zone bleue ci-dessous</strong> ("Charger les PDFs")</li>
-        <li>Glissez-d&#233;posez 1 ou plusieurs PDFs Solar/IFS dans cette zone</li>
-        <li>Ou cliquez sur la zone et s&#233;lectionnez plusieurs fichiers avec <kbd style="background:#f3f4f6;padding:2px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:12px;font-family:monospace">Ctrl + clic</kbd></li>
-        <li>IVAN parse automatiquement chaque PDF et extrait NCC, soci&#233;t&#233;, articles, montants</li>
-        <li>V&#233;rifiez le r&#233;capitulatif &mdash; les lignes en rouge signalent une erreur de parsing</li>
-      </ol>
-    </div>
-
-    <!-- ETAPE 3: CONFIGURER ET ACTIVER -->
-    <div style="background:#fff;border-radius:10px;padding:16px 18px;margin-bottom:12px;border-left:4px solid #16a34a">
-      <div style="font-weight:800;color:#15803d;font-size:14px;margin-bottom:10px">
-        <span style="background:#16a34a;color:#fff;padding:3px 10px;border-radius:50%;font-size:13px;margin-right:8px">3</span>
-        Configurer et activer le batch
-      </div>
-      <ol style="margin:0;padding-left:24px;font-size:13.5px;color:#1f2937;line-height:1.9">
-        <li>Dans la section <strong>"Lancement du batch"</strong> (plus bas) :</li>
-        <li>R&#233;glez <strong>Pause de s&#233;curit&#233;</strong> sur <code>10 factures</code> (popup de confirmation tous les 10)</li>
-        <li>R&#233;glez <strong>D&#233;lai entre actions</strong> sur <code>Normal (2.5s)</code> pour commencer</li>
-        <li>Cliquez <strong>"Activer le batch"</strong> &mdash; la queue est sauvegard&#233;e dans le navigateur</li>
-      </ol>
-    </div>
-
-    <!-- ETAPE 4: SUR LE PORTAIL FNE -->
-    <div style="background:#fff;border-radius:10px;padding:16px 18px;margin-bottom:12px;border-left:4px solid #dc2626">
-      <div style="font-weight:800;color:#b91c1c;font-size:14px;margin-bottom:10px">
-        <span style="background:#dc2626;color:#fff;padding:3px 10px;border-radius:50%;font-size:13px;margin-right:8px">4</span>
-        Aller sur le portail FNE
-      </div>
-      <ol style="margin:0;padding-left:24px;font-size:13.5px;color:#1f2937;line-height:1.9">
-        <li>Cliquez sur <strong>"Ouvrir le portail FNE"</strong> dans IVAN (ouvre un nouvel onglet)</li>
-        <li>Connectez-vous au portail DGI normalement</li>
-        <li>Naviguez jusqu'&#224; <strong>"G&#233;n&#233;rer la facture"</strong> (formulaire vide)</li>
-        <li>Dans votre barre de favoris, cliquez <strong>une seule fois</strong> sur <strong>&#9889; IVAN-FNE-BATCH</strong></li>
-        <li>Un overlay flottant appara&#238;t : le batch tourne automatiquement</li>
-        <li>Tous les 10 factures (selon votre config) : popup "Continuer ?" pour s&#233;curit&#233;</li>
-      </ol>
-    </div>
-
-    <!-- ETAPE 5: RECUPERER LES RESULTATS -->
-    <div style="background:#fff;border-radius:10px;padding:16px 18px;margin-bottom:12px;border-left:4px solid #6366f1">
-      <div style="font-weight:800;color:#4338ca;font-size:14px;margin-bottom:10px">
-        <span style="background:#6366f1;color:#fff;padding:3px 10px;border-radius:50%;font-size:13px;margin-right:8px">5</span>
-        R&#233;cup&#233;rer les num&#233;ros FNE
-      </div>
-      <ol style="margin:0;padding-left:24px;font-size:13.5px;color:#1f2937;line-height:1.9">
-        <li>Quand le batch est termin&#233;, revenez sur IVAN onglet <strong>FNE</strong></li>
-        <li>La section <strong>"R&#233;sultats"</strong> liste tous les num&#233;ros FNE obtenus</li>
-        <li>Cliquez <strong>"Exporter CSV"</strong> pour t&#233;l&#233;charger le rapport complet</li>
-        <li>Conservez le CSV pour la tra&#231;abilit&#233; comptable</li>
-      </ol>
-    </div>
-
-    <!-- SI CA PLANTE -->
-    <div style="background:#fff;border-radius:10px;padding:16px 18px;margin-bottom:14px;border-left:4px solid #f59e0b">
-      <div style="font-weight:800;color:#b45309;font-size:14px;margin-bottom:10px">
-        <span style="background:#f59e0b;color:#fff;padding:3px 10px;border-radius:50%;font-size:13px;margin-right:8px">&#9888;</span>
-        Si quelque chose ne marche pas
-      </div>
-      <ul style="margin:0;padding-left:24px;font-size:13.5px;color:#1f2937;line-height:1.9">
-        <li><strong>Overlay orange sur le portail :</strong> recliquez sur le bookmarklet IVAN-FNE-BATCH, &#231;a reprend o&#249; &#231;a s'est arr&#234;t&#233;</li>
-        <li><strong>Une facture &#233;choue :</strong> elle est marqu&#233;e en erreur, le batch continue avec la suivante (pas de blocage)</li>
-        <li><strong>Pause volontaire :</strong> fermez l'onglet du portail, le batch est gel&#233; ; reprenez quand vous voulez</li>
-      </ul>
-    </div>
-
-    <!-- AVERTISSEMENT FINAL -->
-    <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:14px 18px;border-radius:8px;font-size:13px;color:#7f1d1d;line-height:1.7">
-      <strong>&#9888; Important :</strong> les factures FNE sont <strong>officielles et irr&#233;versibles</strong> une fois g&#233;n&#233;r&#233;es. Pour vos premiers tests, faites un batch de <strong>2 &#224; 3 PDFs seulement</strong> avec un d&#233;lai <strong>Normal ou Lent</strong>. Augmentez progressivement quand vous &#234;tes confiant.
-    </div>
-
-  </div>
-
-
-  <div class="cd">
-    <div class="ct"><span class="dot"></span> 1. Charger les PDFs (multi-fichiers)</div>
-    <div id="fnePdfDrop" style="border:2px dashed var(--ice-line2);border-radius:10px;padding:32px;text-align:center;cursor:pointer;background:var(--void);transition:.2s" onclick="document.getElementById('fnePdfInput').click()">
-      <div style="font-size:36px;margin-bottom:8px">&#128196;</div>
-      <div style="font-size:14px;font-weight:600;color:var(--void)">Glissez 1 &#224; N PDFs ici (multi-s&#233;lection support&#233;e)</div>
-      <div style="font-size:12px;color:var(--txt3);margin-top:4px">ou cliquez pour parcourir &#8212; Ctrl+clic pour s&#233;lection multiple</div>
-      <input type="file" id="fnePdfInput" accept=".pdf" multiple style="display:none" onchange="fneLoadFiles(this.files)">
-    </div>
-    <div id="fneParseProgress" class="hid" style="margin-top:14px;padding:12px;background:var(--sky-d);border-left:3px solid var(--frost);border-radius:8px;font-size:13px"></div>
-  </div>
-
-  <div id="fneStatsArea" class="hid">
     <div class="cd">
-      <div class="ct"><span class="dot"></span> 2. R&#233;capitulatif des PDFs</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
-        <div style="padding:14px;background:var(--sky-d);border-radius:10px;text-align:center;border-left:3px solid var(--frost)">
-          <div style="font-size:11px;color:var(--void);text-transform:uppercase;font-weight:600">Total PDFs</div>
-          <div style="font-size:24px;font-weight:800;color:var(--void);margin-top:4px" id="fneTotal">0</div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">
+        <div style="width:46px;height:46px;background:rgba(56,189,248,.12);border:1px solid var(--ice-line2);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">&#9889;</div>
+        <div>
+          <div style="font-size:19px;font-weight:800;color:var(--crystal);letter-spacing:.3px">FNE Batch Auto</div>
+          <div style="font-size:12px;color:var(--frost);margin-top:2px">N PDFs Solar/IFS &rarr; N factures FNE g&eacute;n&eacute;r&eacute;es automatiquement sur le portail DGI</div>
         </div>
-        <div style="padding:14px;background:var(--green-d);border-radius:10px;text-align:center;border-left:3px solid var(--ok)">
-          <div style="font-size:11px;color:#15803d;text-transform:uppercase;font-weight:600">Pars&#233;s OK</div>
-          <div style="font-size:24px;font-weight:800;color:#15803d;margin-top:4px" id="fneParsedOk">0</div>
-        </div>
-        <div style="padding:14px;background:#fef2f2;border-radius:10px;text-align:center;border-left:3px solid #dc2626">
-          <div style="font-size:11px;color:#991b1b;text-transform:uppercase;font-weight:600">Erreurs parsing</div>
-          <div style="font-size:24px;font-weight:800;color:#991b1b;margin-top:4px" id="fneParseErr">0</div>
-        </div>
-        <div style="padding:14px;background:#fff7ed;border-radius:10px;text-align:center;border-left:3px solid #ea580c">
-          <div style="font-size:11px;color:#9a3412;text-transform:uppercase;font-weight:600">Articles totaux</div>
-          <div style="font-size:24px;font-weight:800;color:#9a3412;margin-top:4px" id="fneArtCount">0</div>
-        </div>
-      </div>
-      <div style="overflow-x:auto;max-height:400px;overflow-y:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead style="position:sticky;top:0;background:var(--void);color:#fff">
-            <tr>
-              <th style="padding:8px;text-align:left">#</th>
-              <th style="padding:8px;text-align:left">Fichier PDF</th>
-              <th style="padding:8px;text-align:left">NCC client</th>
-              <th style="padding:8px;text-align:left">Soci&#233;t&#233;</th>
-              <th style="padding:8px;text-align:center">Articles</th>
-              <th style="padding:8px;text-align:right">Total HT</th>
-              <th style="padding:8px;text-align:center">Statut</th>
-              <th style="padding:8px;text-align:center"></th>
-            </tr>
-          </thead>
-          <tbody id="fneQueueBody"></tbody>
-        </table>
       </div>
     </div>
 
-    <div class="cd" style="background:linear-gradient(135deg,#fef3c7,#fde68a);border-left:3px solid #d97706">
-      <div class="ct" style="color:#92400e"><span class="dot" style="background:#d97706"></span> 3. Lancement du batch</div>
-      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-        <div>
-          <label style="font-size:11px;color:#92400e;text-transform:uppercase;font-weight:600">Pause de s&#233;curit&#233; tous les</label>
-          <select class="ip" id="fnePauseEvery" style="width:140px">
-            <option value="0">Aucune pause</option>
-            <option value="5">5 factures</option>
-            <option value="10" selected>10 factures</option>
-            <option value="20">20 factures</option>
-            <option value="50">50 factures</option>
-          </select>
+    <!-- TUTORIEL -->
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Mode d'emploi</div>
+      <p style="font-size:13px;color:var(--txt2);line-height:1.7;margin-bottom:16px">
+        <strong style="color:var(--crystal)">Objectif :</strong> transformer une pile de PDFs Solar/IFS en factures FNE officielles cr&eacute;&eacute;es automatiquement sur <code style="background:var(--void);padding:2px 6px;border-radius:4px;color:var(--frost)">services.fne.dgi.gouv.ci</code>, sans saisie manuelle.
+      </p>
+
+      <!-- ETAPE 1 -->
+      <div style="background:var(--void);border:1px solid var(--ice-line);border-left:3px solid var(--glow);border-radius:10px;padding:16px 18px;margin-bottom:12px">
+        <div style="font-weight:700;color:var(--frost);font-size:14px;margin-bottom:10px">
+          <span style="background:var(--grad-ice);color:var(--void);padding:2px 9px;border-radius:50%;font-size:12px;margin-right:8px;font-weight:800">1</span>
+          Installer le bookmarklet (une seule fois)
         </div>
-        <div>
-          <label style="font-size:11px;color:#92400e;text-transform:uppercase;font-weight:600">D&#233;lai entre actions</label>
-          <select class="ip" id="fneDelay" style="width:140px">
-            <option value="1500">Rapide (1.5s)</option>
-            <option value="2500" selected>Normal (2.5s)</option>
-            <option value="4000">Lent (4s)</option>
-            <option value="6000">Tr&#232;s lent (6s)</option>
-          </select>
+        <ol style="margin:0 0 12px 0;padding-left:22px;font-size:13px;color:var(--txt);line-height:1.9">
+          <li>Affichez la barre de favoris : <kbd style="background:var(--panel2);padding:2px 8px;border-radius:4px;border:1px solid var(--ice-line2);font-size:12px;font-family:monospace;color:var(--crystal)">Ctrl + Maj + B</kbd></li>
+          <li>Glissez le bouton ci-dessous <strong style="color:var(--crystal)">directement dans votre barre de favoris</strong></li>
+          <li>C'est install&eacute;. &Agrave; refaire seulement si vous changez de PC ou de navigateur.</li>
+        </ol>
+        <div style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px">
+          <div style="font-size:11px;color:var(--txt3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">&#8595; Glissez ce bouton dans vos favoris &#8595;</div>
+          <a id="fneBookmarklet" href="#" draggable="true" style="display:inline-block;padding:13px 30px;background:var(--grad-ice);color:var(--void);border-radius:10px;font-weight:800;font-size:14px;text-decoration:none;box-shadow:0 0 20px rgba(56,189,248,.35);cursor:grab">&#9889; IVAN-FNE-BATCH</a>
         </div>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="bt" onclick="fneStartBatch()" style="background:#d97706;color:#fff;font-weight:700">&#9889; Activer le batch (charger dans le bookmarklet)</button>
-        <button class="bt" onclick="fneOpenSite()" style="background:var(--ok);color:#fff">Ouvrir le portail FNE</button>
-        <button class="bt" onclick="fneResetBatch()" style="background:#6b7280;color:#fff">&#8634; R&#233;initialiser</button>
+
+      <!-- ETAPE 2 -->
+      <div style="background:var(--void);border:1px solid var(--ice-line);border-left:3px solid var(--glow);border-radius:10px;padding:16px 18px;margin-bottom:12px">
+        <div style="font-weight:700;color:var(--frost);font-size:14px;margin-bottom:8px">
+          <span style="background:var(--grad-ice);color:var(--void);padding:2px 9px;border-radius:50%;font-size:12px;margin-right:8px;font-weight:800">2</span>
+          Charger les PDFs &amp; lancer le batch
+        </div>
+        <ol style="margin:0;padding-left:22px;font-size:13px;color:var(--txt);line-height:1.9">
+          <li>D&eacute;posez vos PDFs Solar/IFS dans la zone ci-dessous.</li>
+          <li>V&eacute;rifiez la file g&eacute;n&eacute;r&eacute;e, puis ouvrez le portail DGI et connectez-vous.</li>
+          <li>Cliquez sur le bookmarklet <strong style="color:var(--crystal)">IVAN-FNE-BATCH</strong> sur la page DGI, puis lancez le traitement.</li>
+        </ol>
       </div>
-      <div id="fneBatchStatus" style="margin-top:14px;font-size:12px;color:#92400e"></div>
     </div>
 
-    <div id="fneResultsArea" class="hid">
-      <div class="cd" style="background:var(--green-d);border-left:3px solid var(--ok)">
-        <div class="ct" style="color:#15803d"><span class="dot" style="background:var(--ok)"></span> 5. R&#233;sultats du batch</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
-          <div style="padding:12px;background:#fff;border-radius:8px;text-align:center;border-left:3px solid var(--ok)">
-            <div style="font-size:11px;color:#15803d;text-transform:uppercase;font-weight:600">Cr&#233;&#233;es OK</div>
-            <div style="font-size:24px;font-weight:800;color:#15803d;margin-top:4px" id="fneResOk">0</div>
-          </div>
-          <div style="padding:12px;background:#fff;border-radius:8px;text-align:center;border-left:3px solid #dc2626">
-            <div style="font-size:11px;color:#991b1b;text-transform:uppercase;font-weight:600">Erreurs</div>
-            <div style="font-size:24px;font-weight:800;color:#991b1b;margin-top:4px" id="fneResErr">0</div>
-          </div>
-          <div style="padding:12px;background:#fff;border-radius:8px;text-align:center;border-left:3px solid #f59e0b">
-            <div style="font-size:11px;color:#92400e;text-transform:uppercase;font-weight:600">En attente</div>
-            <div style="font-size:24px;font-weight:800;color:#92400e;margin-top:4px" id="fneResPending">0</div>
-          </div>
+    <!-- CHARGER PDFs -->
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> 1. Charger les PDFs (multi-fichiers)</div>
+      <div id="fnePdfDrop" style="border:2px dashed var(--ice-line2);border-radius:12px;padding:32px;text-align:center;cursor:pointer;background:var(--void);transition:.2s" onclick="document.getElementById('fnePdfInput').click()">
+        <div style="font-size:34px;margin-bottom:8px">&#128196;</div>
+        <div style="font-size:14px;font-weight:600;color:var(--crystal)">Cliquez ou glissez vos PDFs ici</div>
+        <div style="font-size:12px;color:var(--txt3);margin-top:4px">Solar / IFS &mdash; plusieurs fichiers accept&eacute;s</div>
+        <input type="file" id="fnePdfInput" accept="application/pdf" multiple style="display:none" onchange="fneLoadFiles(this.files)">
+      </div>
+      <div id="fneParseProgress" class="hid" style="margin-top:12px;padding:10px 14px;background:var(--void);border:1px solid var(--frost);border-radius:8px;font-size:13px;color:var(--frost)"></div>
+    </div>
+
+    <!-- STATS + FILE -->
+    <div id="fneStatsArea" class="hid">
+      <div class="cd">
+        <div class="ct"><span class="dot"></span> File de traitement</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px">
+          <div style="background:var(--void);border:1px solid var(--ice-line);border-radius:10px;padding:14px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--frost)" id="fneTotal">0</div><div style="font-size:11px;color:var(--txt3);text-transform:uppercase">Total</div></div>
+          <div style="background:var(--void);border:1px solid var(--ice-line);border-radius:10px;padding:14px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--ok)" id="fneParsedOk">0</div><div style="font-size:11px;color:var(--txt3);text-transform:uppercase">Lus OK</div></div>
+          <div style="background:var(--void);border:1px solid var(--ice-line);border-radius:10px;padding:14px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--err)" id="fneParseErr">0</div><div style="font-size:11px;color:var(--txt3);text-transform:uppercase">Erreurs</div></div>
+          <div style="background:var(--void);border:1px solid var(--ice-line);border-radius:10px;padding:14px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--crystal)" id="fneArtCount">0</div><div style="font-size:11px;color:var(--txt3);text-transform:uppercase">Articles</div></div>
         </div>
-        <div style="overflow-x:auto;max-height:400px;overflow-y:auto;background:#fff;border-radius:8px">
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <thead style="position:sticky;top:0;background:var(--void);color:#fff">
-              <tr>
-                <th style="padding:8px;text-align:left">#</th>
-                <th style="padding:8px;text-align:left">Fichier</th>
-                <th style="padding:8px;text-align:left">NCC</th>
-                <th style="padding:8px;text-align:left">N&#176; FNE</th>
-                <th style="padding:8px;text-align:center">Statut</th>
-              </tr>
+        <div style="overflow-x:auto;max-height:360px;overflow-y:auto">
+          <table class="adm-table">
+            <thead style="position:sticky;top:0;background:var(--panel2)">
+              <tr><th>Fichier</th><th>Client</th><th>Montant</th><th>Articles</th><th style="text-align:center">Statut</th><th style="text-align:center"></th></tr>
             </thead>
+            <tbody id="fneQueueBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PARAMETRES + LANCEMENT -->
+      <div class="cd">
+        <div class="ct"><span class="dot"></span> 2. Param&egrave;tres &amp; lancement</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:16px">
+          <div>
+            <label class="lb">Pause de s&eacute;curit&eacute; tous les</label>
+            <select class="ip" id="fnePauseEvery" style="width:160px">
+              <option value="0">Aucune pause</option>
+              <option value="5">5 factures</option>
+              <option value="10" selected>10 factures</option>
+              <option value="20">20 factures</option>
+              <option value="50">50 factures</option>
+            </select>
+          </div>
+          <div>
+            <label class="lb">D&eacute;lai entre actions</label>
+            <select class="ip" id="fneDelay" style="width:160px">
+              <option value="1500">Rapide (1.5s)</option>
+              <option value="2500" selected>Normal (2.5s)</option>
+              <option value="4000">Lent (4s)</option>
+              <option value="6000">Tr&egrave;s lent (6s)</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="bt bt-ice" onclick="fneOpenSite()">&#127760; Ouvrir le portail DGI</button>
+          <button class="bt bt-ghost" onclick="fneStartBatch()">&#9654; Pr&eacute;parer le batch</button>
+          <button class="bt bt-ghost" onclick="fneResetBatch()">&#8634; R&eacute;initialiser</button>
+        </div>
+        <div id="fneBatchStatus" style="margin-top:14px;font-size:12px;color:var(--txt2)"></div>
+      </div>
+
+      <!-- RESULTATS -->
+      <div class="cd" id="fneResultsArea">
+        <div class="ct"><span class="dot"></span> 3. R&eacute;sultats <button class="bt bt-ghost" style="font-size:11px;padding:5px 12px;margin-left:8px" onclick="fneRefreshResults()">&#8635; Actualiser</button></div>
+        <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+          <div style="font-size:13px;color:var(--ok)">&#10003; OK : <span id="fneResOk" class="mono">0</span></div>
+          <div style="font-size:13px;color:var(--err)">&#10007; &Eacute;chec : <span id="fneResErr" class="mono">0</span></div>
+          <div style="font-size:13px;color:var(--txt2)">&#8987; En attente : <span id="fneResPending" class="mono">0</span></div>
+        </div>
+        <div style="overflow-x:auto;max-height:300px;overflow-y:auto">
+          <table class="adm-table">
+            <thead style="position:sticky;top:0;background:var(--panel2)"><tr><th>Fichier</th><th>N&deg; FNE</th><th style="text-align:center">Statut</th></tr></thead>
             <tbody id="fneResultsBody"></tbody>
           </table>
         </div>
-        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-          <button class="bt" onclick="fneExportResults()" style="background:var(--ok);color:#fff">&#128190; Exporter en CSV</button>
-          <button class="bt" onclick="fneRefreshResults()" style="background:var(--frost);color:#fff">&#8634; Rafra&#238;chir</button>
-        </div>
+        <div style="margin-top:14px"><button class="bt bt-ghost" style="font-size:12px;padding:8px 14px" onclick="fneExportResults()">&#11015; Exporter les r&eacute;sultats (CSV)</button></div>
       </div>
     </div>
   </div>
-</div>
-
-<!-- BMC BATCH MODULE -->
-
 
   <div id="tab-aide" class="hid">
     <div class="cd">
@@ -1051,6 +1118,8 @@ function startApp(){
   loadData();
   loadQueue();
   initApp();
+  loadMode();
+  sw("home");
 }
 
 function initApp(){
@@ -1074,11 +1143,12 @@ function initApp(){
 }
 
 function sw(t){
-  ["invoice","echange","queue","bp","upload","accounts","aide","dashboard","history","fne"].forEach(function(x){
+  ["home","invoice","echange","queue","bp","upload","accounts","aide","dashboard","history","fne"].forEach(function(x){
     var el = $("tab-"+x); if(el) el.classList.toggle("hid", x!==t);
     var tb = document.querySelector('.tab[data-tab="'+x+'"]'); if(tb) tb.classList.toggle("on", x===t);
   });
   if(t==="echange") initEchange();
+  if(t==="home") renderHome();
   if(t==="dashboard") renderDashboard();
   if(t==="history") renderHistory();
   if(t==="fne") initFneTab();
@@ -2647,6 +2717,140 @@ function initFneTab(){
     drop.ondragover=function(e){e.preventDefault();drop.style.borderColor="var(--glow)";drop.style.background="rgba(56,189,248,.08)";};
     drop.ondragleave=function(e){drop.style.borderColor="var(--ice-line2)";drop.style.background="var(--void)";};
     drop.ondrop=function(e){e.preventDefault();drop.style.borderColor="var(--ice-line2)";drop.style.background="var(--void)";if(e.dataTransfer.files&&e.dataTransfer.files.length)fneLoadFiles(e.dataTransfer.files);};
+  }
+}
+
+
+// ============ USER PROFILE ============
+function openProfile(){
+  if(!curUser) return;
+  $("profEmail").value = curUser.email || "";
+  $("profName").value = curUser.name || "";
+  $("profPass").value = "";
+  $("profileModal").style.display = "flex";
+}
+function closeProfile(){ $("profileModal").style.display = "none"; }
+function saveProfile(){
+  var body = {action:"updateprofile", user:curUser.user, email:$("profEmail").value.trim(), name:$("profName").value.trim()};
+  var np = $("profPass").value;
+  if(np) body.newpass = np;
+  apiCall("/store", {method:"POST", body:body}).then(function(res){
+    if(res.ok){
+      curUser.email = res.user.email;
+      curUser.name = res.user.name;
+      try{ localStorage.setItem(K_SESSION, JSON.stringify(curUser)); }catch(e){}
+      showToast("Profil mis \u00e0 jour","ok");
+      closeProfile();
+    } else { showToast(res.error||"Erreur","err"); }
+  }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur serveur","err"); });
+}
+
+
+// ============ CA MANAGEMENT (BP tab, manager) ============
+var _caMgBp = null, _caMgList = [], _caBpMatches = [];
+function caBpSearch(q){
+  q=(q||"").trim();
+  var list=$("caBpAc");
+  if(q.length<2){ list.classList.remove("show"); return; }
+  apiCall("/data?action=bp&q="+encodeURIComponent(q)).then(function(res){
+    _caBpMatches=res.results||[];
+    if(!_caBpMatches.length){ list.classList.remove("show"); return; }
+    list.innerHTML=_caBpMatches.slice(0,30).map(function(m,i){
+      return '<div class="ac-item" onclick="caBpPick('+i+')"><span class="code">'+m.ecc+'</span> &rarr; <span class="code">'+m.bp+'</span><div class="nm">'+m.name+'</div></div>';
+    }).join("");
+    list.classList.add("show");
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+}
+function caBpPick(i){
+  var m=_caBpMatches[i]; if(!m) return;
+  _caMgBp = m.bp;
+  $("caBpSearch").value = m.ecc+" - "+m.name;
+  $("caBpAc").classList.remove("show");
+  $("caManageBp").textContent = m.bp;
+  $("caManageName").textContent = " - "+m.name;
+  apiCall("/store?action=getca&bp="+encodeURIComponent(m.bp)).then(function(res){
+    _caMgList = (res.accounts||[]).slice();
+    renderCaManage();
+    $("caManageArea").style.display="block";
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+}
+function renderCaManage(){
+  var box=$("caManageList");
+  if(!_caMgList.length){ box.innerHTML='<div style="color:var(--txt3);padding:10px">Aucun compte rattach&eacute;. Ajoutez-en un.</div>'; return; }
+  box.innerHTML = _caMgList.map(function(a,i){
+    return '<div style="display:grid;grid-template-columns:1fr 1.3fr 40px;gap:8px;margin-bottom:8px;align-items:center">'+
+      '<input class="ip mono" style="font-size:12.5px" value="'+escAttr(a.ca)+'" placeholder="N&deg; compte" onchange="caMgEdit('+i+',\'ca\',this.value)">'+
+      '<input class="ip" style="font-size:12.5px" value="'+escAttr(a.name||"")+'" placeholder="nom (optionnel)" onchange="caMgEdit('+i+',\'name\',this.value)">'+
+      '<button class="bt-del" style="padding:8px" onclick="caMgDel('+i+')" title="Supprimer">&#10005;</button>'+
+    '</div>';
+  }).join("");
+}
+function caMgEdit(i,f,v){ _caMgList[i][f]=v.trim(); }
+function caMgDel(i){ _caMgList.splice(i,1); renderCaManage(); }
+function caManageAdd(){ _caMgList.push({ca:"",name:""}); renderCaManage(); }
+function caManageSave(){
+  if(!_caMgBp){ showToast("Aucun BP s\u00e9lectionn\u00e9","err"); return; }
+  var clean=_caMgList.filter(function(a){return a.ca;});
+  apiCall("/store",{method:"POST",body:{action:"setca",bp:_caMgBp,accounts:clean}}).then(function(res){
+    if(res.ok) showToast("Comptes enregistr\u00e9s pour le BP "+_caMgBp,"ok");
+    else showToast(res.error||"Erreur","err");
+  }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur serveur","err"); });
+}
+function caManageReset(){
+  if(!_caMgBp) return;
+  if(!confirm("R\u00e9initialiser les comptes de ce BP aux valeurs par d\u00e9faut ?")) return;
+  apiCall("/store",{method:"POST",body:{action:"resetca",bp:_caMgBp}}).then(function(res){
+    if(res.ok){ _caMgList=(res.accounts||[]).slice(); renderCaManage(); showToast("R\u00e9initialis\u00e9","ok"); }
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+}
+
+
+// ============ HOME (landing) ============
+function renderHome(){
+  if($("homeUserName") && curUser) $("homeUserName").textContent = (curUser.name||curUser.user||"");
+  // Quick stats from history (light, read-only)
+  var box = $("homeQuickStats");
+  if(!box) return;
+  apiCall("/store?action=gethistory").then(function(res){
+    var hist = res.history||[];
+    var now = new Date();
+    var month = hist.filter(function(h){ var d=new Date(h.ts); return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear(); });
+    function card(label,val){ return '<div style="background:var(--void);border:1px solid var(--ice-line);border-radius:12px;padding:14px 16px"><div style="font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">'+label+'</div><div style="font-size:20px;font-weight:800;color:var(--frost);margin-top:4px">'+val+'</div></div>'; }
+    box.innerHTML = card("Factures ce mois", month.length) + card("File en attente", (typeof invoiceQueue!=="undefined"?invoiceQueue.length:0)) + card("Total historique", hist.length);
+  }).catch(function(e){ /* silencieux sur l'accueil */ box.innerHTML=""; });
+}
+
+
+// ============ MODE TEST / PRODUCTION (badge UI) ============
+var appMode = "test";  // default safe: test
+function loadMode(){
+  try{ var m = localStorage.getItem("ivan_app_mode"); if(m==="prod"||m==="test") appMode=m; }catch(e){}
+  updateModeBadge();
+}
+function toggleMode(){
+  if(appMode==="test"){
+    if(!confirm("Passer en mode PRODUCTION ?\n\nEn production, les fichiers g\u00e9n\u00e9r\u00e9s sont destin\u00e9s \u00e0 un usage r\u00e9el. Soyez vigilant.")) return;
+    appMode="prod";
+  } else {
+    appMode="test";
+  }
+  try{ localStorage.setItem("ivan_app_mode", appMode); }catch(e){}
+  updateModeBadge();
+  showToast(appMode==="prod"?"Mode PRODUCTION activ\u00e9":"Mode TEST activ\u00e9", appMode==="prod"?"err":"ok");
+}
+function updateModeBadge(){
+  var b = $("modeBadge");
+  if(!b) return;
+  if(appMode==="prod"){
+    b.textContent = "\u25CF PRODUCTION";
+    b.style.color = "var(--err)";
+    b.style.borderColor = "var(--err)";
+    b.style.background = "var(--err-d)";
+  } else {
+    b.textContent = "\u25CF MODE TEST";
+    b.style.color = "var(--frost)";
+    b.style.borderColor = "var(--ice-line2)";
+    b.style.background = "rgba(56,189,248,.08)";
   }
 }
 
