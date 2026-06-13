@@ -325,6 +325,71 @@ textarea.ip{resize:vertical;min-height:70px}
 .recap-total .k{font-size:15px;font-weight:700;color:var(--crystal)}
 .recap-total .v{font-size:20px;font-weight:800;color:var(--frost)}
 @media(max-width:1080px){.fact-layout{grid-template-columns:1fr}.fact-recap{position:relative;top:0}}
+
+
+/* =========================================================
+   CHATGPT ICE MODE V3 — visual refonte closer to mockups
+   UI-only overrides: no CSV/FNE business logic modified.
+   ========================================================= */
+:root{
+  --ice-bg:#030912;
+  --ice-bg2:#071423;
+  --ice-panel:rgba(11,27,43,.72);
+  --ice-panel-2:rgba(14,35,55,.78);
+  --ice-border:rgba(125,211,252,.24);
+  --ice-border-strong:rgba(125,211,252,.42);
+  --ice-glow:0 0 0 1px rgba(125,211,252,.10),0 20px 70px rgba(0,0,0,.45),0 0 42px rgba(56,189,248,.10);
+}
+html{background:var(--ice-bg)}
+body{background:
+  radial-gradient(circle at 82% 8%,rgba(125,211,252,.12),transparent 32%),
+  radial-gradient(circle at 38% 0%,rgba(56,189,248,.10),transparent 38%),
+  linear-gradient(180deg,#020712 0%,#06111c 48%,#02070d 100%);}
+body::before{opacity:.55;background:
+  radial-gradient(circle at 74% 17%,rgba(125,211,252,.16),transparent 0 1px,transparent 2px),
+  radial-gradient(circle at 56% 26%,rgba(224,242,254,.10),transparent 0 1px,transparent 2px),
+  radial-gradient(circle at 92% 45%,rgba(56,189,248,.12),transparent 0 1px,transparent 2px),
+  radial-gradient(circle at 20% 10%,rgba(56,189,248,.08),transparent 42%),
+  radial-gradient(circle at 80% 80%,rgba(125,211,252,.06),transparent 45%)}
+body::after{content:"";position:fixed;inset:72px 0 0 248px;pointer-events:none;z-index:0;opacity:.38;background:
+  linear-gradient(180deg,rgba(2,7,18,.08),rgba(2,7,18,.76)),
+  radial-gradient(ellipse at 82% 20%,rgba(125,211,252,.22),transparent 28%),
+  radial-gradient(ellipse at 70% 24%,rgba(224,242,254,.14),transparent 18%),
+  linear-gradient(135deg,transparent 0 68%,rgba(125,211,252,.10) 69%,transparent 76%);}
+#app.shell-layout{position:relative;z-index:2;background:transparent}
+.sidebar{background:linear-gradient(180deg,rgba(7,18,30,.96),rgba(2,8,16,.98));box-shadow:inset -1px 0 rgba(125,211,252,.18),12px 0 48px rgba(0,0,0,.22)}
+.sb-brand{padding:24px 18px 30px;border-bottom:1px solid rgba(125,211,252,.10);margin-bottom:8px}
+.sb-brand-mark{background:linear-gradient(135deg,#dff5ff 0%,#7dd3fc 45%,#2563eb 100%);border:1px solid rgba(224,242,254,.50);box-shadow:0 0 32px rgba(56,189,248,.42),inset 0 1px 0 rgba(255,255,255,.70);position:relative;overflow:hidden;text-indent:-999px}
+.sb-brand-mark::before{content:"✦";position:absolute;inset:0;text-indent:0;display:flex;align-items:center;justify-content:center;color:#06111c;font-size:28px;line-height:1;filter:drop-shadow(0 0 6px rgba(255,255,255,.5))}
+.sb-brand-txt .t1{font-size:18px;letter-spacing:.2px}
+.sb-brand-txt .t2{font-size:10px;color:var(--txt2)}
+.sb-nav{gap:6px}
+.sb-item{padding:12px 14px;border-radius:13px;position:relative;overflow:hidden}
+.sb-item::before{content:"";position:absolute;left:8px;right:8px;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(125,211,252,.18),transparent);opacity:0;transition:.18s}
+.sb-item:hover::before,.sb-item.on::before{opacity:1}
+.sb-item.on{background:linear-gradient(135deg,rgba(56,189,248,.22),rgba(7,20,34,.58));border-color:rgba(125,211,252,.46);box-shadow:0 0 0 1px rgba(56,189,248,.05),0 0 24px rgba(56,189,248,.18),inset 0 1px 0 rgba(224,242,254,.08)}
+.sb-ic{display:inline-flex;align-items:center;justify-content:center;color:var(--txt2)}
+.svg-ic{width:18px;height:18px;display:block;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.home-tile .svg-ic{width:30px;height:30px;stroke-width:1.65}
+.kpi-ic .svg-ic,.act-ic .svg-ic{width:18px;height:18px}.recap-title .svg-ic{width:18px;height:18px}
+.topbar{background:rgba(2,8,16,.74);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid rgba(125,211,252,.18);box-shadow:0 12px 36px rgba(0,0,0,.22)}
+.topbar-title h1{font-size:22px;letter-spacing:-.5px}.topbar-title .tb-sub{font-size:12.5px;color:#9db9d4}.tb-mode{letter-spacing:.4px;background:rgba(56,189,248,.08)!important;border-color:rgba(125,211,252,.44)!important;box-shadow:0 0 22px rgba(56,189,248,.12)}
+.tb-bell,.tb-avatar{background:rgba(3,9,18,.72);border-color:rgba(125,211,252,.18)}
+.main-content{max-width:1480px;padding:34px 34px 86px;position:relative;z-index:1}
+.page-hero{position:relative;overflow:hidden;border:1px solid rgba(125,211,252,.18);border-radius:24px;padding:34px 34px 30px;margin-bottom:24px;background:
+  linear-gradient(120deg,rgba(5,13,24,.76) 0%,rgba(8,25,44,.70) 46%,rgba(9,33,57,.48) 100%);box-shadow:var(--ice-glow)}
+.page-hero::before{content:"";position:absolute;inset:0;background:
+  radial-gradient(ellipse at 79% 42%,rgba(125,211,252,.22),transparent 20%),
+  linear-gradient(140deg,transparent 0 65%,rgba(125,211,252,.10) 66%,transparent 73%);pointer-events:none}.page-hero::after{content:"";position:absolute;right:7%;bottom:-30px;width:260px;height:170px;border-radius:50%;background:radial-gradient(ellipse,rgba(125,211,252,.13),transparent 62%);filter:blur(2px)}
+.page-hero>*{position:relative;z-index:1}.hero-kicker{font-size:12px;color:var(--frost);letter-spacing:1.6px;text-transform:uppercase;font-weight:800;margin-bottom:8px}.page-hero h2{font-size:38px;font-weight:800;color:#f6fbff;letter-spacing:-1.2px;margin:0 0 10px;line-height:1.1}.page-hero p{font-size:15px;color:#aec4da;max-width:690px;line-height:1.7}.hero-note{margin-top:18px;display:inline-flex;gap:9px;align-items:center;padding:8px 12px;border-radius:999px;background:rgba(56,189,248,.08);border:1px solid rgba(125,211,252,.18);font-size:12px;color:var(--crystal)}
+.home-grid{grid-template-columns:repeat(4,minmax(190px,1fr));gap:18px}.home-tile{min-height:206px;padding:24px 22px;background:linear-gradient(160deg,rgba(21,45,68,.72),rgba(4,15,28,.70));border-color:rgba(125,211,252,.24);box-shadow:0 16px 44px rgba(0,0,0,.28),inset 0 1px 0 rgba(224,242,254,.08)}.home-tile::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.07),transparent 28%),radial-gradient(circle at 76% 10%,rgba(125,211,252,.12),transparent 28%);opacity:.75;pointer-events:none}.home-tile:hover{border-color:rgba(125,211,252,.54);box-shadow:0 20px 60px rgba(0,0,0,.36),0 0 38px rgba(56,189,248,.14);transform:translateY(-5px)}.home-tile-ic{width:56px;height:56px;border-radius:16px;color:var(--frost);background:rgba(56,189,248,.10)!important;border-color:rgba(125,211,252,.28);box-shadow:inset 0 1px 0 rgba(224,242,254,.08)}.home-tile-title{font-size:17px;line-height:1.25}.home-tile-desc{min-height:58px}.home-tile-arrow{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding:10px 12px;border:1px solid rgba(125,211,252,.24);border-radius:11px;background:linear-gradient(135deg,rgba(56,189,248,.12),rgba(56,189,248,.04));color:var(--crystal)}.home-tile-arrow::after{content:"→";font-size:18px;color:var(--frost)}
+.cd,.kpi-card,.fact-recap{background:linear-gradient(160deg,rgba(14,33,52,.74),rgba(4,14,25,.72));border-color:rgba(125,211,252,.22);box-shadow:var(--ice-glow);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}.cd:hover,.kpi-card:hover{border-color:rgba(125,211,252,.32)}
+.kpi-row{grid-template-columns:repeat(4,minmax(180px,1fr));gap:16px}.kpi-card{padding:20px 20px 16px;position:relative;overflow:hidden}.kpi-card::after{content:"";position:absolute;left:18px;right:18px;bottom:12px;height:30px;background:linear-gradient(90deg,transparent,rgba(56,189,248,.08),transparent);opacity:.55}.kpi-head{justify-content:space-between}.kpi-ic{width:42px;height:42px;border-radius:50%;color:var(--frost);background:rgba(56,189,248,.10);border-color:rgba(125,211,252,.24)}.kpi-val{font-size:32px}.kpi-label{font-size:13px}.act-item,.gen-item{border-color:rgba(125,211,252,.13)}.act-ic{border:1px solid rgba(125,211,252,.20);color:var(--frost)}
+.stepper-nav{padding:18px 22px;background:linear-gradient(160deg,rgba(14,33,52,.74),rgba(4,14,25,.72));border-color:rgba(125,211,252,.22);box-shadow:var(--ice-glow);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);position:relative}.step-node{gap:8px;min-width:92px}.step-num{width:38px;height:38px;background:rgba(4,14,25,.82);border-color:rgba(125,211,252,.28)}.step-node.done .step-num{background:rgba(52,211,153,.18);border:1px solid rgba(52,211,153,.48);color:var(--ok)}.step-node.active .step-num{box-shadow:0 0 0 6px rgba(56,189,248,.09),0 0 24px rgba(56,189,248,.45)}.step-label{font-size:12px;line-height:1.2}.step-line{background:linear-gradient(90deg,rgba(125,211,252,.18),rgba(56,189,248,.38),rgba(125,211,252,.18));height:1px}.fact-layout{grid-template-columns:minmax(0,1fr) 372px;gap:24px}.fact-step>.cd{padding:24px}.fact-step>div:first-child{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:rgba(56,189,248,.07);border:1px solid rgba(125,211,252,.16);font-weight:600}.fact-recap{border-radius:20px}.recap-title{font-size:16px;gap:10px}.recap-sec{padding-bottom:14px;border-bottom:1px solid rgba(125,211,252,.12)}.recap-sec:last-child{border-bottom:none}.recap-sec-h{font-size:12px;text-transform:none;letter-spacing:.2px}.recap-row{font-size:12.7px}.recap-total{background:rgba(56,189,248,.07);border:1px solid rgba(125,211,252,.16);border-radius:14px;padding:14px;margin-top:12px}.recap-total .v{font-size:24px}.line-row{background:rgba(3,9,18,.58);border-color:rgba(125,211,252,.18);grid-template-columns:2.3fr .7fr .8fr .8fr auto}.ip,select.ip,textarea.ip{background:rgba(3,9,18,.70);border-color:rgba(125,211,252,.20);box-shadow:inset 0 1px 0 rgba(224,242,254,.03)}.ip:hover{border-color:rgba(125,211,252,.33)}.fld label{color:#a8c2dc}.bt{border-radius:12px}.bt-ice{background:linear-gradient(135deg,#0284c7 0%,#38bdf8 48%,#b7ecff 100%);box-shadow:0 10px 26px rgba(56,189,248,.20),inset 0 1px 0 rgba(255,255,255,.32)}.bt-ghost{background:rgba(3,9,18,.40);border-color:rgba(125,211,252,.24)}
+.quick-save{min-width:180px}.safety-callout{margin-top:14px;padding:13px 14px;border-radius:14px;background:rgba(56,189,248,.07);border:1px solid rgba(125,211,252,.18);color:#b9d5eb;font-size:12.5px;line-height:1.55}.section-head{display:flex;align-items:center;gap:10px}.section-head .svg-ic{color:var(--frost)}
+@media(max-width:1220px){.home-grid,.kpi-row{grid-template-columns:repeat(2,minmax(220px,1fr))}.fact-layout{grid-template-columns:1fr}.fact-recap{position:relative;top:0}}
+@media(max-width:860px){body::after{inset:130px 0 0 0}.page-hero{padding:26px 22px}.page-hero h2{font-size:30px}.home-grid,.kpi-row{grid-template-columns:1fr}.stepper-nav{overflow-x:auto}.topbar{gap:10px}.tb-mode{font-size:11px;padding:6px 10px}.line-row{grid-template-columns:1fr}.main-content{padding:18px 16px 70px}}
+
 </style>
 </head>
 <body>
@@ -370,17 +435,17 @@ textarea.ip{resize:vertical;min-height:70px}
       </div>
     </div>
     <nav class="sb-nav" id="sbNav">
-      <div class="sb-item" data-tab="home" onclick="sw('home')"><span class="sb-ic">&#127968;</span><span class="sb-nav-label">Accueil</span></div>
-      <div class="sb-item" data-tab="dashboard" data-mgr="1" onclick="sw('dashboard')" style="display:none"><span class="sb-ic">&#9638;</span><span class="sb-nav-label">Tableau de bord</span></div>
-      <div class="sb-item" data-tab="invoice" onclick="sw('invoice')"><span class="sb-ic">&#10052;</span><span class="sb-nav-label">Facturation</span></div>
-      <div class="sb-item" data-tab="echange" onclick="sw('echange')"><span class="sb-ic">&#8644;</span><span class="sb-nav-label">&Eacute;change</span></div>
-      <div class="sb-item" data-tab="history" onclick="sw('history')"><span class="sb-ic">&#128340;</span><span class="sb-nav-label">Historique</span></div>
-      <div class="sb-item" data-tab="fne" onclick="sw('fne')"><span class="sb-ic">&#9889;</span><span class="sb-nav-label">FNE</span></div>
-      <div class="sb-item" data-tab="queue" onclick="sw('queue')"><span class="sb-ic">&#9783;</span><span class="sb-nav-label">File</span><span id="queueBadge" class="pill pill-frost" style="margin-left:auto;display:none">0</span></div>
-      <div class="sb-item" data-tab="bp" onclick="sw('bp')"><span class="sb-ic">&#9819;</span><span class="sb-nav-label">Business Partners</span></div>
-      <div class="sb-item" data-tab="upload" onclick="sw('upload')"><span class="sb-ic">&#11014;</span><span class="sb-nav-label">Imports</span></div>
-      <div class="sb-item" data-tab="accounts" data-mgr="1" onclick="sw('accounts')" style="display:none"><span class="sb-ic">&#9881;</span><span class="sb-nav-label">Comptes</span></div>
-      <div class="sb-item" data-tab="aide" onclick="sw('aide')"><span class="sb-ic">&#9432;</span><span class="sb-nav-label">Aide</span></div>
+      <div class="sb-item" data-tab="home" onclick="sw('home')"><span class="sb-ic"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></svg></span><span class="sb-nav-label">Accueil</span></div>
+      <div class="sb-item" data-tab="dashboard" data-mgr="1" onclick="sw('dashboard')" style="display:none"><span class="sb-ic"><svg class="svg-ic" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></svg></span><span class="sb-nav-label">Tableau de bord</span></div>
+      <div class="sb-item" data-tab="invoice" onclick="sw('invoice')"><span class="sb-ic"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg></span><span class="sb-nav-label">Facturation</span></div>
+      <div class="sb-item" data-tab="echange" onclick="sw('echange')"><span class="sb-ic"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M7 7h12l-3-3"/><path d="M17 17H5l3 3"/><path d="M19 7l-3 3M5 17l3-3"/></svg></span><span class="sb-nav-label">&Eacute;change</span></div>
+      <div class="sb-item" data-tab="history" onclick="sw('history')"><span class="sb-ic"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.7"/><path d="M4 5v5h5"/><path d="M12 8v5l3 2"/></svg></span><span class="sb-nav-label">Historique</span></div>
+      <div class="sb-item" data-tab="fne" onclick="sw('fne')"><span class="sb-ic"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.6 2.9 8.4 7 10 4.1-1.6 7-5.4 7-10V6z"/><path d="m9 12 2 2 4-5"/></svg></span><span class="sb-nav-label">FNE</span></div>
+      <div class="sb-item" data-tab="queue" onclick="sw('queue')"><span class="sb-ic"><svg class="svg-ic" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="4" rx="1"/><rect x="4" y="14" width="16" height="4" rx="1"/><path d="M8 10v4M16 10v4"/></svg></span><span class="sb-nav-label">File</span><span id="queueBadge" class="pill pill-frost" style="margin-left:auto;display:none">0</span></div>
+      <div class="sb-item" data-tab="bp" onclick="sw('bp')"><span class="sb-ic"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-8 0"/><circle cx="12" cy="7" r="3"/><path d="M4 20c.7-3 3.7-5 8-5s7.3 2 8 5"/></svg></span><span class="sb-nav-label">Business Partners</span></div>
+      <div class="sb-item" data-tab="upload" onclick="sw('upload')"><span class="sb-ic"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m8 11 4 4 4-4"/><path d="M5 20h14"/></svg></span><span class="sb-nav-label">Imports</span></div>
+      <div class="sb-item" data-tab="accounts" data-mgr="1" onclick="sw('accounts')" style="display:none"><span class="sb-ic"><svg class="svg-ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21c.8-4 3.4-6 7-6s6.2 2 7 6"/></svg></span><span class="sb-nav-label">Comptes</span></div>
+      <div class="sb-item" data-tab="aide" onclick="sw('aide')"><span class="sb-ic"><svg class="svg-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.5 2.5 0 0 1 4.5 1.5c0 1.9-2.3 2.1-2.3 4"/><path d="M12 18h.01"/></svg></span><span class="sb-nav-label">Aide</span></div>
     </nav>
     <div class="sb-collapse" onclick="toggleSidebar()"><span class="sb-ic">&#8249;</span><span>Réduire le menu</span></div>
   </aside>
@@ -407,11 +472,17 @@ textarea.ip{resize:vertical;min-height:70px}
 
   <!-- ============ INVOICE TAB ============ -->
   <div id="tab-invoice" class="hid">
+    <section class="page-hero invoice-hero">
+      <div class="hero-kicker">Facturation S/4HANA</div>
+      <h2>Cr&eacute;er une facture S/4HANA</h2>
+      <p>Suivez un parcours clair en 6 &eacute;tapes. Les champs SAP restent disponibles, mais chaque section est regroup&eacute;e pour &eacute;viter les erreurs.</p>
+      <div class="hero-note"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.6 2.9 8.4 7 10 4.1-1.6 7-5.4 7-10V6z"/><path d="m9 12 2 2 4-5"/></svg> Avant la g&eacute;n&eacute;ration, vous pourrez revoir toutes les informations dans le r&eacute;capitulatif.</div>
+    </section>
     <!-- Stepper navigation -->
     <div class="stepper-nav" id="factStepperNav">
       <div class="step-node" data-step="0" onclick="goFactStep(0)">
         <div class="step-num">1</div>
-        <div class="step-label">Type</div>
+        <div class="step-label">Type de facture</div>
       </div><div class="step-line"></div><div class="step-node" data-step="1" onclick="goFactStep(1)">
         <div class="step-num">2</div>
         <div class="step-label">Client</div>
@@ -582,9 +653,11 @@ textarea.ip{resize:vertical;min-height:70px}
       <div class="cd">
       <div class="ct"><span class="dot"></span> G&eacute;n&eacute;ration</div>
       <div id="invSummary" style="margin-bottom:16px;font-size:13px;color:var(--txt2)"></div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <button class="bt bt-ice" onclick="genInvoice()">&#10052; G&eacute;n&eacute;rer le fichier (CSV)</button>
-        <button class="bt bt-ghost" onclick="addToQueue()">&#9783; Ajouter &agrave; la file</button>
+      <div class="safety-callout"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.6 2.9 8.4 7 10 4.1-1.6 7-5.4 7-10V6z"/><path d="m9 12 2 2 4-5"/></svg> V&eacute;rifiez le client, le compte contrat, le BL/Booking et les charges avant de produire un fichier destin&eacute; &agrave; S/4HANA.</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px">
+        <button class="bt bt-ghost quick-save" onclick="saveDraft()"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v10H3z"/></svg> Enregistrer brouillon</button>
+        <button class="bt bt-ghost" onclick="addToQueue()"><svg class="svg-ic" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="4" rx="1"/><rect x="4" y="14" width="16" height="4" rx="1"/><path d="M8 10v4M16 10v4"/></svg> Ajouter &agrave; la file</button>
+        <button class="bt bt-ice" onclick="genInvoice()"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg> G&eacute;n&eacute;rer le fichier CSV</button>
         <button class="bt bt-ghost" onclick="resetInvoice()">R&eacute;initialiser</button>
       </div>
     </div>
@@ -596,7 +669,7 @@ textarea.ip{resize:vertical;min-height:70px}
       </div><!-- /#factSteps -->
       </div><!-- /.fact-main -->
       <aside class="fact-recap" id="factRecap">
-        <div class="recap-title">&#128203; R&eacute;capitulatif</div>
+        <div class="recap-title"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg> R&eacute;capitulatif</div>
         <div id="factRecapBody"></div>
       </aside>
     </div><!-- /.fact-layout -->
@@ -858,36 +931,38 @@ textarea.ip{resize:vertical;min-height:70px}
   </div>
 
   <div id="tab-home" class="hid">
-    <div style="margin-bottom:8px">
-      <h2 style="font-size:30px;font-weight:800;color:var(--crystal);letter-spacing:-.8px;margin-bottom:6px;line-height:1.15">Que souhaitez-vous faire aujourd'hui&#8201;?</h2>
-      <p style="font-size:14px;color:var(--txt2);max-width:560px;line-height:1.6">Acc&eacute;dez rapidement aux principaux workflows de facturation et suivez l'activit&eacute; de vos op&eacute;rations.</p>
-    </div>
+    <section class="page-hero home-hero">
+      <div class="hero-kicker">Ice Mode · Cockpit de facturation</div>
+      <h2>Que souhaitez-vous faire aujourd'hui&#8201;?</h2>
+      <p>Choisissez rapidement votre workflow, lancez une opération sensible avec contrôle, puis suivez l'activité de l'équipe en temps réel.</p>
+      <div class="hero-note"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.6 2.9 8.4 7 10 4.1-1.6 7-5.4 7-10V6z"/><path d="m9 12 2 2 4-5"/></svg> Environnement sécurisé : vérifiez toujours le mode Test/Production avant génération.</div>
+    </section>
 
     <!-- 4 ACTION CARDS -->
     <div class="home-grid" style="margin-top:24px">
       <div class="home-tile" onclick="sw('invoice')">
-        <div class="home-tile-ic" style="background:rgba(56,189,248,.12)">&#10052;</div>
+        <div class="home-tile-ic"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M12 12v6M9 15h6"/></svg></div>
         <div class="home-tile-title">Cr&eacute;er une facture S/4HANA</div>
-        <div class="home-tile-desc">Cr&eacute;ez une facture dans S/4HANA en quelques &eacute;tapes guid&eacute;es.</div>
-        <div class="home-tile-arrow">Cr&eacute;er une facture &rarr;</div>
+        <div class="home-tile-desc">Un parcours guid&eacute; pour choisir le type, le client, les r&eacute;f&eacute;rences, les charges puis g&eacute;n&eacute;rer le CSV.</div>
+        <div class="home-tile-arrow">Cr&eacute;er une facture</div>
       </div>
       <div class="home-tile" onclick="sw('echange')">
-        <div class="home-tile-ic" style="background:rgba(125,211,252,.12)">&#8644;</div>
+        <div class="home-tile-ic"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M7 7h12l-3-3"/><path d="M17 17H5l3 3"/><path d="M19 7l-3 3M5 17l3-3"/></svg></div>
         <div class="home-tile-title">Cr&eacute;er une facture &Eacute;change</div>
-        <div class="home-tile-desc">&Eacute;mettez une facture pour les op&eacute;rations d'&eacute;change import/export.</div>
-        <div class="home-tile-arrow">Cr&eacute;er une facture &rarr;</div>
+        <div class="home-tile-desc">Pr&eacute;parez les op&eacute;rations d'&eacute;change import/export avec marchandises et charges forfaitaires.</div>
+        <div class="home-tile-arrow">Cr&eacute;er une facture</div>
       </div>
       <div class="home-tile" onclick="sw('fne')">
-        <div class="home-tile-ic" style="background:rgba(251,191,36,.12)">&#9889;</div>
+        <div class="home-tile-ic"><svg class="svg-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/></svg></div>
         <div class="home-tile-title">Lancer un batch FNE</div>
-        <div class="home-tile-desc">G&eacute;n&eacute;rez et soumettez vos fichiers FNE en toute simplicit&eacute;.</div>
-        <div class="home-tile-arrow">Lancer un batch &rarr;</div>
+        <div class="home-tile-desc">Chargez vos PDFs Solar/IFS, contr&ocirc;lez la file puis pr&eacute;parez le traitement FNE.</div>
+        <div class="home-tile-arrow">Lancer un batch</div>
       </div>
       <div class="home-tile" onclick="sw('history')">
-        <div class="home-tile-ic" style="background:rgba(52,211,153,.12)">&#128340;</div>
+        <div class="home-tile-ic"><svg class="svg-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></svg></div>
         <div class="home-tile-title">Consulter l'historique</div>
-        <div class="home-tile-desc">Acc&eacute;dez &agrave; l'historique complet de vos documents.</div>
-        <div class="home-tile-arrow">Voir l'historique &rarr;</div>
+        <div class="home-tile-desc">Retrouvez les factures cr&eacute;&eacute;es, les agents, les dates et le suivi complet des documents.</div>
+        <div class="home-tile-arrow">Voir l'historique</div>
       </div>
     </div>
 
@@ -898,14 +973,14 @@ textarea.ip{resize:vertical;min-height:70px}
     <div class="home-cols" style="margin-top:20px">
       <div class="cd">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <div style="font-size:15px;font-weight:700;color:var(--crystal)">&#9201; Activit&eacute; r&eacute;cente</div>
+          <div class="section-head" style="font-size:15px;font-weight:700;color:var(--crystal)"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M4 13h4l2-6 4 12 2-6h4"/></svg> Activit&eacute; r&eacute;cente</div>
           <a href="#" onclick="sw('history');return false" style="font-size:12px;color:var(--frost);text-decoration:none">Voir tout &rsaquo;</a>
         </div>
         <div id="homeActivity"></div>
       </div>
       <div class="cd">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <div style="font-size:15px;font-weight:700;color:var(--crystal)">&#128196; G&eacute;n&eacute;rations de fichiers</div>
+          <div class="section-head" style="font-size:15px;font-weight:700;color:var(--crystal)"><svg class="svg-ic" viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v10H3z"/></svg> G&eacute;n&eacute;rations de fichiers</div>
           <a href="#" onclick="sw('queue');return false" style="font-size:12px;color:var(--frost);text-decoration:none">Voir tout &rsaquo;</a>
         </div>
         <div id="homeGenerations"></div>
@@ -1390,7 +1465,7 @@ function initApp(){
 var PAGE_TITLES = {
   home:["Accueil","Maersk C\u00f4te d'Ivoire \u00b7 Facturation S/4HANA"],
   dashboard:["Tableau de bord","Vue d'ensemble de l'activit\u00e9"],
-  invoice:["Cr\u00e9er une facture S/4HANA","Suivez les \u00e9tapes pour cr\u00e9er votre facture de mani\u00e8re guid\u00e9e"],
+  invoice:["Cr\u00e9er une facture S/4HANA","Workflow guid\u00e9 : type, client, r\u00e9f\u00e9rences, charges, v\u00e9rification, g\u00e9n\u00e9ration"],
   echange:["Cr\u00e9er une facture \u00c9change","Op\u00e9rations d'\u00e9change import/export"],
   history:["Historique","Toutes les factures \u00e9mises par l'\u00e9quipe"],
   fne:["FNE Batch Auto","Automatisation des factures FNE sur le portail DGI"],
@@ -1570,16 +1645,19 @@ function genInvoice(){
   if(v.lines.length===0) missing.push("Au moins une ligne de charge valide");
   if(missing.length){ showToast("Champs manquants : "+missing.join(", "), "err"); return; }
   var data = collectInvoiceData(v.lines);
-  showToast("G\u00e9n\u00e9ration en cours...","ok");
-  apiCall("/generate", {method:"POST", body:{invoices:[data]}}).then(function(res){
-    if(res.ok && res.csv){
-      downloadCSV(res.csv, "IVAN_S4_" + data.bp + "_" + Date.now() + ".csv");
-      recordHistory(data, "facturation");
-      showToast("Fichier CSV g\u00e9n\u00e9r\u00e9","ok");
-    } else { showToast("Erreur: "+(res.error||"inconnue"),"err"); }
-  }).catch(function(e){
-    if(e && e.blocked){ showBlocked(); return; }
-    showToast("Erreur serveur: "+e.message,"err");
+  var blCheck = data.bookingNum || data.reference || data.bl;
+  guardDuplicateBL(blCheck, function(){
+    showToast("G\u00e9n\u00e9ration en cours...","ok");
+    apiCall("/generate", {method:"POST", body:{invoices:[data]}}).then(function(res){
+      if(res.ok && res.csv){
+        downloadCSV(res.csv, "IVAN_S4_" + data.bp + "_" + Date.now() + ".csv");
+        recordHistory(data, "facturation");
+        showToast("Fichier CSV g\u00e9n\u00e9r\u00e9","ok");
+      } else { showToast("Erreur: "+(res.error||"inconnue"),"err"); }
+    }).catch(function(e){
+      if(e && e.blocked){ showBlocked(); return; }
+      showToast("Erreur serveur: "+e.message,"err");
+    });
   });
 }
 function collectInvoiceData(lines){
@@ -1822,13 +1900,16 @@ function addToQueue(){
   if(missing.lines.length===0 && missing.errs.length){ showToast("Champs manquants : "+missing.errs.join(", "),"err"); return; }
   if(missing.errs.length){ showToast("Champs manquants : "+missing.errs.join(", "),"err"); return; }
   var data = collectInvoiceData(missing.lines);
-  data._label = (data.clientName||data.bp) + " - " + data.subprocess;
-  data._ts = new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
-  data._total = missing.lines.reduce(function(s,l){return s+l.qty*l.rate;},0);
-  invoiceQueue.push(data);
-  saveQueue();
-  showToast("Ajout&eacute; &agrave; la file ("+invoiceQueue.length+")","ok");
-  resetInvoice();
+  var blCheck = data.bookingNum || data.reference || data.bl;
+  guardDuplicateBL(blCheck, function(){
+    data._label = (data.clientName||data.bp) + " - " + data.subprocess;
+    data._ts = new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+    data._total = missing.lines.reduce(function(s,l){return s+l.qty*l.rate;},0);
+    invoiceQueue.push(data);
+    saveQueue();
+    showToast("Ajout&eacute; &agrave; la file ("+invoiceQueue.length+")","ok");
+    resetInvoice();
+  });
 }
 function renderQueue(){
   var list = $("queueList");
@@ -2454,16 +2535,20 @@ function toggleS4Csv(){
 function echGenCsv(){
   var payload=buildEchPayload();
   if(!confirmIfWarnings(payload)) return;
+  guardDuplicateBL(payload.bl, function(){
   showToast("G\u00e9n\u00e9ration...","ok");
   apiCall("/generate",{method:"POST",body:{invoices:[payload]}}).then(function(res){
     if(res.ok&&res.csv){ downloadCSV(res.csv,"IVAN_S4_ECH_"+($("echPort").value).toUpperCase()+"_"+payload.bp+"_"+Date.now()+".csv"); recordHistory(payload,"echange"); showToast("CSV g\u00e9n\u00e9r\u00e9","ok"); }
     else showToast("Erreur: "+(res.error||""),"err");
   }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur serveur","err"); });
+  });
 }
 function echAddQueue(){
   var payload=buildEchPayload();
-  invoiceQueue.push(payload); saveQueue(); recordHistory(payload,"echange");
-  showToast("Ajout\u00e9 \u00e0 la file","ok");
+  guardDuplicateBL(payload.bl, function(){
+    invoiceQueue.push(payload); saveQueue();
+    showToast("Ajout\u00e9 \u00e0 la file","ok");
+  });
 }
 function echBackToForm(){ $("echReview").style.display="none"; $("echConfig").scrollIntoView({behavior:"smooth"}); }
 function echBackToReview(){ $("echS4").style.display="none"; $("echReview").style.display="block"; $("echReview").scrollIntoView({behavior:"smooth"}); }
@@ -2485,6 +2570,8 @@ function recordHistory(data, source){
     bp: data.bp||"",
     contractAcc: data.contractAcc||"",
     bl: data.bl||"",
+    bookingNum: data.bookingNum||"",
+    reference: data.reference||"",
     expImp: data.expImp||"",
     nbLines: (data.lines||[]).length,
     totalHt: totHt
@@ -3070,6 +3157,14 @@ function caManageReset(){
 }
 
 
+
+function uiIcon(name){
+  var icons = {
+    doc:'<svg class="svg-ic" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>', queue:'<svg class="svg-ic" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="4" rx="1"/><rect x="4" y="14" width="16" height="4" rx="1"/><path d="M8 10v4M16 10v4"/></svg>', money:'<svg class="svg-ic" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M7 9v.01M17 15v.01"/></svg>', users:'<svg class="svg-ic" viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-8 0"/><circle cx="12" cy="7" r="3"/><path d="M4 20c.7-3 3.7-5 8-5s7.3 2 8 5"/></svg>', swap:'<svg class="svg-ic" viewBox="0 0 24 24"><path d="M7 7h12l-3-3"/><path d="M17 17H5l3 3"/><path d="M19 7l-3 3M5 17l3-3"/></svg>', file:'<svg class="svg-ic" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>'
+  };
+  return icons[name] || '';
+}
+
 // ============ HOME (landing) ============
 function renderHome(){
   if($("homeUserName") && curUser) $("homeUserName").textContent = (curUser.name||curUser.user||"");
@@ -3107,10 +3202,10 @@ function renderHome(){
     var box=$("homeKpis");
     if(box){
       box.innerHTML =
-        kpi("\uD83D\uDCC4","Factures ce mois",nMonth,trendHtml(trendPct,false),spark) +
-        kpi("\u29D6","File en attente",queueN,'<div class="kpi-trend flat">en attente de t\u00e9l\u00e9chargement</div>',null) +
-        kpi("\uD83D\uDCB0","Total HT ce mois",(totalHt>=1000?Math.round(totalHt/1000)+"k":totalHt)+" XOF",'<div class="kpi-trend flat">cumul du mois</div>',null) +
-        kpi("\uD83D\uDC65","Agents actifs",nAgents,'<div class="kpi-trend flat">ce mois</div>',null);
+        kpi(uiIcon("doc"),"Factures ce mois",nMonth,trendHtml(trendPct,false),spark) +
+        kpi(uiIcon("queue"),"File en attente",queueN,'<div class="kpi-trend flat">en attente de t\u00e9l\u00e9chargement</div>',null) +
+        kpi(uiIcon("money"),"Total HT ce mois",(totalHt>=1000?Math.round(totalHt/1000)+"k":totalHt)+" XOF",'<div class="kpi-trend flat">cumul du mois</div>',null) +
+        kpi(uiIcon("users"),"Agents actifs",nAgents,'<div class="kpi-trend flat">ce mois</div>',null);
     }
     // Recent activity (last 6)
     var act=$("homeActivity");
@@ -3119,7 +3214,7 @@ function renderHome(){
       else{
         act.innerHTML = hist.slice(0,6).map(function(h){
           var isEch = h.source==="echange";
-          var ic = isEch?"\u8644":"\u2744";
+          var ic = isEch?uiIcon("swap"):uiIcon("file");
           var icBg = isEch?"background:rgba(125,211,252,.12);color:var(--frost)":"background:rgba(56,189,248,.12);color:var(--glow)";
           var label = isEch?"Facture \u00c9change":"Facture S/4HANA";
           var d=new Date(h.ts);
@@ -3238,6 +3333,62 @@ function updateFactRecap(){
     (chargeRows||'<div class="recap-row"><span class="v empty">Aucune charge</span></div>')+'</div>';
   html += '<div class="recap-total"><span class="k">Total HT</span><span class="v">'+totalHt.toLocaleString("fr-FR")+' XOF</span></div>';
   body.innerHTML = html;
+}
+
+
+// ============ D\u00c9TECTION DE DOUBLONS (par N\u00b0 BL) ============
+function _normBL(bl){ return (bl||"").toString().trim().toUpperCase().replace(/\s+/g,""); }
+// Checks history for an existing invoice with the same BL.
+// Calls onResult(duplicateEntry | null). Non-blocking: caller decides.
+function checkDuplicateBL(bl, onResult){
+  var norm = _normBL(bl);
+  if(!norm){ onResult(null); return; }
+  // 1. Check the in-memory queue first (invoices added but not yet generated)
+  if(typeof invoiceQueue !== "undefined"){
+    for(var q=0;q<invoiceQueue.length;q++){
+      var iq = invoiceQueue[q];
+      var qc = [iq.bl, iq.bookingNum, iq.reference];
+      for(var k=0;k<qc.length;k++){
+        if(_normBL(qc[k]) === norm){
+          onResult({ ts: Date.now(), agent: (curUser&&curUser.user)||"?", agentName:(curUser&&curUser.name)||"", source: iq.subprocess&&iq.subprocess.indexOf("MIMN")===0?"echange":"facturation", bp: iq.bp||"", _inQueue:true });
+          return;
+        }
+      }
+    }
+  }
+  // 2. Check the server history
+  apiCall("/store?action=gethistory").then(function(res){
+    var hist = res.history||[];
+    var match = null;
+    for(var i=0;i<hist.length;i++){
+      var h = hist[i];
+      var candidates = [h.bl, h.bookingNum, h.reference];
+      for(var j=0;j<candidates.length;j++){
+        if(_normBL(candidates[j]) === norm){ match = h; break; }
+      }
+      if(match) break;
+    }
+    onResult(match);
+  }).catch(function(e){ if(e&&e.blocked){showBlocked();} onResult(null); });
+}
+// Returns a confirmation message for a duplicate, or generates and proceeds.
+// proceedFn is called if user confirms (or no duplicate). bl is the number to check.
+function guardDuplicateBL(bl, proceedFn){
+  checkDuplicateBL(bl, function(dup){
+    if(!dup){ proceedFn(); return; }
+    var d = new Date(dup.ts);
+    var when = d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}) + " \u00e0 " + d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+    var who = dup.agentName || dup.agent || "?";
+    var src = dup.source==="echange" ? "\u00c9change" : "S/4HANA";
+    var verb = dup._inQueue ? "est d\u00e9j\u00e0 dans la file d'attente" : "a d\u00e9j\u00e0 \u00e9t\u00e9 \u00e9mise";
+    var msg = "\u26a0 DOUBLON POSSIBLE\n\n"+
+      "Une facture "+src+" "+verb+" pour le BL "+_normBL(bl)+" :\n"+
+      "\u2022 Le "+when+"\n"+
+      "\u2022 Par "+who+"\n"+
+      (dup.bp?("\u2022 BP : "+dup.bp+"\n"):"")+
+      "\nVoulez-vous quand m\u00eame g\u00e9n\u00e9rer cette facture ?";
+    if(confirm(msg)){ proceedFn(); }
+  });
 }
 
 function showToast(msg, type){
