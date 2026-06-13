@@ -231,10 +231,104 @@ textarea.ip{resize:vertical;min-height:70px}
   .tab{padding:10px 14px;font-size:12.5px}
   .bt{padding:11px 18px;font-size:13.5px}
 }
+
+/* === ICE MODE SHELL (sidebar + main) === */
+#app.shell-layout{max-width:none;margin:0;padding:0;display:flex;min-height:100vh}
+.sidebar{width:248px;flex-shrink:0;background:linear-gradient(180deg,#0a1622 0%,#060d16 100%);border-right:1px solid var(--ice-line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;transition:width .2s}
+.sidebar.collapsed{width:74px}
+.sb-brand{display:flex;align-items:center;gap:12px;padding:22px 20px 26px}
+.sb-brand-mark{width:42px;height:42px;border-radius:11px;background:var(--grad-ice);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:var(--void);flex-shrink:0;box-shadow:0 0 20px rgba(56,189,248,.35)}
+.sb-brand-txt{line-height:1.2}
+.sb-brand-txt .t1{font-size:15px;font-weight:800;color:var(--crystal);letter-spacing:.5px}
+.sb-brand-txt .t2{font-size:9.5px;font-weight:600;color:var(--frost);text-transform:uppercase;letter-spacing:1.5px}
+.sidebar.collapsed .sb-brand-txt,.sidebar.collapsed .sb-nav-label,.sidebar.collapsed .sb-collapse span{display:none}
+.sb-nav{flex:1;padding:0 12px;display:flex;flex-direction:column;gap:3px}
+.sb-item{display:flex;align-items:center;gap:13px;padding:11px 14px;border-radius:11px;cursor:pointer;color:var(--txt2);font-size:13.5px;font-weight:600;transition:.15s;border:1px solid transparent}
+.sb-item:hover{background:rgba(56,189,248,.06);color:var(--crystal)}
+.sb-item.on{background:linear-gradient(135deg,rgba(56,189,248,.16),rgba(56,189,248,.04));color:var(--crystal);border-color:var(--ice-line2)}
+.sb-item.on .sb-ic{color:var(--glow)}
+.sb-ic{width:20px;text-align:center;font-size:16px;flex-shrink:0;color:var(--txt3);transition:.15s}
+.sidebar.collapsed .sb-item{justify-content:center;padding:11px}
+.sb-collapse{padding:14px 18px;border-top:1px solid var(--ice-line);color:var(--txt3);font-size:12px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:.15s}
+.sb-collapse:hover{color:var(--frost)}
+.main-area{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:16px;padding:20px 32px;border-bottom:1px solid var(--ice-line);background:rgba(6,10,15,.6);backdrop-filter:blur(10px);position:sticky;top:0;z-index:20}
+.topbar-title{flex:1;min-width:0}
+.topbar-title h1{font-size:19px;font-weight:800;color:var(--crystal);letter-spacing:-.3px;margin:0}
+.topbar-title .tb-sub{font-size:12px;color:var(--txt2);margin-top:2px}
+.tb-bell{position:relative;width:40px;height:40px;border-radius:11px;border:1px solid var(--ice-line);background:var(--void);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);font-size:17px;transition:.15s}
+.tb-bell:hover{border-color:var(--ice-line2);color:var(--frost)}
+.tb-bell .dot-notif{position:absolute;top:9px;right:10px;width:7px;height:7px;border-radius:50%;background:var(--glow);box-shadow:0 0 8px var(--glow)}
+.tb-avatar{display:flex;align-items:center;gap:10px;cursor:pointer;padding:5px 8px 5px 5px;border-radius:24px;border:1px solid var(--ice-line);transition:.15s}
+.tb-avatar:hover{border-color:var(--ice-line2)}
+.tb-av-circle{width:36px;height:36px;border-radius:50%;background:var(--grad-ice);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:var(--void);flex-shrink:0}
+.tb-av-txt{line-height:1.25}
+.tb-av-txt .n{font-size:13px;color:var(--crystal);font-weight:700}
+.tb-av-txt .r{font-size:10.5px;color:var(--frost);text-transform:uppercase;letter-spacing:.8px}
+.main-content{flex:1;padding:28px 32px 80px;max-width:1400px;width:100%}
+.tb-mode{cursor:pointer;padding:7px 15px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid;transition:.2s;white-space:nowrap}
+@media(max-width:860px){
+  #app.shell-layout{flex-direction:column}
+  .sidebar{width:100%;height:auto;position:relative;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--ice-line)}
+  .sb-brand{padding:14px 16px}
+  .sb-nav{flex-direction:row;padding:8px;gap:4px}
+  .sb-item{flex-shrink:0;padding:9px 12px}
+  .sb-nav-label{display:none}
+  .sb-collapse{display:none}
+  .topbar{padding:14px 18px}
+  .main-content{padding:18px}
+  .tb-av-txt,.topbar-title .tb-sub{display:none}
+}
+
+/* === Enriched home (KPIs + columns) === */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.kpi-card{background:linear-gradient(160deg,rgba(19,40,58,.6),rgba(10,20,32,.6));backdrop-filter:blur(10px);border:1px solid var(--ice-line);border-radius:16px;padding:20px}
+.kpi-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.kpi-ic{width:36px;height:36px;border-radius:10px;background:rgba(56,189,248,.1);border:1px solid var(--ice-line);display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--frost)}
+.kpi-label{font-size:12.5px;color:var(--txt2);font-weight:600}
+.kpi-val{font-size:28px;font-weight:800;color:var(--crystal);letter-spacing:-.5px;line-height:1.1}
+.kpi-trend{font-size:11.5px;font-weight:600;margin-top:5px}
+.kpi-trend.up{color:var(--ok)}
+.kpi-trend.down{color:var(--err)}
+.kpi-trend.flat{color:var(--txt3)}
+.kpi-spark{margin-top:10px;height:30px}
+.home-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.act-item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--ice-line)}
+.act-item:last-child{border-bottom:none}
+.act-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.act-main{flex:1;min-width:0}
+.act-title{font-size:13px;color:var(--crystal);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.act-meta{font-size:11px;color:var(--txt3);margin-top:2px}
+.act-badge{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:12px;white-space:nowrap}
+.act-badge.ok{background:var(--ok-d);color:var(--ok)}
+.act-badge.pend{background:rgba(251,191,36,.12);color:#fbbf24}
+.gen-item{padding:12px 0;border-bottom:1px solid var(--ice-line)}
+.gen-item:last-child{border-bottom:none}
+.gen-name{font-size:13px;color:var(--crystal);font-weight:600;font-family:'JetBrains Mono',monospace}
+.gen-meta{font-size:11px;color:var(--txt3);margin:3px 0 7px}
+.gen-bar{height:5px;border-radius:3px;background:var(--void);overflow:hidden}
+.gen-bar-fill{height:100%;background:var(--grad-ice);border-radius:3px}
+@media(max-width:900px){.home-cols{grid-template-columns:1fr}}
+
+/* === Facturation live recap (2-col) === */
+.fact-layout{display:grid;grid-template-columns:1fr 340px;gap:22px;align-items:start}
+.fact-main{min-width:0}
+.fact-recap{position:sticky;top:88px;background:linear-gradient(160deg,rgba(19,40,58,.7),rgba(10,20,32,.7));backdrop-filter:blur(12px);border:1px solid var(--ice-line);border-radius:18px;padding:22px}
+.recap-title{font-size:15px;font-weight:700;color:var(--crystal);margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.recap-sec{margin-bottom:18px}
+.recap-sec-h{font-size:11px;font-weight:700;color:var(--frost);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.recap-row{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;margin-bottom:7px}
+.recap-row .k{color:var(--txt3);flex-shrink:0}
+.recap-row .v{color:var(--crystal);font-weight:600;text-align:right;word-break:break-word}
+.recap-row .v.empty{color:var(--txt3);font-weight:400;font-style:italic}
+.recap-total{border-top:1px solid var(--ice-line2);padding-top:14px;margin-top:6px;display:flex;justify-content:space-between;align-items:baseline}
+.recap-total .k{font-size:15px;font-weight:700;color:var(--crystal)}
+.recap-total .v{font-size:20px;font-weight:800;color:var(--frost)}
+@media(max-width:1080px){.fact-layout{grid-template-columns:1fr}.fact-recap{position:relative;top:0}}
 </style>
 </head>
 <body>
-<div id="app">  <!-- LOGIN SCREEN -->
+<div id="app" class="shell-layout">  <!-- LOGIN SCREEN -->
   <div id="loginScreen" style="display:none">
     <div class="login-card">
       <!-- STEP 1: OneDrive -->
@@ -266,42 +360,50 @@ textarea.ip{resize:vertical;min-height:70px}
       </div>
     </div>
   </div>
-  <!-- HERO -->
-  <div class="hero">
-    <div class="hero-glow"></div>
-    <div class="brand">
-      <div class="brand-mark">IV</div>
-      <div>
-        <h1>IVAN S4</h1>
-        <div class="sub">Maersk C&ocirc;te d'Ivoire &middot; Facturation S/4HANA</div>
-      </div>
-      <div style="margin-left:auto;display:flex;align-items:center;gap:16px">
-        <div id="modeBadge" onclick="toggleMode()" title="Cliquer pour basculer Test/Production" style="cursor:pointer;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;margin-right:14px;border:1px solid;transition:.2s"></div>
-        <div class="user-chip">
-          <div>
-            <div class="u-name" id="curUser">&mdash;</div>
-            <div class="u-role" id="curRole">&mdash;</div>
-          </div>
-          <button class="u-logout" onclick="openProfile()" style="margin-right:6px">Profil</button><button class="u-logout" onclick="doLogout()">Quitter</button>
-        </div>
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <div class="sb-brand-mark">IV</div>
+      <div class="sb-brand-txt">
+        <div class="t1">MAERSK</div>
+        <div class="t2">Côte d'Ivoire</div>
       </div>
     </div>
-  </div>
+    <nav class="sb-nav" id="sbNav">
+      <div class="sb-item" data-tab="home" onclick="sw('home')"><span class="sb-ic">&#127968;</span><span class="sb-nav-label">Accueil</span></div>
+      <div class="sb-item" data-tab="dashboard" data-mgr="1" onclick="sw('dashboard')" style="display:none"><span class="sb-ic">&#9638;</span><span class="sb-nav-label">Tableau de bord</span></div>
+      <div class="sb-item" data-tab="invoice" onclick="sw('invoice')"><span class="sb-ic">&#10052;</span><span class="sb-nav-label">Facturation</span></div>
+      <div class="sb-item" data-tab="echange" onclick="sw('echange')"><span class="sb-ic">&#8644;</span><span class="sb-nav-label">&Eacute;change</span></div>
+      <div class="sb-item" data-tab="history" onclick="sw('history')"><span class="sb-ic">&#128340;</span><span class="sb-nav-label">Historique</span></div>
+      <div class="sb-item" data-tab="fne" onclick="sw('fne')"><span class="sb-ic">&#9889;</span><span class="sb-nav-label">FNE</span></div>
+      <div class="sb-item" data-tab="queue" onclick="sw('queue')"><span class="sb-ic">&#9783;</span><span class="sb-nav-label">File</span><span id="queueBadge" class="pill pill-frost" style="margin-left:auto;display:none">0</span></div>
+      <div class="sb-item" data-tab="bp" onclick="sw('bp')"><span class="sb-ic">&#9819;</span><span class="sb-nav-label">Business Partners</span></div>
+      <div class="sb-item" data-tab="upload" onclick="sw('upload')"><span class="sb-ic">&#11014;</span><span class="sb-nav-label">Imports</span></div>
+      <div class="sb-item" data-tab="accounts" data-mgr="1" onclick="sw('accounts')" style="display:none"><span class="sb-ic">&#9881;</span><span class="sb-nav-label">Comptes</span></div>
+      <div class="sb-item" data-tab="aide" onclick="sw('aide')"><span class="sb-ic">&#9432;</span><span class="sb-nav-label">Aide</span></div>
+    </nav>
+    <div class="sb-collapse" onclick="toggleSidebar()"><span class="sb-ic">&#8249;</span><span>Réduire le menu</span></div>
+  </aside>
 
-  <!-- TABS -->
-  <div class="tabs">
-    <div class="tab" data-tab="home" onclick="sw('home')">&#127968; Accueil</div>
-    <div class="tab" data-tab="dashboard" data-mgr="1" onclick="sw('dashboard')" style="display:none">&#128202; Tableau de bord</div>
-    <div class="tab" data-tab="invoice" onclick="sw('invoice')">&#10052; Facturation</div>
-    <div class="tab" data-tab="echange" onclick="sw('echange')">&#8644; &Eacute;change</div>
-    <div class="tab" data-tab="history" onclick="sw('history')">&#128220; Historique</div>
-    <div class="tab" data-tab="fne" onclick="sw('fne')">&#9889; FNE</div>
-    <div class="tab" data-tab="queue" onclick="sw('queue')">&#9783; File <span id="queueBadge" class="pill pill-frost" style="margin-left:4px;display:none">0</span></div>
-    <div class="tab" data-tab="bp" onclick="sw('bp')">&#9819; Business Partners</div>
-    <div class="tab" data-tab="upload" onclick="sw('upload')">&#11014; Imports</div>
-    <div class="tab" data-tab="accounts" data-mgr="1" onclick="sw('accounts')" style="display:none">&#9881; Comptes</div>
-    <div class="tab" data-tab="aide" onclick="sw('aide')">&#9432; Aide</div>
-  </div>
+  <!-- MAIN AREA -->
+  <div class="main-area">
+    <div class="topbar">
+      <div class="topbar-title">
+        <h1 id="pageTitle">Accueil</h1>
+        <div class="tb-sub" id="pageSub">Maersk Côte d'Ivoire &middot; Facturation S/4HANA</div>
+      </div>
+      <div id="modeBadge" class="tb-mode" onclick="toggleMode()" title="Cliquer pour basculer Test/Production"></div>
+      <div class="tb-bell" title="Notifications">&#128276;<span class="dot-notif"></span></div>
+      <div class="tb-avatar" onclick="openProfile()">
+        <div class="tb-av-circle" id="avatarInitials">—</div>
+        <div class="tb-av-txt">
+          <div class="n" id="curUser">—</div>
+          <div class="r" id="curRole">—</div>
+        </div>
+      </div>
+      <button class="u-logout" onclick="doLogout()" style="margin-left:4px">Quitter</button>
+    </div>
+    <div class="main-content">
 
   <!-- ============ INVOICE TAB ============ -->
   <div id="tab-invoice" class="hid">
@@ -328,7 +430,9 @@ textarea.ip{resize:vertical;min-height:70px}
       </div>
     </div>
     <!-- Step panels -->
-    <div id="factSteps">
+    <div class="fact-layout">
+      <div class="fact-main">
+      <div id="factSteps">
       <div class="fact-step" data-step="0">
       <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">&Eacute;tape 1/6 &mdash; Choisissez le type de facture</div>
       <div class="cd">
@@ -489,7 +593,13 @@ textarea.ip{resize:vertical;min-height:70px}
         <span></span>
       </div>
     </div>
-    </div>
+      </div><!-- /#factSteps -->
+      </div><!-- /.fact-main -->
+      <aside class="fact-recap" id="factRecap">
+        <div class="recap-title">&#128203; R&eacute;capitulatif</div>
+        <div id="factRecapBody"></div>
+      </aside>
+    </div><!-- /.fact-layout -->
   </div>
 
   <div id="tab-echange" class="hid">
@@ -748,38 +858,58 @@ textarea.ip{resize:vertical;min-height:70px}
   </div>
 
   <div id="tab-home" class="hid">
-    <div style="margin-bottom:24px">
-      <h1 style="font-size:26px;font-weight:800;color:var(--crystal);letter-spacing:-.5px;margin-bottom:4px">Bonjour <span id="homeUserName">—</span></h1>
-      <p style="font-size:14px;color:var(--txt2)">Que souhaitez-vous faire aujourd'hui ?</p>
+    <div style="margin-bottom:8px">
+      <h2 style="font-size:30px;font-weight:800;color:var(--crystal);letter-spacing:-.8px;margin-bottom:6px;line-height:1.15">Que souhaitez-vous faire aujourd'hui&#8201;?</h2>
+      <p style="font-size:14px;color:var(--txt2);max-width:560px;line-height:1.6">Acc&eacute;dez rapidement aux principaux workflows de facturation et suivez l'activit&eacute; de vos op&eacute;rations.</p>
     </div>
-    <div class="home-grid">
+
+    <!-- 4 ACTION CARDS -->
+    <div class="home-grid" style="margin-top:24px">
       <div class="home-tile" onclick="sw('invoice')">
         <div class="home-tile-ic" style="background:rgba(56,189,248,.12)">&#10052;</div>
         <div class="home-tile-title">Cr&eacute;er une facture S/4HANA</div>
-        <div class="home-tile-desc">Facturation standard : choisir le type, le client, les charges, puis g&eacute;n&eacute;rer le fichier CSV.</div>
-        <div class="home-tile-arrow">Commencer &rarr;</div>
+        <div class="home-tile-desc">Cr&eacute;ez une facture dans S/4HANA en quelques &eacute;tapes guid&eacute;es.</div>
+        <div class="home-tile-arrow">Cr&eacute;er une facture &rarr;</div>
       </div>
       <div class="home-tile" onclick="sw('echange')">
         <div class="home-tile-ic" style="background:rgba(125,211,252,.12)">&#8644;</div>
         <div class="home-tile-title">Cr&eacute;er une facture &Eacute;change</div>
-        <div class="home-tile-desc">Factures d'&eacute;change import/export avec marchandises et charges forfaitaires (Abidjan, San Pedro).</div>
-        <div class="home-tile-arrow">Commencer &rarr;</div>
+        <div class="home-tile-desc">&Eacute;mettez une facture pour les op&eacute;rations d'&eacute;change import/export.</div>
+        <div class="home-tile-arrow">Cr&eacute;er une facture &rarr;</div>
       </div>
       <div class="home-tile" onclick="sw('fne')">
         <div class="home-tile-ic" style="background:rgba(251,191,36,.12)">&#9889;</div>
         <div class="home-tile-title">Lancer un batch FNE</div>
-        <div class="home-tile-desc">G&eacute;n&eacute;rer des factures FNE automatiquement &agrave; partir de PDFs Solar/IFS sur le portail DGI.</div>
-        <div class="home-tile-arrow">Commencer &rarr;</div>
+        <div class="home-tile-desc">G&eacute;n&eacute;rez et soumettez vos fichiers FNE en toute simplicit&eacute;.</div>
+        <div class="home-tile-arrow">Lancer un batch &rarr;</div>
       </div>
       <div class="home-tile" onclick="sw('history')">
-        <div class="home-tile-ic" style="background:rgba(52,211,153,.12)">&#128220;</div>
+        <div class="home-tile-ic" style="background:rgba(52,211,153,.12)">&#128340;</div>
         <div class="home-tile-title">Consulter l'historique</div>
-        <div class="home-tile-desc">Voir toutes les factures &eacute;mises par l'&eacute;quipe, rechercher, et suivre l'activit&eacute;.</div>
-        <div class="home-tile-arrow">Commencer &rarr;</div>
+        <div class="home-tile-desc">Acc&eacute;dez &agrave; l'historique complet de vos documents.</div>
+        <div class="home-tile-arrow">Voir l'historique &rarr;</div>
       </div>
     </div>
-    <div style="margin-top:24px">
-      <div id="homeQuickStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px"></div>
+
+    <!-- 4 KPIs -->
+    <div class="kpi-row" id="homeKpis" style="margin-top:20px"></div>
+
+    <!-- 2 COLUMNS: activity + generations -->
+    <div class="home-cols" style="margin-top:20px">
+      <div class="cd">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:15px;font-weight:700;color:var(--crystal)">&#9201; Activit&eacute; r&eacute;cente</div>
+          <a href="#" onclick="sw('history');return false" style="font-size:12px;color:var(--frost);text-decoration:none">Voir tout &rsaquo;</a>
+        </div>
+        <div id="homeActivity"></div>
+      </div>
+      <div class="cd">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:15px;font-weight:700;color:var(--crystal)">&#128196; G&eacute;n&eacute;rations de fichiers</div>
+          <a href="#" onclick="sw('queue');return false" style="font-size:12px;color:var(--frost);text-decoration:none">Voir tout &rsaquo;</a>
+        </div>
+        <div id="homeGenerations"></div>
+      </div>
     </div>
   </div>
 
@@ -970,6 +1100,8 @@ textarea.ip{resize:vertical;min-height:70px}
         </ol>
       </div>
     </div>
+    </div><!-- /.main-content -->
+  </div><!-- /.main-area -->
   </div>
 
 <script>
@@ -1208,8 +1340,15 @@ function saveCA(){ try{ localStorage.setItem(K_CA, JSON.stringify(CA_MAP)); }cat
 // ============ APP START ============
 function startApp(){
   $("loginScreen").style.display = "none";
-  $("curUser").textContent = curUser.user;
-  $("curRole").textContent = curUser.role==="manager" ? "Manager" : "Agent";
+  var dispName = curUser.name || curUser.user;
+  $("curUser").textContent = dispName;
+  $("curRole").textContent = curUser.role==="manager" ? "Administrateur" : "Agent";
+  // Avatar initials
+  if($("avatarInitials")){
+    var parts = (dispName||"").trim().split(/[\s.]+/).filter(Boolean);
+    var ini = parts.length>=2 ? (parts[0][0]+parts[1][0]) : (dispName||"?").substring(0,2);
+    $("avatarInitials").textContent = ini.toUpperCase();
+  }
   // Show manager-only tabs
   document.querySelectorAll('[data-mgr="1"]').forEach(function(el){
     el.style.display = (curUser.role==="manager") ? "" : "none";
@@ -1218,6 +1357,13 @@ function startApp(){
   loadQueue();
   initApp();
   loadMode();
+  // Live recap: update on any input within the invoice panel
+  var invPanel = $("tab-invoice");
+  if(invPanel && !invPanel._recapBound){
+    invPanel.addEventListener("input", function(){ try{ updateFactRecap(); }catch(e){} });
+    invPanel.addEventListener("change", function(){ try{ updateFactRecap(); }catch(e){} });
+    invPanel._recapBound = true;
+  }
   sw("home");
 }
 
@@ -1241,20 +1387,39 @@ function initApp(){
   $("sailingDate").value = d.getFullYear() + ("0"+(d.getMonth()+1)).slice(-2) + ("0"+d.getDate()).slice(-2);
 }
 
+var PAGE_TITLES = {
+  home:["Accueil","Maersk C\u00f4te d'Ivoire \u00b7 Facturation S/4HANA"],
+  dashboard:["Tableau de bord","Vue d'ensemble de l'activit\u00e9"],
+  invoice:["Cr\u00e9er une facture S/4HANA","Suivez les \u00e9tapes pour cr\u00e9er votre facture de mani\u00e8re guid\u00e9e"],
+  echange:["Cr\u00e9er une facture \u00c9change","Op\u00e9rations d'\u00e9change import/export"],
+  history:["Historique","Toutes les factures \u00e9mises par l'\u00e9quipe"],
+  fne:["FNE Batch Auto","Automatisation des factures FNE sur le portail DGI"],
+  queue:["File de g\u00e9n\u00e9ration","Factures en attente de t\u00e9l\u00e9chargement"],
+  bp:["Business Partners","Base clients et comptes contrat"],
+  upload:["Imports","Synchronisation et import de donn\u00e9es"],
+  accounts:["Comptes","Gestion des utilisateurs"],
+  aide:["Aide","Mode d'emploi"]
+};
 function sw(t){
   ["home","invoice","echange","queue","bp","upload","accounts","aide","dashboard","history","fne"].forEach(function(x){
     var el = $("tab-"+x); if(el) el.classList.toggle("hid", x!==t);
-    var tb = document.querySelector('.tab[data-tab="'+x+'"]'); if(tb) tb.classList.toggle("on", x===t);
+    var sb = document.querySelector('.sb-item[data-tab="'+x+'"]'); if(sb) sb.classList.toggle("on", x===t);
   });
+  // Contextual page title
+  var pt = PAGE_TITLES[t];
+  if(pt){ if($("pageTitle")) $("pageTitle").textContent = pt[0]; if($("pageSub")) $("pageSub").textContent = pt[1]; }
   if(t==="echange") initEchange();
   if(t==="home") renderHome();
-  if(t==="invoice"){ _factStep=0; renderFactStepper(); }
+  if(t==="invoice"){ _factStep=0; renderFactStepper(); updateFactRecap(); }
   if(t==="dashboard") renderDashboard();
   if(t==="history") renderHistory();
   if(t==="fne") initFneTab();
   if(t==="bp") bpRenderTable("");
   if(t==="accounts"){ renderAccounts(); updStorageInfo(); }
   if(t==="queue") loadQueue();
+}
+function toggleSidebar(){
+  var sb=$("sidebar"); if(sb) sb.classList.toggle("collapsed");
 }
 
 function updSubprocess(){ $("subprocess").value = $("invType").value; }
@@ -2908,16 +3073,79 @@ function caManageReset(){
 // ============ HOME (landing) ============
 function renderHome(){
   if($("homeUserName") && curUser) $("homeUserName").textContent = (curUser.name||curUser.user||"");
-  // Quick stats from history (light, read-only)
-  var box = $("homeQuickStats");
-  if(!box) return;
   apiCall("/store?action=gethistory").then(function(res){
     var hist = res.history||[];
     var now = new Date();
-    var month = hist.filter(function(h){ var d=new Date(h.ts); return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear(); });
-    function card(label,val){ return '<div style="background:var(--void);border:1px solid var(--ice-line);border-radius:12px;padding:14px 16px"><div style="font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">'+label+'</div><div style="font-size:20px;font-weight:800;color:var(--frost);margin-top:4px">'+val+'</div></div>'; }
-    box.innerHTML = card("Factures ce mois", month.length) + card("File en attente", (typeof invoiceQueue!=="undefined"?invoiceQueue.length:0)) + card("Total historique", hist.length);
-  }).catch(function(e){ /* silencieux sur l'accueil */ box.innerHTML=""; });
+    function inMonth(d,off){ var dt=new Date(d); var ref=new Date(now.getFullYear(),now.getMonth()+off,1); return dt.getMonth()===ref.getMonth()&&dt.getFullYear()===ref.getFullYear(); }
+    var thisMonth = hist.filter(function(h){return inMonth(h.ts,0);});
+    var lastMonth = hist.filter(function(h){return inMonth(h.ts,-1);});
+    // KPIs
+    var nMonth = thisMonth.length, nLast = lastMonth.length;
+    var trendPct = nLast>0 ? Math.round((nMonth-nLast)/nLast*1000)/10 : (nMonth>0?100:0);
+    var queueN = (typeof invoiceQueue!=="undefined"?invoiceQueue.length:0);
+    var totalHt = thisMonth.reduce(function(s,h){return s+(h.totalHt||0);},0);
+    var agents = {}; thisMonth.forEach(function(h){ if(h.agent) agents[h.agent]=1; });
+    var nAgents = Object.keys(agents).length;
+    // Sparkline data: last 7 days counts
+    function last7(){ var arr=[]; for(var i=6;i>=0;i--){ var day=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i); var c=hist.filter(function(h){var d=new Date(h.ts);return d.toDateString()===day.toDateString();}).length; arr.push(c);} return arr; }
+    var spark = last7();
+    function sparkSvg(data){
+      var max=Math.max.apply(null,data.concat([1])); var w=180,h=30,n=data.length;
+      var pts=data.map(function(v,i){ return (i/(n-1)*w)+","+(h-(v/max*(h-4))-2); }).join(" ");
+      return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" height="'+h+'" preserveAspectRatio="none"><polyline points="'+pts+'" fill="none" stroke="var(--glow)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/></svg>';
+    }
+    function trendHtml(pct,inv){
+      var cls = pct>0?(inv?"down":"up"):(pct<0?(inv?"up":"down"):"flat");
+      var arrow = pct>0?"\u2191":(pct<0?"\u2193":"\u2192");
+      return '<div class="kpi-trend '+cls+'">'+arrow+' '+Math.abs(pct)+'% vs mois dernier</div>';
+    }
+    function kpi(ic,label,val,trend,sparkData){
+      return '<div class="kpi-card"><div class="kpi-head"><div class="kpi-ic">'+ic+'</div><div class="kpi-label">'+label+'</div></div>'+
+        '<div class="kpi-val">'+val+'</div>'+(trend||"")+
+        (sparkData?'<div class="kpi-spark">'+sparkSvg(sparkData)+'</div>':'')+'</div>';
+    }
+    var box=$("homeKpis");
+    if(box){
+      box.innerHTML =
+        kpi("\uD83D\uDCC4","Factures ce mois",nMonth,trendHtml(trendPct,false),spark) +
+        kpi("\u29D6","File en attente",queueN,'<div class="kpi-trend flat">en attente de t\u00e9l\u00e9chargement</div>',null) +
+        kpi("\uD83D\uDCB0","Total HT ce mois",(totalHt>=1000?Math.round(totalHt/1000)+"k":totalHt)+" XOF",'<div class="kpi-trend flat">cumul du mois</div>',null) +
+        kpi("\uD83D\uDC65","Agents actifs",nAgents,'<div class="kpi-trend flat">ce mois</div>',null);
+    }
+    // Recent activity (last 6)
+    var act=$("homeActivity");
+    if(act){
+      if(!hist.length){ act.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:8px 0">Aucune activit\u00e9 pour le moment.</div>'; }
+      else{
+        act.innerHTML = hist.slice(0,6).map(function(h){
+          var isEch = h.source==="echange";
+          var ic = isEch?"\u8644":"\u2744";
+          var icBg = isEch?"background:rgba(125,211,252,.12);color:var(--frost)":"background:rgba(56,189,248,.12);color:var(--glow)";
+          var label = isEch?"Facture \u00c9change":"Facture S/4HANA";
+          var d=new Date(h.ts);
+          var when = d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+          return '<div class="act-item"><div class="act-ic" style="'+icBg+'">'+ic+'</div>'+
+            '<div class="act-main"><div class="act-title">'+label+' &middot; '+(h.bp||h.bl||"\u2014")+'</div>'+
+            '<div class="act-meta">'+(h.agentName||h.agent||"")+' &middot; '+when+'</div></div>'+
+            '<div class="act-badge ok">Termin\u00e9e</div></div>';
+        }).join("");
+      }
+    }
+    // File generations (from queue)
+    var gen=$("homeGenerations");
+    if(gen){
+      var q = (typeof invoiceQueue!=="undefined")?invoiceQueue:[];
+      if(!q.length){ gen.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:8px 0">Aucun fichier en attente. Les factures ajout\u00e9es \u00e0 la file appara\u00eetront ici.</div>'; }
+      else{
+        gen.innerHTML = q.slice(0,5).map(function(inv,i){
+          var nm = (inv.bp||"FACTURE")+"_"+(inv.bl||(i+1));
+          return '<div class="gen-item"><div class="gen-name">'+nm+'.csv</div>'+
+            '<div class="gen-meta">Pr\u00eate \u00e0 g\u00e9n\u00e9rer &middot; '+((inv.lines||[]).length)+' ligne(s)</div>'+
+            '<div class="gen-bar"><div class="gen-bar-fill" style="width:100%"></div></div></div>';
+        }).join("");
+      }
+    }
+  }).catch(function(e){ if($("homeKpis")) $("homeKpis").innerHTML=""; });
 }
 
 
@@ -2959,6 +3187,7 @@ function updateModeBadge(){
 var _factStep = 0;
 var _factTotal = 6;
 function renderFactStepper(){
+  try{ updateFactRecap(); }catch(e){}
   document.querySelectorAll("#factStepperNav .step-node").forEach(function(n){
     var s = parseInt(n.getAttribute("data-step"));
     n.classList.toggle("active", s===_factStep);
@@ -2977,6 +3206,39 @@ function goFactStep(n){
 }
 function nextFactStep(){ if(_factStep<_factTotal-1) goFactStep(_factStep+1); }
 function prevFactStep(){ if(_factStep>0) goFactStep(_factStep-1); }
+
+
+// ============ R\u00c9CAPITULATIF VIVANT FACTURATION ============
+function updateFactRecap(){
+  var body = $("factRecapBody");
+  if(!body) return;
+  function val(id){ var el=$(id); return el?(el.value||"").trim():""; }
+  function row(k,v){ return '<div class="recap-row"><span class="k">'+k+'</span><span class="v'+(v?'':' empty')+'">'+(v||"\u2014")+'</span></div>'; }
+  // Charges
+  var totalHt = 0, nCharges = 0, chargeRows = "";
+  document.querySelectorAll("#chargeLines .line-row").forEach(function(r){
+    var desc = r.querySelector(".ch-desc"); var qty=r.querySelector(".ch-qty"); var rate=r.querySelector(".ch-rate");
+    var code = r.querySelector(".ch-code");
+    var q=parseFloat(qty?qty.value:0)||0, rt=parseFloat(rate?rate.value:0)||0;
+    var amt=q*rt;
+    if(code&&code.value){ nCharges++; totalHt+=amt;
+      chargeRows += '<div class="recap-row"><span class="k">'+(code.value||"\u2014")+'</span><span class="v">'+amt.toLocaleString("fr-FR")+'</span></div>';
+    }
+  });
+  var typeName = ""; var ts=$("invType"); if(ts&&ts.selectedIndex>=0) typeName=ts.options[ts.selectedIndex].text;
+  var io = val("expImp"); io = io==="O"?"Export":(io==="I"?"Import":"");
+  var html = "";
+  html += '<div class="recap-sec"><div class="recap-sec-h">\uD83D\uDC64 Client</div>'+
+    row("Code ECC",val("eccCode"))+row("Business Partner",val("bpNum"))+row("Compte (VKONT)",val("contractAcc"))+row("Nom",val("clientName"))+'</div>';
+  html += '<div class="recap-sec"><div class="recap-sec-h">\uD83D\uDCC4 R\u00e9f\u00e9rences</div>'+
+    row("Type",typeName)+row("Sailing date",val("sailingDate"))+row("Booking",val("bookingNum"))+row("UBLI",val("ubli"))+row("Sens",io)+'</div>';
+  html += '<div class="recap-sec"><div class="recap-sec-h">\uD83C\uDFE2 Organisation</div>'+
+    row("Company Code",val("companyCode"))+row("CBU",val("cbu"))+'</div>';
+  html += '<div class="recap-sec"><div class="recap-sec-h">\uD83D\uDCB0 Charges ('+nCharges+')</div>'+
+    (chargeRows||'<div class="recap-row"><span class="v empty">Aucune charge</span></div>')+'</div>';
+  html += '<div class="recap-total"><span class="k">Total HT</span><span class="v">'+totalHt.toLocaleString("fr-FR")+' XOF</span></div>';
+  body.innerHTML = html;
+}
 
 function showToast(msg, type){
   var t = document.createElement("div");
