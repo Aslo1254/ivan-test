@@ -10,6 +10,7 @@ const path = require('path');
 // Default CHB (Échange) templates - shipped with the app
 const CHB_DEFAULTS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'chb_templates.json'), 'utf8'));
 const ECH_DEFAULTS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'echange_templates.json'), 'utf8'));
+const CBU_LIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'cbu_list.json'), 'utf8'));
 
 const redis = Redis.fromEnv();
 
@@ -18,7 +19,9 @@ const K_USERS = "ivan:users";
 const K_DRAFTS = "ivan:drafts";
 const K_QUEUE = "ivan:queue";
 const K_CHB = "ivan:chb_templates";
-const K_ECHT = "ivan:echange_templates";  // manager-corrected échange templates
+const K_ECHT = "ivan:echange_templates";
+const K_HISTORY = "ivan:history";
+const K_CBU = "ivan:cbu_list";
 
 // Default manager account (guaranteed to always exist)
 const DEFAULT_USER = { user:"ivan", pass:"ivan2026", role:"manager", email:"ivan.assani@maersk.com", name:"Ivan ASSANI" };
@@ -178,6 +181,48 @@ module.exports = async (req, res) => {
     if(action === 'resetecht'){
       await redis.set(K_ECHT, ECH_DEFAULTS);
       res.status(200).json({ ok:true, templates: ECH_DEFAULTS });
+      return;
+    }
+
+    // ===== HISTORY (emitted invoices) =====
+    if(action === 'addhistory'){
+      const entry = (req.body && req.body.entry);
+      if(!entry){ res.status(200).json({ ok:false, error:"Entr\u00e9e manquante" }); return; }
+      let hist = await redis.get(K_HISTORY);
+      if(!hist || !Array.isArray(hist)) hist = [];
+      entry.ts = Date.now();
+      entry.id = "INV" + entry.ts;
+      hist.unshift(entry);
+      // keep last 1000 entries
+      if(hist.length > 1000) hist = hist.slice(0, 1000);
+      await redis.set(K_HISTORY, hist);
+      res.status(200).json({ ok:true, id: entry.id });
+      return;
+    }
+    if(action === 'gethistory'){
+      let hist = await redis.get(K_HISTORY);
+      res.status(200).json({ ok:true, history: hist || [] });
+      return;
+    }
+    if(action === 'clearhistory'){
+      // manager only - clear all history
+      await redis.set(K_HISTORY, []);
+      res.status(200).json({ ok:true });
+      return;
+    }
+
+    // ===== CBU BA LIST =====
+    if(action === 'getcbu'){
+      let cbu = await redis.get(K_CBU);
+      if(!cbu) cbu = CBU_LIST;
+      res.status(200).json({ ok:true, cbu: cbu });
+      return;
+    }
+    if(action === 'setcbu'){
+      const cbu = (req.body && req.body.cbu);
+      if(!cbu){ res.status(200).json({ ok:false, error:"Donn\u00e9es manquantes" }); return; }
+      await redis.set(K_CBU, cbu);
+      res.status(200).json({ ok:true });
       return;
     }
 

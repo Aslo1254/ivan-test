@@ -169,6 +169,13 @@ textarea.ip{resize:vertical;min-height:70px}
 .ech-crow{display:grid;grid-template-columns:1.7fr 0.7fr 0.5fr 0.6fr 0.8fr 0.4fr;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--ice-line);font-size:12.5px}
 .ech-crow input{padding:6px;font-size:12px;background:var(--void);border:1px solid var(--ice-line);border-radius:6px;color:var(--crystal);width:100%}
 .ech-chead{display:grid;grid-template-columns:1.7fr 0.7fr 0.5fr 0.6fr 0.8fr 0.4fr;gap:8px;padding:8px;font-size:11px;color:var(--txt3);text-transform:uppercase;font-weight:600}
+
+.echr-row{display:grid;grid-template-columns:32px 1.6fr 0.7fr 0.5fr 0.7fr 0.9fr 1fr;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--ice-line);font-size:12.5px}
+.echr-row.off{opacity:.4}
+.echr-row input[type=text],.echr-row input[type=number]{padding:5px 7px;font-size:12px;background:var(--void);border:1px solid var(--ice-line);border-radius:6px;color:var(--crystal);width:100%}
+.echr-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--glow);cursor:pointer}
+.echr-head{display:grid;grid-template-columns:32px 1.6fr 0.7fr 0.5fr 0.7fr 0.9fr 1fr;gap:8px;padding:8px;font-size:11px;color:var(--txt3);text-transform:uppercase;font-weight:600}
+.csv-prev{background:var(--void);border:1px solid var(--ice-line);border-radius:8px;padding:12px;font-family:monospace;font-size:10.5px;color:var(--txt2);overflow-x:auto;white-space:pre;max-height:300px;overflow-y:auto}
 </style>
 </head>
 <body>
@@ -227,9 +234,10 @@ textarea.ip{resize:vertical;min-height:70px}
 
   <!-- TABS -->
   <div class="tabs">
+    <div class="tab" data-tab="dashboard" data-mgr="1" onclick="sw('dashboard')" style="display:none">&#128202; Tableau de bord</div>
     <div class="tab on" data-tab="invoice" onclick="sw('invoice')">&#10052; Facturation</div>
     <div class="tab" data-tab="echange" onclick="sw('echange')">&#8644; &Eacute;change</div>
-    <div class="tab" data-tab="batch" onclick="sw('batch')">&#9783; Batch</div>
+    <div class="tab" data-tab="history" onclick="sw('history')">&#128220; Historique</div>
     <div class="tab" data-tab="queue" onclick="sw('queue')">&#9783; File <span id="queueBadge" class="pill pill-frost" style="margin-left:4px;display:none">0</span></div>
     <div class="tab" data-tab="bp" onclick="sw('bp')">&#9819; Business Partners</div>
     <div class="tab" data-tab="upload" onclick="sw('upload')">&#11014; Imports</div>
@@ -399,9 +407,9 @@ textarea.ip{resize:vertical;min-height:70px}
               <option value="O">Export</option>
             </select>
           </div>
-          <div>
-            <label class="lb">Code Payeur (BP / ECC)</label>
-            <input class="ip" id="echBp" placeholder="Rechercher BP..." oninput="echBpSearch(this.value)" autocomplete="off">
+          <div style="position:relative">
+            <label class="lb">Code Payeur (BP / ECC ou nom)</label>
+            <input class="ip" id="echBp" placeholder="Rechercher par code ou nom..." oninput="echBpSearch(this.value)" onfocus="echBpSearch(this.value)" autocomplete="off">
             <div id="echBpAc" class="ac-list"></div>
           </div>
           <div>
@@ -446,42 +454,32 @@ textarea.ip{resize:vertical;min-height:70px}
         <div id="echTotals" style="margin-top:12px;padding:14px;background:var(--void);border-radius:10px;font-size:14px"></div>
 
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="bt bt-ice" onclick="genEchange()">&#10052; G&eacute;n&eacute;rer le fichier (CSV)</button>
-          <button class="bt bt-ghost" onclick="addEchToQueue()">&#9783; Ajouter &agrave; la file</button>
+          <button class="bt bt-ice" onclick="genEchangeReview()">&#10052; G&eacute;n&eacute;rer la facture</button>
+        </div>
+      </div>
+
+      <!-- REVIEW STEP (Mark II style): checkboxes + editable preview -->
+      <div id="echReview" style="display:none;margin-top:20px;border-top:1px solid var(--ice-line);padding-top:20px">
+        <div style="font-weight:700;color:var(--frost);font-size:15px;margin-bottom:6px">R&eacute;vision de la facture</div>
+        <p style="font-size:12px;color:var(--txt2);margin-bottom:14px">D&eacute;cochez les lignes &agrave; retirer. Cliquez sur une valeur pour la modifier manuellement.</p>
+        <div id="echReviewLines"></div>
+        <div id="echReviewTotals" style="margin-top:12px;padding:14px;background:var(--void);border-radius:10px;font-size:14px"></div>
+
+        <!-- Preview toggle -->
+        <div style="margin-top:18px">
+          <button class="bt bt-ghost" style="font-size:12px;padding:8px 14px" onclick="toggleCsvPreview()">&#128196; Voir le d&eacute;tail CSV S/4HANA</button>
+          <div id="echCsvPreview" style="display:none;margin-top:10px"></div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          <button class="bt bt-ice" onclick="validateEchDownload()">&#11015; T&eacute;l&eacute;charger le CSV</button>
+          <button class="bt bt-ghost" onclick="validateEchQueue()">&#9783; Ajouter &agrave; la file</button>
+          <button class="bt bt-ghost" onclick="echBackToForm()">&#8592; Retour au formulaire</button>
         </div>
       </div>
     </div>
   </div>
 
-  <div id="tab-batch" class="hid">
-    <div class="cd">
-      <div class="ct"><span class="dot"></span> Facturation par lot</div>
-      <p style="font-size:13.5px;color:var(--txt2);line-height:1.7;margin-bottom:16px">
-        Importez un fichier r&eacute;cap (une ligne = une charge) pour g&eacute;n&eacute;rer plusieurs fichiers CSV d'un coup.
-        T&eacute;l&eacute;chargez d'abord le mod&egrave;le pour conna&icirc;tre le format attendu.
-      </p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">
-        <button class="bt bt-ghost" onclick="batchTemplate()">&#11015; T&eacute;l&eacute;charger le mod&egrave;le</button>
-      </div>
-      <div class="drop-zone" id="batchDrop" onclick="document.getElementById('batchInput').click()">
-        <div style="font-size:38px;margin-bottom:10px">&#10052;</div>
-        <div style="font-size:14px;font-weight:600;color:var(--crystal)">Glissez le fichier r&eacute;cap ici</div>
-        <div style="font-size:12px;color:var(--txt3);margin-top:4px">ou cliquez pour parcourir</div>
-        <input type="file" id="batchInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="batchLoad(this.files[0])">
-      </div>
-    </div>
-    <div id="batchResults" class="hid">
-      <div class="cd">
-        <div class="ct"><span class="dot"></span> R&eacute;capitulatif</div>
-        <div class="stats" id="batchStats"></div>
-      </div>
-      <div class="cd">
-        <button class="bt bt-ice" onclick="batchGenerate()">&#11015; G&eacute;n&eacute;rer tous les CSV (ZIP)</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============ BP TAB ============ -->
   <div id="tab-bp" class="hid">
     <div class="cd">
       <div class="ct"><span class="dot"></span> Base Business Partners</div>
@@ -586,6 +584,26 @@ textarea.ip{resize:vertical;min-height:70px}
   </div>
 
   <!-- ============ DRAFTS TAB ============ -->
+  <div id="tab-dashboard" class="hid">
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Tableau de bord</div>
+      <div id="dashStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px"></div>
+      <div style="font-weight:600;color:var(--frost);font-size:13px;margin-bottom:10px">PAR AGENT (CE MOIS)</div>
+      <div id="dashByAgent"></div>
+    </div>
+  </div>
+
+  <div id="tab-history" class="hid">
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Historique des factures</div>
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+        <input class="ip" id="histSearch" placeholder="Rechercher (client, BL, agent...)" style="max-width:340px" oninput="renderHistory()">
+        <button class="bt bt-ghost" style="font-size:12px;padding:8px 14px" data-mgr="1" onclick="clearHistory()" style="display:none">&#128465; Vider l'historique</button>
+      </div>
+      <div id="histList"></div>
+    </div>
+  </div>
+
   <div id="tab-queue" class="hid">
     <div class="cd">
       <div class="ct"><span class="dot"></span> File de g&eacute;n&eacute;ration</div>
@@ -890,11 +908,13 @@ function initApp(){
 }
 
 function sw(t){
-  ["invoice","echange","batch","queue","bp","upload","accounts","aide"].forEach(function(x){
+  ["invoice","echange","queue","bp","upload","accounts","aide","dashboard","history"].forEach(function(x){
     var el = $("tab-"+x); if(el) el.classList.toggle("hid", x!==t);
     var tb = document.querySelector('.tab[data-tab="'+x+'"]'); if(tb) tb.classList.toggle("on", x===t);
   });
   if(t==="echange") initEchange();
+  if(t==="dashboard") renderDashboard();
+  if(t==="history") renderHistory();
   if(t==="bp") bpRenderTable("");
   if(t==="accounts"){ renderAccounts(); updStorageInfo(); }
   if(t==="queue") loadQueue();
@@ -1050,6 +1070,7 @@ function genInvoice(){
   apiCall("/generate", {method:"POST", body:{invoices:[data]}}).then(function(res){
     if(res.ok && res.csv){
       downloadCSV(res.csv, "IVAN_S4_" + data.bp + "_" + Date.now() + ".csv");
+      recordHistory(data, "facturation");
       showToast("Fichier CSV g\u00e9n\u00e9r\u00e9","ok");
     } else { showToast("Erreur: "+(res.error||"inconnue"),"err"); }
   }).catch(function(e){
@@ -1781,28 +1802,6 @@ function echBpPick(i){
   if(typeof CA_MAP!=="undefined" && CA_MAP[m.bp]) $("echContractAcc").value=CA_MAP[m.bp];
 }
 
-function collectEchData(){
-  var io = $("echParamIO").value || echIO;
-  var bl = $("echBl").value.trim();
-  var lines = computeEchLines().map(function(l){
-    return {code:l.code, desc:l.d, bit:"COFR", qty:l.qty, rate:l.rate, unit:l.base==="TO"?"TO":(l.base==="DOC"?"EA":l.base)};
-  });
-  return {
-    subprocess:"MIMN", bp: echSelectedBp?echSelectedBp.bp:"",
-    contractAcc:$("echContractAcc").value.trim(),
-    sailingDate: io==="O" ? $("echSailing").value.trim() : "",
-    arrivalDate: io==="I" ? $("echArrival").value.trim() : "",
-    expImp: io, ubli:$("echUbli").value.trim(), bl:bl,
-    cbu:$("echCbu").value.trim(), extFooter:$("echFooter").value.trim(),
-    invGrouping:"1",
-    clerkEmail: (curUser&&curUser.email)?curUser.email:"",
-    clerkName: (curUser&&curUser.name)?curUser.name:"",
-    companyCode:"CI12", businessArea:"CI00", profitCenter:"CI12ML01",
-    salesOffice:"CI12", currency:"XOF",
-    lines:lines
-  };
-}
-
 function validateEch(){
   var errs=[];
   if(!echSelectedBp) errs.push("Code Payeur");
@@ -1814,27 +1813,141 @@ function validateEch(){
   return errs;
 }
 
-function genEchange(){
-  var errs=validateEch();
+var echReviewData = [];   // editable review lines
+var echReviewMeta = {};   // header data (bp, dates, etc.)
+
+function genEchangeReview(){
+  var errs = validateEch();
   if(errs.length){ showToast("Manquant : "+errs.join(", "),"err"); return; }
-  var data=collectEchData();
+  // Snapshot the computed lines into an editable review structure
+  var lines = computeEchLines();
+  echReviewData = lines.map(function(l){
+    return {on:true, d:l.d, code:l.code, base:l.base, qty:l.qty, rate:l.rate, vat:l.vat};
+  });
+  echReviewMeta = collectEchMeta();
+  renderEchReview();
+  $("echReview").style.display = "block";
+  $("echReview").scrollIntoView({behavior:"smooth"});
+}
+
+function collectEchMeta(){
+  var io = $("echParamIO").value || echIO;
+  var bl = $("echBl").value.trim();
+  return {
+    subprocess:"MIMN", bp: echSelectedBp?echSelectedBp.bp:"",
+    contractAcc:$("echContractAcc").value.trim(),
+    sailingDate: io==="O" ? $("echSailing").value.trim() : "",
+    arrivalDate: io==="I" ? $("echArrival").value.trim() : "",
+    expImp: io, ubli:$("echUbli").value.trim(), bl:bl,
+    cbu:$("echCbu").value.trim(), extFooter:$("echFooter").value.trim(),
+    invGrouping:"1",
+    clerkEmail: (curUser&&curUser.email)?curUser.email:"",
+    clerkName: (curUser&&curUser.name)?curUser.name:"",
+    companyCode:"CI12", businessArea:"CI00", profitCenter:"CI12ML01",
+    salesOffice:"CI12", currency:"XOF"
+  };
+}
+
+function renderEchReview(){
+  var box = $("echReviewLines");
+  var head = '<div class="echr-head"><div></div><div>Charge</div><div>Code</div><div>Base</div><div>Qt&eacute;</div><div>Taux</div><div>Montant HT</div></div>';
+  box.innerHTML = head + echReviewData.map(function(l, i){
+    var ht = l.qty * l.rate;
+    return '<div class="echr-row'+(l.on?'':' off')+'" id="echr-'+i+'">'+
+      '<div><input type="checkbox" '+(l.on?'checked':'')+' onchange="toggleEchLine('+i+',this.checked)"></div>'+
+      '<div><input type="text" value="'+escAttr(l.d)+'" onchange="editEchLine('+i+',\'d\',this.value)"></div>'+
+      '<div><input type="text" value="'+escAttr(l.code)+'" onchange="editEchLine('+i+',\'code\',this.value)"></div>'+
+      '<div style="color:var(--txt3)">'+l.base+'</div>'+
+      '<div><input type="number" value="'+l.qty+'" onchange="editEchLine('+i+',\'qty\',this.value)"></div>'+
+      '<div><input type="number" value="'+l.rate+'" onchange="editEchLine('+i+',\'rate\',this.value)"></div>'+
+      '<div class="mono" style="color:var(--frost)">'+echFmt(ht)+'</div>'+
+    '</div>';
+  }).join("");
+  updEchReviewTotals();
+  if($("echCsvPreview").style.display!=="none") refreshCsvPreview();
+}
+
+function escAttr(s){ return String(s).replace(/"/g,"&quot;"); }
+
+function toggleEchLine(i, on){
+  echReviewData[i].on = on;
+  var row = $("echr-"+i);
+  if(row) row.classList.toggle("off", !on);
+  updEchReviewTotals();
+  if($("echCsvPreview").style.display!=="none") refreshCsvPreview();
+}
+function editEchLine(i, field, val){
+  if(field==="qty"||field==="rate") echReviewData[i][field] = parseFloat(val)||0;
+  else echReviewData[i][field] = val;
+  renderEchReview();
+}
+function updEchReviewTotals(){
+  var active = echReviewData.filter(function(l){return l.on;});
+  var totHt = active.reduce(function(s,l){return s + l.qty*l.rate;},0);
+  var totTtc = active.reduce(function(s,l){var ht=l.qty*l.rate; return s + ht + (l.vat?Math.round(ht*0.18):0);},0);
+  $("echReviewTotals").innerHTML =
+    '<div style="display:flex;justify-content:space-between"><span style="color:var(--txt2)">Lignes actives</span><span class="mono">'+active.length+' / '+echReviewData.length+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:var(--txt2)">Total HT</span><span class="mono">'+echFmt(totHt)+' XOF</span></div>'+
+    '<div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:var(--txt2)">Total TTC</span><span class="mono" style="color:var(--frost);font-weight:700">'+echFmt(totTtc)+' XOF</span></div>';
+}
+
+function buildEchPayload(){
+  var meta = echReviewMeta;
+  var lines = echReviewData.filter(function(l){return l.on;}).map(function(l){
+    return {code:l.code, desc:l.d, bit:"COFR", qty:l.qty, rate:l.rate, unit:l.base==="TO"?"TO":(l.base==="DOC"?"EA":l.base)};
+  });
+  return Object.assign({}, meta, {lines:lines});
+}
+
+function toggleCsvPreview(){
+  var box = $("echCsvPreview");
+  if(box.style.display==="none"){ box.style.display="block"; refreshCsvPreview(); }
+  else box.style.display="none";
+}
+function refreshCsvPreview(){
+  var box = $("echCsvPreview");
+  box.innerHTML = '<div style="color:var(--txt3);font-size:11px">G&eacute;n&eacute;ration de l\'aper&ccedil;u...</div>';
+  apiCall("/generate", {method:"POST", body:{invoices:[buildEchPayload()], preview:true}}).then(function(res){
+    if(res.ok && res.csv){
+      box.innerHTML = '<div class="csv-prev">'+res.csv.replace(/&/g,"&amp;").replace(/</g,"&lt;")+'</div>';
+    } else { box.innerHTML = '<div style="color:var(--err)">Erreur aper&ccedil;u: '+(res.error||"")+'</div>'; }
+  }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} box.innerHTML='<div style="color:var(--err)">Erreur serveur</div>'; });
+}
+
+function echValidateLines(){
+  var active = echReviewData.filter(function(l){return l.on;});
+  if(!active.length) return "Au moins une ligne doit rester coch\u00e9e";
+  for(var i=0;i<active.length;i++){ if(!active[i].code) return "Une ligne active n'a pas de code"; }
+  return null;
+}
+
+function validateEchDownload(){
+  var err = echValidateLines();
+  if(err){ showToast(err,"err"); return; }
+  var payload = buildEchPayload();
+  if(!confirmIfWarnings(payload)) return;
   showToast("G\u00e9n\u00e9ration en cours...","ok");
-  apiCall("/generate",{method:"POST",body:{invoices:[data]}}).then(function(res){
-    if(res.ok&&res.csv){
-      downloadCSV(res.csv,"IVAN_S4_ECH_"+($("echPort").value).toUpperCase()+"_"+data.bp+"_"+Date.now()+".csv");
+  apiCall("/generate", {method:"POST", body:{invoices:[payload]}}).then(function(res){
+    if(res.ok && res.csv){
+      downloadCSV(res.csv, "IVAN_S4_ECH_"+($("echPort").value).toUpperCase()+"_"+payload.bp+"_"+Date.now()+".csv");
+      recordHistory(payload, "echange");
       showToast("Fichier &Eacute;change g\u00e9n\u00e9r\u00e9","ok");
     } else { showToast("Erreur: "+(res.error||"inconnue"),"err"); }
-  }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur serveur: "+e.message,"err"); });
+  }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur serveur","err"); });
 }
-
-function addEchToQueue(){
-  var errs=validateEch();
-  if(errs.length){ showToast("Manquant : "+errs.join(", "),"err"); return; }
-  invoiceQueue.push(collectEchData());
+function validateEchQueue(){
+  var err = echValidateLines();
+  if(err){ showToast(err,"err"); return; }
+  var p = buildEchPayload();
+  invoiceQueue.push(p);
   saveQueue();
+  recordHistory(p, "echange");
   showToast("Ajout\u00e9 \u00e0 la file","ok");
 }
-
+function echBackToForm(){
+  $("echReview").style.display="none";
+  $("echConfig").scrollIntoView({behavior:"smooth"});
+}
 
 // ============ USER PROFILE ============
 function openProfile(){
@@ -1858,6 +1971,145 @@ function saveProfile(){
       closeProfile();
     } else { showToast(res.error||"Erreur","err"); }
   }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur serveur","err"); });
+}
+
+
+// ============ HISTORY + DASHBOARD ============
+var _histCache = [];
+
+function recordHistory(data, source){
+  // source: "facturation" or "echange"
+  var totHt = 0, totTtc = 0;
+  (data.lines||[]).forEach(function(l){
+    var ht = (l.qty||0)*(l.rate||0);
+    totHt += ht;
+  });
+  var entry = {
+    agent: (curUser&&curUser.user)?curUser.user:"?",
+    agentName: (curUser&&curUser.name)?curUser.name:"",
+    source: source,
+    bp: data.bp||"",
+    contractAcc: data.contractAcc||"",
+    bl: data.bl||"",
+    expImp: data.expImp||"",
+    nbLines: (data.lines||[]).length,
+    totalHt: totHt
+  };
+  apiCall("/store", {method:"POST", body:{action:"addhistory", entry:entry}}).catch(function(e){
+    if(e&&e.blocked) showBlocked();
+  });
+}
+
+function renderHistory(){
+  var box = $("histList");
+  if(!box) return;
+  box.innerHTML = '<div style="padding:16px;color:var(--txt3)">Chargement...</div>';
+  // Show manager clear button
+  document.querySelectorAll('#tab-history [data-mgr="1"]').forEach(function(el){
+    el.style.display = (curUser&&curUser.role==="manager")?"":"none";
+  });
+  apiCall("/store?action=gethistory").then(function(res){
+    _histCache = res.history||[];
+    var q = ($("histSearch").value||"").trim().toLowerCase();
+    var rows = _histCache.filter(function(h){
+      if(!q) return true;
+      return (h.bp+" "+h.bl+" "+h.agent+" "+(h.agentName||"")+" "+h.contractAcc).toLowerCase().indexOf(q)>=0;
+    });
+    if(!rows.length){ box.innerHTML='<div style="padding:16px;color:var(--txt3)">Aucune facture dans l\'historique</div>'; return; }
+    var head='<div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 0.6fr 1fr;gap:8px;padding:8px;font-size:11px;color:var(--txt3);text-transform:uppercase;font-weight:600"><div>Date</div><div>Agent</div><div>Client (BP)</div><div>BL</div><div>Sens</div><div>Total HT</div></div>';
+    box.innerHTML = head + rows.map(function(h){
+      var d = new Date(h.ts);
+      var ds = d.toLocaleDateString("fr-FR")+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+      return '<div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 0.6fr 1fr;gap:8px;padding:8px;border-bottom:1px solid var(--ice-line);font-size:12.5px">'+
+        '<div style="color:var(--txt2)">'+ds+'</div>'+
+        '<div>'+h.agent+'</div>'+
+        '<div class="mono">'+h.bp+'</div>'+
+        '<div class="mono" style="color:var(--frost)">'+(h.bl||"&mdash;")+'</div>'+
+        '<div>'+(h.expImp==="I"?"Import":h.expImp==="O"?"Export":"&mdash;")+'</div>'+
+        '<div class="mono">'+echFmt(h.totalHt||0)+'</div>'+
+      '</div>';
+    }).join("");
+  }).catch(function(e){
+    if(e&&e.blocked){ showBlocked(); return; }
+    box.innerHTML='<div style="padding:16px;color:var(--err)">Erreur de connexion</div>';
+  });
+}
+
+function clearHistory(){
+  if(!confirm("Vider tout l'historique des factures ? Cette action est irr\u00e9versible.")) return;
+  apiCall("/store", {method:"POST", body:{action:"clearhistory"}}).then(function(res){
+    if(res.ok){ renderHistory(); showToast("Historique vid\u00e9","ok"); }
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+}
+
+function renderDashboard(){
+  apiCall("/store?action=gethistory").then(function(res){
+    var hist = res.history||[];
+    var now = new Date();
+    var thisMonth = hist.filter(function(h){
+      var d = new Date(h.ts);
+      return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+    });
+    var totalMonth = thisMonth.reduce(function(s,h){return s+(h.totalHt||0);},0);
+    var imp = thisMonth.filter(function(h){return h.expImp==="I";}).length;
+    var exp = thisMonth.filter(function(h){return h.expImp==="O";}).length;
+    // Stat cards
+    function card(label, val, color){
+      return '<div style="background:var(--void);border:1px solid var(--ice-line);border-radius:12px;padding:18px"><div style="font-size:12px;color:var(--txt2);margin-bottom:6px">'+label+'</div><div style="font-size:24px;font-weight:800;color:'+(color||"var(--frost)")+'">'+val+'</div></div>';
+    }
+    $("dashStats").innerHTML =
+      card("Factures ce mois", thisMonth.length) +
+      card("Total HT ce mois", echFmt(totalMonth)+" XOF", "var(--ok)") +
+      card("Import / Export", imp+" / "+exp) +
+      card("Total historique", hist.length, "var(--txt1)");
+    // By agent
+    var byAgent = {};
+    thisMonth.forEach(function(h){
+      if(!byAgent[h.agent]) byAgent[h.agent] = {count:0, total:0};
+      byAgent[h.agent].count++;
+      byAgent[h.agent].total += (h.totalHt||0);
+    });
+    var agents = Object.keys(byAgent);
+    if(!agents.length){ $("dashByAgent").innerHTML='<div style="color:var(--txt3);padding:12px">Aucune facture ce mois</div>'; return; }
+    $("dashByAgent").innerHTML = '<div style="display:grid;grid-template-columns:1fr 0.6fr 1fr;gap:8px;padding:8px;font-size:11px;color:var(--txt3);text-transform:uppercase"><div>Agent</div><div>Factures</div><div>Total HT</div></div>' +
+      agents.map(function(a){
+        return '<div style="display:grid;grid-template-columns:1fr 0.6fr 1fr;gap:8px;padding:8px;border-bottom:1px solid var(--ice-line);font-size:13px"><div>'+a+'</div><div class="mono">'+byAgent[a].count+'</div><div class="mono" style="color:var(--frost)">'+echFmt(byAgent[a].total)+'</div></div>';
+      }).join("");
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+}
+
+
+// ============ VALIDATION ANTI-ERREURS (avant SAP) ============
+function validateInvoiceData(data){
+  var warnings = [];
+  // Contract account: should be numeric, ~12 digits
+  if(data.contractAcc && !/^[0-9]{6,15}$/.test(data.contractAcc)){
+    warnings.push("Compte contrat inhabituel (attendu : chiffres uniquement)");
+  }
+  // BL / reference
+  if(data.bl && data.bl.length < 3){
+    warnings.push("N\u00b0 BL semble trop court");
+  }
+  // Dates format AAAAMMJJ
+  var dt = data.sailingDate || data.arrivalDate;
+  if(dt && !/^[0-9]{8}$/.test(dt)){
+    warnings.push("Date au mauvais format (attendu AAAAMMJJ)");
+  }
+  // Lines: no zero amount, has code
+  (data.lines||[]).forEach(function(l, i){
+    if(!l.code) warnings.push("Ligne "+(i+1)+" sans code");
+    if((l.qty||0) <= 0) warnings.push("Ligne "+(i+1)+" : quantit\u00e9 nulle");
+    if((l.rate||0) <= 0) warnings.push("Ligne "+(i+1)+" : taux nul");
+  });
+  // CBU present
+  if(!data.cbu) warnings.push("CBU manquant");
+  return warnings;
+}
+
+function confirmIfWarnings(data){
+  var w = validateInvoiceData(data);
+  if(!w.length) return true;
+  return confirm("\u26a0 Points \u00e0 v\u00e9rifier avant g\u00e9n\u00e9ration :\n\n- " + w.join("\n- ") + "\n\nG\u00e9n\u00e9rer quand m\u00eame ?");
 }
 
 function showToast(msg, type){
