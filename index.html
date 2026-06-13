@@ -1,0 +1,1893 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IVAN S4 &mdash; Maersk C&ocirc;te d'Ivoire</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#060a0f; --deep:#0c1620; --panel:#0f1d2a; --panel2:#13283a;
+  --steel:#1e3a52; --steel2:#2a4d6b;
+  --frost:#7dd3fc; --glow:#38bdf8; --crystal:#e0f2fe; --crystal2:#bae6fd;
+  --ice-line:rgba(125,211,252,.14); --ice-line2:rgba(125,211,252,.28);
+  --txt:#dbeafe; --txt2:#8babc9; --txt3:#5a7a99;
+  --ok:#34d399; --ok-d:rgba(52,211,153,.12); --warn:#fbbf24; --err:#fb7185; --err-d:rgba(251,113,133,.1);
+  --grad-ice:linear-gradient(135deg,#38bdf8 0%,#7dd3fc 50%,#e0f2fe 100%);
+  --grad-panel:linear-gradient(160deg,#0f1d2a 0%,#0a1420 100%);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Sora',system-ui,sans-serif;background:var(--void);color:var(--txt);line-height:1.5;overflow-x:hidden}
+/* Frost grain texture overlay */
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.4;
+  background:radial-gradient(circle at 20% 10%,rgba(56,189,248,.06),transparent 40%),radial-gradient(circle at 80% 80%,rgba(125,211,252,.05),transparent 45%)}
+.mono{font-family:'JetBrains Mono',monospace}
+#app{position:relative;z-index:2;max-width:1280px;margin:0 auto;padding:0 20px 80px}
+
+/* ===== HERO HEADER ===== */
+.hero{padding:38px 0 26px;border-bottom:1px solid var(--ice-line);margin-bottom:24px;position:relative}
+.hero-glow{position:absolute;top:0;left:50%;transform:translateX(-50%);width:60%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--glow),transparent);opacity:.6}
+.brand{display:flex;align-items:center;gap:18px}
+.brand-mark{width:54px;height:54px;border-radius:14px;background:var(--grad-ice);display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:24px;color:var(--void);box-shadow:0 0 28px rgba(56,189,248,.4),inset 0 1px 0 rgba(255,255,255,.4);position:relative;overflow:hidden}
+.brand-mark::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,.3) 50%,transparent 60%)}
+.brand h1{font-size:26px;font-weight:800;letter-spacing:-.5px;background:var(--grad-ice);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.brand .sub{font-size:12px;color:var(--txt2);letter-spacing:3px;text-transform:uppercase;margin-top:2px;font-weight:500}
+.hero-meta{margin-left:auto;text-align:right;font-size:11px;color:var(--txt3);letter-spacing:1px}
+.hero-meta .ver{color:var(--frost);font-weight:600}
+
+/* ===== TABS ===== */
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:26px;border-bottom:1px solid var(--ice-line);padding-bottom:0}
+.tab{padding:12px 20px;font-size:13.5px;font-weight:600;color:var(--txt2);cursor:pointer;border-radius:10px 10px 0 0;
+  border:1px solid transparent;border-bottom:none;transition:.18s;position:relative;letter-spacing:.2px}
+.tab:hover{color:var(--frost);background:rgba(56,189,248,.05)}
+.tab.on{color:var(--void);background:var(--grad-ice);font-weight:700;box-shadow:0 -2px 16px rgba(56,189,248,.3)}
+
+/* ===== CARDS ===== */
+.cd{background:var(--grad-panel);border:1px solid var(--ice-line);border-radius:16px;padding:24px;margin-bottom:18px;
+  position:relative;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.cd::before{content:"";position:absolute;top:0;left:24px;right:24px;height:1px;background:linear-gradient(90deg,transparent,var(--ice-line2),transparent)}
+.ct{font-size:13px;font-weight:700;color:var(--frost);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.ct .dot{width:7px;height:7px;border-radius:50%;background:var(--glow);box-shadow:0 0 10px var(--glow)}
+
+/* ===== FORM ===== */
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+.fld label{display:block;font-size:11px;color:var(--txt2);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:7px}
+.fld label .req{color:var(--frost);margin-left:3px}
+.ip,select.ip,textarea.ip{width:100%;background:var(--void);border:1px solid var(--steel);border-radius:10px;padding:12px 14px;
+  color:var(--crystal);font-size:14px;font-family:inherit;transition:.16s;outline:none}
+.ip:focus{border-color:var(--glow);box-shadow:0 0 0 3px rgba(56,189,248,.15)}
+.ip::placeholder{color:var(--txt3)}
+textarea.ip{resize:vertical;min-height:70px}
+.ip.mono{font-family:'JetBrains Mono',monospace;letter-spacing:.5px}
+
+/* ===== BUTTONS ===== */
+.bt{padding:12px 22px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+  transition:.16s;letter-spacing:.3px;display:inline-flex;align-items:center;gap:8px}
+.bt-ice{background:var(--grad-ice);color:var(--void);font-weight:700;box-shadow:0 4px 20px rgba(56,189,248,.3)}
+.bt-ice:hover{box-shadow:0 6px 28px rgba(56,189,248,.5);transform:translateY(-1px)}
+.bt-ghost{background:transparent;color:var(--frost);border:1px solid var(--steel2)}
+.bt-ghost:hover{background:rgba(56,189,248,.08);border-color:var(--glow)}
+.bt:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* ===== AUTOCOMPLETE ===== */
+.ac-wrap{position:relative}
+.ac-list{position:absolute;top:100%;left:0;right:0;background:var(--panel2);border:1px solid var(--ice-line2);border-radius:10px;
+  margin-top:4px;max-height:240px;overflow-y:auto;z-index:50;box-shadow:0 12px 40px rgba(0,0,0,.6);display:none}
+.ac-list.show{display:block}
+.ac-item{padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--ice-line);transition:.12s}
+.ac-item:hover,.ac-item.sel{background:rgba(56,189,248,.12)}
+.ac-item .code{font-family:'JetBrains Mono',monospace;color:var(--frost);font-weight:600}
+.ac-item .nm{color:var(--txt2);font-size:11.5px;margin-top:2px}
+
+/* ===== CHARGE LINES TABLE ===== */
+.lines{margin-top:8px}
+.line-row{display:grid;grid-template-columns:2.5fr 1fr 1fr 1fr auto;gap:10px;align-items:end;padding:12px;
+  background:var(--void);border:1px solid var(--steel);border-radius:10px;margin-bottom:10px}
+.line-row .del{background:var(--err-d);color:var(--err);border:none;border-radius:8px;padding:10px 12px;cursor:pointer;font-size:14px}
+.line-row .del:hover{background:rgba(251,113,133,.2)}
+
+/* ===== BADGES / PILLS ===== */
+.pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.5px}
+.pill-ok{background:var(--ok-d);color:var(--ok)}
+.pill-err{background:var(--err-d);color:var(--err)}
+.pill-frost{background:rgba(56,189,248,.12);color:var(--frost)}
+
+/* ===== STATS ===== */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.stat{background:var(--void);border:1px solid var(--ice-line);border-radius:12px;padding:16px;position:relative;overflow:hidden}
+.stat::after{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--grad-ice)}
+.stat .num{font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--crystal)}
+.stat .lbl{font-size:10.5px;color:var(--txt2);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+
+.hid{display:none!important}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--ice-line2);
+  color:var(--crystal);padding:14px 24px;border-radius:12px;font-size:14px;z-index:999;box-shadow:0 12px 40px rgba(0,0,0,.6);
+  display:flex;align-items:center;gap:10px;max-width:90vw}
+.toast.err{border-color:var(--err);color:var(--err)}
+.toast.ok{border-color:var(--ok);color:var(--ok)}
+
+/* scrollbar */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--void)}
+::-webkit-scrollbar-thumb{background:var(--steel);border-radius:5px}
+::-webkit-scrollbar-thumb:hover{background:var(--steel2)}
+
+@media(max-width:760px){
+  .g2,.g3{grid-template-columns:1fr}
+  .line-row{grid-template-columns:1fr 1fr;gap:8px}
+  .hero-meta{display:none}
+}
+
+/* ===== LOGIN SCREEN ===== */
+#loginScreen{position:fixed;inset:0;z-index:1000;background:var(--void);display:flex;align-items:center;justify-content:center;padding:20px}
+#loginScreen::before{content:"";position:absolute;inset:0;
+  background:radial-gradient(circle at 30% 20%,rgba(56,189,248,.1),transparent 50%),radial-gradient(circle at 70% 80%,rgba(125,211,252,.08),transparent 50%)}
+.login-card{position:relative;background:var(--grad-panel);border:1px solid var(--ice-line2);border-radius:20px;padding:42px 38px;width:100%;max-width:420px;
+  box-shadow:0 24px 80px rgba(0,0,0,.6),0 0 60px rgba(56,189,248,.1)}
+.login-mark{width:64px;height:64px;border-radius:16px;background:var(--grad-ice);display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:28px;color:var(--void);margin:0 auto 20px;box-shadow:0 0 32px rgba(56,189,248,.4)}
+.login-card h2{text-align:center;font-size:22px;font-weight:800;margin-bottom:4px;background:var(--grad-ice);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.login-card .login-sub{text-align:center;font-size:12px;color:var(--txt2);letter-spacing:2px;text-transform:uppercase;margin-bottom:28px}
+.login-err{background:var(--err-d);border:1px solid var(--err);color:var(--err);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none}
+.login-err.show{display:block}
+
+/* ===== USER MENU ===== */
+.user-chip{display:flex;align-items:center;gap:10px;background:var(--void);border:1px solid var(--ice-line);border-radius:24px;padding:6px 8px 6px 14px}
+.user-chip .u-name{font-size:13px;color:var(--crystal);font-weight:600}
+.user-chip .u-role{font-size:10px;color:var(--frost);text-transform:uppercase;letter-spacing:1px}
+.user-chip .u-logout{background:var(--err-d);color:var(--err);border:none;border-radius:18px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit}
+.user-chip .u-logout:hover{background:rgba(251,113,133,.2)}
+
+/* ===== ADMIN TABLE ===== */
+.adm-table{width:100%;border-collapse:collapse;font-size:13px}
+.adm-table th{padding:10px;text-align:left;color:var(--frost);font-size:11px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--ice-line2)}
+.adm-table td{padding:10px;border-bottom:1px solid var(--ice-line);color:var(--txt)}
+.role-badge{display:inline-block;padding:2px 10px;border-radius:14px;font-size:11px;font-weight:600}
+.role-mgr{background:rgba(56,189,248,.15);color:var(--frost)}
+.role-agent{background:rgba(139,171,201,.12);color:var(--txt2)}
+
+/* drop zones */
+.drop-zone{border:2px dashed var(--steel2);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:.2s}
+.drop-zone:hover{border-color:var(--glow);background:rgba(56,189,248,.04)}
+
+
+.ech-sub{flex:1;padding:12px;border:1px solid var(--ice-line);border-radius:10px;background:var(--void);color:var(--txt2);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:.2s}
+.ech-sub.on{background:var(--grad-ice);color:var(--void);border-color:transparent;box-shadow:0 0 18px rgba(56,189,248,.3)}
+.ech-charge-row{display:grid;grid-template-columns:1.6fr 0.8fr 0.6fr 0.7fr 0.9fr 0.5fr;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--ice-line);font-size:12.5px}
+.ech-charge-row input{padding:6px 8px;font-size:12px;background:var(--void);border:1px solid var(--ice-line);border-radius:6px;color:var(--crystal);width:100%}
+.ech-code-warn{color:#fbbf24}
+.ech-head{display:grid;grid-template-columns:1.6fr 0.8fr 0.6fr 0.7fr 0.9fr 0.5fr;gap:8px;padding:8px;font-size:11px;color:var(--txt3);text-transform:uppercase;font-weight:600}
+</style>
+</head>
+<body>
+<div id="app">  <!-- LOGIN SCREEN -->
+  <div id="loginScreen" style="display:none">
+    <div class="login-card">
+      <!-- STEP 1: OneDrive -->
+      <div id="loginStep1">
+        <div class="login-mark">IV</div>
+        <h2>IVAN S4</h2>
+        <div class="login-sub">Maersk C&ocirc;te d'Ivoire</div>
+        <div style="font-size:13px;color:var(--txt2);margin-bottom:22px;line-height:1.6;text-align:center">Connectez votre dossier OneDrive<br>pour synchroniser vos acc&egrave;s et brouillons.</div>
+        <button class="bt bt-ice" style="width:100%;justify-content:center;margin-bottom:12px" onclick="loginConnectOneDrive()">&#128193; Connecter OneDrive</button>
+        <div id="loginSyncStatus" style="font-size:12px;margin-top:8px;display:none;text-align:center;cursor:pointer" onclick="goToLoginStep2()"></div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:16px;cursor:pointer;text-decoration:underline;text-align:center" onclick="skipOneDrive()">Continuer sans OneDrive</div>
+      </div>
+      <!-- STEP 2: User/Password -->
+      <div id="loginStep2" style="display:none">
+        <div class="login-mark">IV</div>
+        <h2>IVAN S4</h2>
+        <div class="login-sub">Maersk C&ocirc;te d'Ivoire</div>
+        <div class="login-err" id="loginErr" style="margin-top:18px"></div>
+        <div class="fld" style="margin-bottom:16px;margin-top:18px">
+          <label>Nom d'utilisateur</label>
+          <input class="ip" id="loginUser" placeholder="utilisateur" autocomplete="off" onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
+        </div>
+        <div class="fld" style="margin-bottom:24px">
+          <label>Mot de passe</label>
+          <input class="ip" id="loginPass" type="password" placeholder="mot de passe" onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <button class="bt bt-ice" style="width:100%;justify-content:center" onclick="doLogin()">Se connecter</button>
+        <div style="font-size:11px;color:var(--txt3);margin-top:14px;text-align:center;letter-spacing:1px">ABIDJAN &middot; SAN PEDRO</div>
+      </div>
+    </div>
+  </div>
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-glow"></div>
+    <div class="brand">
+      <div class="brand-mark">IV</div>
+      <div>
+        <h1>IVAN S4</h1>
+        <div class="sub">Maersk C&ocirc;te d'Ivoire &middot; Facturation S/4HANA</div>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:16px">
+        <div class="user-chip">
+          <div>
+            <div class="u-name" id="curUser">&mdash;</div>
+            <div class="u-role" id="curRole">&mdash;</div>
+          </div>
+          <button class="u-logout" onclick="doLogout()">Quitter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab on" data-tab="invoice" onclick="sw('invoice')">&#10052; Facturation</div>
+    <div class="tab" data-tab="echange" onclick="sw('echange')">&#8644; &Eacute;change Import</div>
+    <div class="tab" data-tab="batch" onclick="sw('batch')">&#9783; Batch</div>
+    <div class="tab" data-tab="drafts" onclick="sw('drafts')">&#128221; Brouillons</div>
+    <div class="tab" data-tab="queue" onclick="sw('queue')">&#9783; File <span id="queueBadge" class="pill pill-frost" style="margin-left:4px;display:none">0</span></div>
+    <div class="tab" data-tab="bp" onclick="sw('bp')">&#9819; Business Partners</div>
+    <div class="tab" data-tab="upload" onclick="sw('upload')">&#11014; Imports</div>
+    <div class="tab" data-tab="accounts" data-mgr="1" onclick="sw('accounts')" style="display:none">&#9881; Comptes</div>
+    <div class="tab" data-tab="aide" onclick="sw('aide')">&#9432; Aide</div>
+  </div>
+
+  <!-- ============ INVOICE TAB ============ -->
+  <div id="tab-invoice">
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Type de facture</div>
+      <div class="grid g2">
+        <div class="fld">
+          <label>Type de facture <span class="req">*</span></label>
+          <select class="ip" id="invType" onchange="updSubprocess()"></select>
+        </div>
+        <div class="fld">
+          <label>Subprocess (auto)</label>
+          <input class="ip mono" id="subprocess" readonly placeholder="auto">
+        </div>
+      </div>
+    </div>
+
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Client &amp; comptes</div>
+      <div class="grid g2">
+        <div class="fld ac-wrap">
+          <label>Ancien code client (ECC) <span class="req">*</span></label>
+          <input class="ip mono" id="eccCode" placeholder="ex: CI00152913" autocomplete="off"
+            oninput="bpSearch(this.value)" onfocus="bpSearch(this.value)">
+          <div class="ac-list" id="bpAcList"></div>
+        </div>
+        <div class="fld">
+          <label>Business Partner <span class="req">*</span></label>
+          <input class="ip mono" id="bpNum" placeholder="auto-rempli ou manuel">
+        </div>
+      </div>
+      <div class="grid g2" style="margin-top:16px">
+        <div class="fld">
+          <label>Contract Account <span class="req">*</span></label>
+          <input class="ip mono" id="contractAcc" placeholder="saisie manuelle ou auto si rattach&eacute;">
+        </div>
+        <div class="fld">
+          <label>Nom client (info)</label>
+          <input class="ip" id="clientName" readonly placeholder="auto">
+        </div>
+      </div>
+    </div>
+
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Lignes de charges</div>
+      <div class="lines" id="chargeLines"></div>
+      <button class="bt bt-ghost" onclick="addChargeLine()" style="margin-top:6px">&#43; Ajouter une ligne</button>
+    </div>
+
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Param&egrave;tres facture</div>
+      <div class="grid g3">
+        <div class="fld">
+          <label>Sailing Date <span class="req">*</span></label>
+          <input class="ip mono" id="sailingDate" placeholder="YYYYMMDD" maxlength="8">
+        </div>
+        <div class="fld">
+          <label>Export / Import <span class="req">*</span></label>
+          <select class="ip" id="expImp"><option value="O">Export (O)</option><option value="I">Import (I)</option></select>
+        </div>
+        <div class="fld">
+          <label>UBLI</label>
+          <input class="ip mono" id="ubli" value="MAEU" placeholder="MAEU">
+        </div>
+      </div>
+      <div class="grid g3" style="margin-top:16px">
+        <div class="fld">
+          <label>Booking Number</label>
+          <input class="ip mono" id="bookingNum" placeholder="optionnel">
+        </div>
+        <div class="fld">
+          <label>R&eacute;f&eacute;rence</label>
+          <input class="ip" id="reference" placeholder="optionnel">
+        </div>
+        <div class="fld">
+          <label>Invoice Grouping</label>
+          <input class="ip mono" id="invGrouping" value="1">
+        </div>
+      </div>
+      <div class="grid g2" style="margin-top:16px">
+        <div class="fld">
+          <label>Clerk Email (validation) <span class="req">*</span></label>
+          <input class="ip" id="clerkEmail" placeholder="email@maersk.com">
+        </div>
+        <div class="fld">
+          <label>Clerk Name</label>
+          <input class="ip" id="clerkName" placeholder="NOM Pr&eacute;nom">
+        </div>
+      </div>
+    </div>
+
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Codes fixes (configurables)</div>
+      <div class="grid g3">
+        <div class="fld"><label>Company Code</label><input class="ip mono" id="companyCode" value="CI12"></div>
+        <div class="fld"><label>Business Area</label><input class="ip mono" id="businessArea" value="CI00"></div>
+        <div class="fld"><label>Profit Center</label><input class="ip mono" id="profitCenter" value="CI12ML01"></div>
+      </div>
+      <div class="grid g3" style="margin-top:16px">
+        <div class="fld"><label>Sales Office</label><input class="ip mono" id="salesOffice" value="CI12"></div>
+        <div class="fld"><label>Currency</label><input class="ip mono" id="currency" value="XOF"></div>
+        <div class="fld"><label>Collection Business Unit</label><input class="ip mono" id="cbu" placeholder="optionnel"></div>
+      </div>
+    </div>
+
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> G&eacute;n&eacute;ration</div>
+      <div id="invSummary" style="margin-bottom:16px;font-size:13px;color:var(--txt2)"></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <button class="bt bt-ice" onclick="genInvoice()">&#10052; G&eacute;n&eacute;rer le fichier (CSV)</button>
+        <button class="bt bt-ghost" onclick="addToQueue()">&#9783; Ajouter &agrave; la file</button>
+        <button class="bt bt-ghost" onclick="saveDraft()">&#128221; Sauvegarder brouillon</button>
+        <button class="bt bt-ghost" onclick="resetInvoice()">R&eacute;initialiser</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ BATCH TAB ============ -->
+  <div id="tab-echange" class="hid">
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Facturation &Eacute;change Import &mdash; CHB</div>
+      <p style="font-size:13.5px;color:var(--txt2);line-height:1.7;margin-bottom:16px">
+        Charges forfaitaires pr&eacute;-remplies selon le sous-type. Les codes marqu&eacute;s
+        <span style="color:var(--warn,#fbbf24)">&#9888; &agrave; valider</span> doivent &ecirc;tre v&eacute;rifi&eacute;s.
+      </p>
+
+      <!-- Sub-type selector -->
+      <div style="display:flex;gap:10px;margin-bottom:18px">
+        <button class="ech-sub on" data-sub="echange" onclick="setEchSub('echange')">&Eacute;change</button>
+        <button class="ech-sub" data-sub="transit" onclick="setEchSub('transit')">Transit</button>
+        <button class="ech-sub" data-sub="tbl" onclick="setEchSub('tbl')">TBL</button>
+      </div>
+
+      <!-- Common fields -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div>
+          <label class="lb">Code Payeur (BP / ECC)</label>
+          <input class="ip" id="echBp" placeholder="Rechercher BP..." oninput="echBpSearch(this.value)" autocomplete="off">
+          <div id="echBpAc" class="ac-list"></div>
+        </div>
+        <div>
+          <label class="lb">Compte Contrat (VKONT)</label>
+          <input class="ip" id="echContractAcc" placeholder="Ex: 200010718138">
+        </div>
+        <div>
+          <label class="lb">N&deg; BL</label>
+          <input class="ip" id="echBl" placeholder="N&deg; connaissement">
+        </div>
+        <div>
+          <label class="lb">Date sailing</label>
+          <input class="ip" id="echSailing" placeholder="AAAAMMJJ">
+        </div>
+        <div>
+          <label class="lb">Email agent</label>
+          <input class="ip" id="echClerkEmail" placeholder="prenom.nom@maersk.com">
+        </div>
+        <div>
+          <label class="lb">Nom agent</label>
+          <input class="ip" id="echClerkName" placeholder="NOM Pr&eacute;nom">
+        </div>
+      </div>
+
+      <!-- Container / weight inputs -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px">
+        <div>
+          <label class="lb">Nombre conteneurs (CNT)</label>
+          <input class="ip" id="echCnt" type="number" min="1" value="1" onchange="renderEchCharges()">
+        </div>
+        <div>
+          <label class="lb">TEU total</label>
+          <input class="ip" id="echTeu" type="number" min="1" value="1" onchange="renderEchCharges()">
+        </div>
+        <div>
+          <label class="lb">Poids (TO)</label>
+          <input class="ip" id="echWeight" type="number" min="0" value="0" onchange="renderEchCharges()">
+        </div>
+      </div>
+
+      <!-- Charge lines (computed from template) -->
+      <div style="margin-bottom:8px;font-weight:600;color:var(--frost);font-size:13px">CHARGES &Agrave; FACTURER</div>
+      <div id="echChargesTable"></div>
+
+      <div id="echTotals" style="margin-top:12px;padding:14px;background:var(--void);border-radius:10px;font-size:14px"></div>
+
+      <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+        <button class="bt bt-ice" onclick="genEchange()">&#10052; G&eacute;n&eacute;rer le fichier (CSV)</button>
+        <button class="bt bt-ghost" onclick="addEchToQueue()">&#9783; Ajouter &agrave; la file</button>
+        <button class="bt bt-ghost" data-mgr="1" onclick="openChbAdmin()" style="display:none">&#9881; G&eacute;rer les codes</button>
+      </div>
+    </div>
+
+    <!-- CHB code admin (manager) -->
+    <div class="cd" id="chbAdminCard" style="display:none">
+      <div class="ct"><span class="dot"></span> Administration des codes CHB</div>
+      <p style="font-size:13px;color:var(--txt2);margin-bottom:14px">Corrigez les codes S/4HANA et taux. Sauvegard&eacute; sur le serveur pour toute l'&eacute;quipe.</p>
+      <div id="chbAdminBody"></div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="bt bt-ice" onclick="saveChbAdmin()">&#128190; Enregistrer les codes</button>
+        <button class="bt bt-ghost" onclick="resetChbAdmin()">&#8635; R&eacute;initialiser</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-batch" class="hid">
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Facturation par lot</div>
+      <p style="font-size:13.5px;color:var(--txt2);line-height:1.7;margin-bottom:16px">
+        Importez un fichier r&eacute;cap (une ligne = une charge) pour g&eacute;n&eacute;rer plusieurs fichiers CSV d'un coup.
+        T&eacute;l&eacute;chargez d'abord le mod&egrave;le pour conna&icirc;tre le format attendu.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+        <button class="bt bt-ghost" onclick="batchTemplate()">&#11015; T&eacute;l&eacute;charger le mod&egrave;le</button>
+      </div>
+      <div class="drop-zone" id="batchDrop" onclick="document.getElementById('batchInput').click()">
+        <div style="font-size:38px;margin-bottom:10px">&#10052;</div>
+        <div style="font-size:14px;font-weight:600;color:var(--crystal)">Glissez le fichier r&eacute;cap ici</div>
+        <div style="font-size:12px;color:var(--txt3);margin-top:4px">ou cliquez pour parcourir</div>
+        <input type="file" id="batchInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="batchLoad(this.files[0])">
+      </div>
+    </div>
+    <div id="batchResults" class="hid">
+      <div class="cd">
+        <div class="ct"><span class="dot"></span> R&eacute;capitulatif</div>
+        <div class="stats" id="batchStats"></div>
+      </div>
+      <div class="cd">
+        <button class="bt bt-ice" onclick="batchGenerate()">&#11015; G&eacute;n&eacute;rer tous les CSV (ZIP)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ BP TAB ============ -->
+  <div id="tab-bp" class="hid">
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Base Business Partners</div>
+      <p style="font-size:13.5px;color:var(--txt2);margin-bottom:16px">
+        <span id="bpCount" class="mono" style="color:var(--frost);font-weight:600">0</span> Business Partners enregistr&eacute;s.
+        Recherchez par ancien code client (ECC) ou par nom.
+      </p>
+      <input class="ip" id="bpTableSearch" placeholder="Rechercher un code ECC ou un nom..." oninput="bpRenderTable(this.value)" style="margin-bottom:16px">
+      <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
+        <table class="adm-table" id="bpTable">
+          <thead style="position:sticky;top:0;background:var(--panel2)">
+            <tr><th>Code ECC</th><th>Business Partner</th><th>Nom</th><th>Contract Account</th></tr>
+          </thead>
+          <tbody id="bpTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ UPLOAD TAB ============ -->
+  <div id="tab-upload" class="hid">
+    <div class="cd" style="border-left:3px solid var(--glow)">
+      <div class="ct"><span class="dot"></span> Synchronisation OneDrive</div>
+      <p style="font-size:13.5px;color:var(--txt2);line-height:1.7;margin-bottom:16px">
+        Partagez comptes, Business Partners, Contract Accounts et brouillons avec l'&eacute;quipe via un fichier <b class="mono">ivan_data.json</b> dans votre dossier <b class="mono">IVAN_Sync/</b> OneDrive.<br>
+        <b style="color:var(--frost)">Exporter</b> = sauvegarder vos donn&eacute;es vers le fichier. <b style="color:var(--frost)">Importer</b> = charger les donn&eacute;es de l'&eacute;quipe.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <button class="bt bt-ice" onclick="exportData()">&#11015; Exporter les donn&eacute;es (JSON)</button>
+        <button class="bt bt-ghost" onclick="document.getElementById('importDataInput').click()">&#11014; Importer les donn&eacute;es</button>
+        <input type="file" id="importDataInput" accept=".json" style="display:none" onchange="importData(this.files[0])">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt2);cursor:pointer">
+          <input type="checkbox" id="syncReminder" style="width:16px;height:16px"> Me rappeler d'exporter en quittant
+        </label>
+      </div>
+      <div id="syncStatus" style="margin-top:12px;font-size:12px"></div>
+    </div>
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Import 1 &mdash; Ajouter des Business Partners</div>
+      <p style="font-size:13.5px;color:var(--txt2);line-height:1.7;margin-bottom:16px">
+        Importez un fichier (Excel/CSV) avec colonnes <b>Code ECC</b>, <b>Business Partner</b>, <b>Nom</b> pour enrichir la base.
+        Les nouveaux BP s'ajoutent &agrave; ceux existants (les doublons sont mis &agrave; jour).
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+        <button class="bt bt-ghost" onclick="bpTemplate()">&#11015; Mod&egrave;le BP</button>
+      </div>
+      <div class="drop-zone" id="bpUploadDrop" onclick="document.getElementById('bpUploadInput').click()">
+        <div style="font-size:34px;margin-bottom:8px">&#9819;</div>
+        <div style="font-size:14px;font-weight:600;color:var(--crystal)">Glissez le fichier Business Partners ici</div>
+        <div style="font-size:12px;color:var(--txt3);margin-top:4px">colonnes: Code ECC, Business Partner, Nom</div>
+        <input type="file" id="bpUploadInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="bpUpload(this.files[0])">
+      </div>
+      <div id="bpUploadResult" style="margin-top:14px;font-size:13px"></div>
+    </div>
+
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Import 2 &mdash; Rattacher des Contract Accounts</div>
+      <p style="font-size:13.5px;color:var(--txt2);line-height:1.7;margin-bottom:16px">
+        Importez un fichier (Excel/CSV) avec colonnes <b>Business Partner</b> (ou <b>Code ECC</b>) et <b>Contract Account</b>
+        pour rattacher automatiquement les comptes contractuels. Une fois rattach&eacute;, le Contract Account se remplit tout seul en facturation.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+        <button class="bt bt-ghost" onclick="caTemplate()">&#11015; Mod&egrave;le Contract Account</button>
+      </div>
+      <div class="drop-zone" id="caUploadDrop" onclick="document.getElementById('caUploadInput').click()">
+        <div style="font-size:34px;margin-bottom:8px">&#128279;</div>
+        <div style="font-size:14px;font-weight:600;color:var(--crystal)">Glissez le fichier Contract Accounts ici</div>
+        <div style="font-size:12px;color:var(--txt3);margin-top:4px">colonnes: Business Partner (ou Code ECC), Contract Account</div>
+        <input type="file" id="caUploadInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="caUpload(this.files[0])">
+      </div>
+      <div id="caUploadResult" style="margin-top:14px;font-size:13px"></div>
+    </div>
+  </div>
+
+  <!-- ============ ACCOUNTS TAB (manager only) ============ -->
+  <div id="tab-accounts" class="hid">
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Gestion des comptes</div>
+      <p style="font-size:13.5px;color:var(--txt2);margin-bottom:18px">Ajoutez ou supprimez des comptes utilisateurs. R&ocirc;le <b>Manager</b> = acc&egrave;s complet, <b>Agent</b> = facturation seulement.</p>
+      <div class="grid g3" style="margin-bottom:16px">
+        <div class="fld"><label>Nom d'utilisateur</label><input class="ip" id="newUser" placeholder="prenom.nom"></div>
+        <div class="fld"><label>Mot de passe</label><input class="ip" id="newPass" placeholder="mot de passe"></div>
+        <div class="fld"><label>R&ocirc;le</label><select class="ip" id="newRole"><option value="agent">Agent</option><option value="manager">Manager</option></select></div>
+      </div>
+      <button class="bt bt-ice" onclick="addAccount()">&#43; Cr&eacute;er le compte</button>
+      <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--ice-line)">
+        <div style="font-size:12px;color:var(--txt2);margin-bottom:8px">Espace de stockage : <span id="storageInfo" class="mono" style="color:var(--frost)">&mdash;</span></div>
+        <button class="bt bt-ghost" style="font-size:12px;padding:8px 14px" onclick="cleanStorage()">&#9851; Nettoyer le stockage (garde comptes &amp; donn&eacute;es)</button>
+      </div>
+    </div>
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Comptes existants</div>
+      <table class="adm-table">
+        <thead><tr><th>Utilisateur</th><th>R&ocirc;le</th><th>Action</th></tr></thead>
+        <tbody id="accountsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ DRAFTS TAB ============ -->
+  <div id="tab-drafts" class="hid">
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Brouillons Export</div>
+      <p style="font-size:12.5px;color:var(--txt2);margin-bottom:14px">Factures export sauvegard&eacute;es. Cliquez pour reprendre.</p>
+      <div id="draftsExport"></div>
+    </div>
+    <div class="cd">
+      <div class="ct"><span class="dot" style="background:var(--warn);box-shadow:0 0 10px var(--warn)"></span> Brouillons Import</div>
+      <p style="font-size:12.5px;color:var(--txt2);margin-bottom:14px">Factures import sauvegard&eacute;es. Cliquez pour reprendre.</p>
+      <div id="draftsImport"></div>
+    </div>
+  </div>
+
+  <!-- ============ QUEUE TAB ============ -->
+  <div id="tab-queue" class="hid">
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> File de g&eacute;n&eacute;ration</div>
+      <p style="font-size:13.5px;color:var(--txt2);line-height:1.7;margin-bottom:16px">
+        Ajoutez plusieurs factures &agrave; la file depuis l'onglet Facturation, puis t&eacute;l&eacute;chargez-les toutes ici (chaque facture = un fichier CSV, group&eacute;s en ZIP).
+      </p>
+      <div id="queueList"></div>
+      <div id="queueActions" style="display:none;margin-top:16px;gap:12px;flex-wrap:wrap">
+        <button class="bt bt-ice" onclick="downloadQueue()">&#11015; T&eacute;l&eacute;charger en ZIP</button>
+        <button class="bt bt-ghost" onclick="downloadQueueIndividual()">&#11015; T&eacute;l&eacute;charger individuellement</button>
+        <button class="bt bt-ghost" onclick="clearQueue()">Vider la file</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ AIDE TAB ============ -->
+  <div id="tab-aide" class="hid">
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Mode d'emploi &mdash; Facturation S/4HANA</div>
+      <div style="font-size:13.5px;color:var(--txt);line-height:1.8">
+        <div style="background:var(--void);border-radius:10px;padding:16px 18px;margin-bottom:14px;border-left:3px solid var(--glow)">
+          <strong style="color:var(--frost)">&#10052; Principe :</strong> IVAN S4 g&eacute;n&egrave;re le fichier <b>CSV extract</b> au format exact attendu par S/4HANA. Vous l'uploadez via la transaction <b>FKKBIXBIT_upload</b>.
+        </div>
+        <ol style="padding-left:22px;line-height:2">
+          <li>R&eacute;cup&eacute;rez le <b>Business Partner</b> (tapez l'ancien code client, IVAN le trouve) et le <b>Contract Account</b></li>
+          <li>Choisissez le <b>type de facture</b></li>
+          <li>Ajoutez vos <b>lignes de charges</b> (charge code + quantit&eacute; + tarif)</li>
+          <li>Renseignez les <b>champs obligatoires</b> (marqu&eacute;s <span style="color:var(--frost)">*</span>)</li>
+          <li>Cliquez <b>G&eacute;n&eacute;rer le fichier (CSV)</b></li>
+          <li>Dans S/4HANA : <b>FKKBIXBIT_upload</b> &rarr; Source &rarr; attachez le CSV &rarr; <b>Read</b> &rarr; <b>Load</b></li>
+          <li>Quand tout est vert, cliquez <b>Billing Documents</b> pour obtenir le num&eacute;ro</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+<script>
+function downloadCSV(content, filename){
+  var blob = new Blob([content], {type:"text/csv;charset=utf-8"});
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+</script>
+<script>
+// ============ EMBEDDED DATA ============
+var BP_SEED = {};
+var CHARGES = [];
+var INV_TYPES = [];
+var $ = function(id){return document.getElementById(id);};
+
+// ===== SERVER API (secret logic on server) =====
+var API_BASE = "/api";
+function apiCall(endpoint, opts){
+  opts = opts || {};
+  return fetch(API_BASE + endpoint, {
+    method: opts.method || "GET",
+    headers: opts.body ? {"Content-Type":"application/json"} : {},
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    cache: "no-store"
+  }).then(function(r){
+    if(r.status === 403){ var e = new Error("blocked"); e.blocked = true; throw e; }
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  });
+}
+function showBlocked(){
+  if($("licenseBlock")) return;
+  var ov = document.createElement("div");
+  ov.id = "licenseBlock";
+  ov.style.cssText = "position:fixed;inset:0;z-index:9999;background:var(--void);display:flex;align-items:center;justify-content:center;padding:20px";
+  ov.innerHTML = '<div style="max-width:440px;text-align:center;background:var(--grad-panel);border:1px solid var(--err);border-radius:20px;padding:44px 38px;box-shadow:0 24px 80px rgba(0,0,0,.6)">'+
+    '<div style="font-size:46px;margin-bottom:16px">&#128274;</div>'+
+    '<h2 style="font-size:22px;font-weight:800;color:var(--err);margin-bottom:12px">Application d\u00e9sactiv\u00e9e</h2>'+
+    '<p style="font-size:14px;color:var(--txt2);line-height:1.7">Cette application a \u00e9t\u00e9 d\u00e9sactiv\u00e9e ou n\'est pas accessible. Veuillez contacter le fournisseur.</p>'+
+    '<div style="font-size:12px;color:var(--txt3);margin-top:20px;letter-spacing:1px">IVAN S4 &middot; MAERSK C\u00d4TE D\u0027IVOIRE</div></div>';
+  document.body.appendChild(ov);
+}
+
+// ============ STORAGE KEYS ============
+var K_USERS = "ivans4_users";
+var K_SESSION = "ivans4_session";
+var K_BP = "ivans4_bp";          // merged BP database (seed + uploads)
+var K_CA = "ivans4_ca";          // contract account mapping: bp -> ca
+
+// ============ DATA STATE ============
+var BP_DB = {};   // ecc -> "bp|name"
+var CA_MAP = {};  // bp -> contractAccount
+var curUser = null;
+
+// ============ LOGIN ============
+function getUsers(){
+  var DEFAULT_MGR = {user:"ivan", pass:"ivan2026", role:"manager"};
+  var users = [];
+  var u = localStorage.getItem(K_USERS);
+  if(u){
+    try{ users = JSON.parse(u); }catch(e){ users = []; }
+  }
+  if(!Array.isArray(users)) users = [];
+  // Remove any null/invalid entries first (defends against corrupted storage)
+  users = users.filter(function(x){ return x && typeof x==="object" && x.user; });
+  // ALWAYS guarantee the default manager account exists (recovery safety net)
+  var hasIvan = false;
+  for(var i=0;i<users.length;i++){
+    if(String(users[i].user).toLowerCase()==="ivan"){ hasIvan = true; break; }
+  }
+  if(!hasIvan){ users.push(DEFAULT_MGR); }
+  try{ localStorage.setItem(K_USERS, JSON.stringify(users)); }catch(e){}
+  return users;
+}
+function saveUsers(arr){ localStorage.setItem(K_USERS, JSON.stringify(arr)); }
+
+// ONEDRIVE (Mark II style - simulated connect for local sync folder awareness)
+function loginConnectOneDrive(){
+  var st = $("loginSyncStatus");
+  if(st){
+    st.style.display = "block";
+    st.style.color = "var(--ok)";
+    st.innerHTML = "&#10003; OneDrive connect&eacute; &mdash; ouverture...";
+  }
+  try{ localStorage.setItem("ivans4_onedrive","1"); }catch(e){}
+  // Direct transition, no nested timeouts (more reliable on file:// pages in Edge)
+  setTimeout(goToLoginStep2, 500);
+}
+function skipOneDrive(){
+  localStorage.setItem("ivans4_onedrive","0");
+  goToLoginStep2();
+}
+function goToLoginStep2(){
+  var s1 = $("loginStep1"), s2 = $("loginStep2");
+  if(s1) s1.style.display = "none";
+  if(s2) s2.style.display = "block";
+  var f = $("loginUser"); if(f){ try{ f.focus(); }catch(e){} }
+}
+
+function doLogin(){
+  var uEl = $("loginUser"), pEl = $("loginPass"), err = $("loginErr");
+  if(!uEl || !pEl){ return; }
+  var u = uEl.value.trim();
+  var p = pEl.value;
+  if(!u || !p){
+    if(err){ err.textContent = "Entrez votre nom d'utilisateur et mot de passe."; err.classList.add("show"); }
+    return;
+  }
+  if(err){ err.classList.remove("show"); }
+  // Authenticate against the SERVER (works from any PC)
+  apiCall("/store", {method:"POST", body:{action:"login", user:u, pass:p}}).then(function(res){
+    if(res.ok && res.user){
+      curUser = res.user;
+      try{ localStorage.setItem(K_SESSION, JSON.stringify(curUser)); }catch(e){}
+      startApp();
+    } else {
+      if(err){ err.textContent = res.error || "Nom d'utilisateur ou mot de passe incorrect."; err.classList.add("show"); }
+    }
+  }).catch(function(e){
+    if(e && e.blocked){ showBlocked(); return; }
+    if(err){ err.textContent = "Erreur de connexion au serveur."; err.classList.add("show"); }
+  });
+}
+function doLogout(){
+  localStorage.removeItem(K_SESSION);
+  curUser = null;
+  $("loginScreen").style.display = "flex";
+  // Reset to step 2 directly (OneDrive already known) for faster re-login
+  $("loginStep1").style.display = "none";
+  $("loginStep2").style.display = "block";
+  var lu=$("loginUser"), lp=$("loginPass"), le=$("loginErr");
+  if(lu) lu.value = ""; if(lp) lp.value = "";
+  if(le) le.classList.remove("show");
+}
+function checkSession(){
+  var s = localStorage.getItem(K_SESSION);
+  if(s){
+    try{ curUser = JSON.parse(s); return true; }catch(e){ return false; }
+  }
+  return false;
+}
+
+// ============ ACCOUNTS (manager) ============
+function renderAccounts(){
+  var body = $("accountsBody");
+  if(!body) return;
+  body.innerHTML = '<tr><td colspan="3" style="padding:16px;text-align:center;color:var(--txt3)">Chargement...</td></tr>';
+  var myName = (curUser && curUser.user) ? curUser.user : "";
+  apiCall("/store?action=users").then(function(res){
+    var users = (res.users||[]).filter(function(x){ return x && x.user; });
+    body.innerHTML = users.map(function(u){
+      var roleBadge = u.role==="manager" ? '<span class="role-badge role-mgr">Manager</span>' : '<span class="role-badge role-agent">Agent</span>';
+      var isMe = String(u.user)===String(myName);
+      var delBtn = isMe ? '<span style="color:var(--txt3);font-size:12px">(vous)</span>'
+        : (String(u.user).toLowerCase()==="ivan" ? '<span style="color:var(--txt3);font-size:12px">&mdash;</span>' : '<button class="bt-del" onclick="delAccount(\''+u.user+'\')">&#128465; Supprimer</button>');
+      return '<tr><td style="font-weight:600">'+u.user+'</td><td>'+roleBadge+'</td><td>'+delBtn+'</td></tr>';
+    }).join("");
+  }).catch(function(e){
+    if(e&&e.blocked){ showBlocked(); return; }
+    body.innerHTML = '<tr><td colspan="3" style="padding:16px;text-align:center;color:var(--err)">Erreur de connexion</td></tr>';
+  });
+}
+function addAccount(){
+  var uEl=$("newUser"), pEl=$("newPass"), rEl=$("newRole");
+  if(!uEl||!pEl||!rEl){ return; }
+  var u = String(uEl.value||"").trim();
+  var p = String(pEl.value||"");
+  var r = rEl.value || "agent";
+  if(!u || !p){ showToast("Nom et mot de passe requis","err"); return; }
+  apiCall("/store", {method:"POST", body:{action:"adduser", user:u, pass:p, role:r}}).then(function(res){
+    if(res.ok){
+      uEl.value=""; pEl.value="";
+      showToast("Compte cr\u00e9\u00e9 : "+u,"ok");
+      renderAccounts();
+    } else {
+      showToast(res.error||"Erreur","err");
+    }
+  }).catch(function(e){
+    if(e&&e.blocked){ showBlocked(); return; }
+    showToast("Erreur de connexion au serveur","err");
+  });
+}
+function delAccount(user){
+  if(!confirm("Supprimer le compte "+user+" ?")) return;
+  apiCall("/store", {method:"POST", body:{action:"deluser", user:user}}).then(function(res){
+    if(res.ok){ renderAccounts(); showToast("Compte supprim\u00e9","ok"); }
+    else { showToast(res.error||"Erreur","err"); }
+  }).catch(function(e){
+    if(e&&e.blocked){ showBlocked(); return; }
+    showToast("Erreur de connexion","err");
+  });
+}
+
+// ============ BP / CA DATA ============
+var BP_EXTRA = {};  // only uploaded BPs (NOT the seed) - keeps localStorage tiny
+function loadData(){
+  // Aggressive cleanup of oversized residual data from older versions that fills the quota.
+  // The seed BP DB lives in the HTML, so any large copy in storage is junk we can purge.
+  try{
+    // Remove the old full-DB key entirely (always - it should never be in storage)
+    localStorage.removeItem(K_BP);
+    // If bp_extra accidentally holds the full DB (huge), purge it
+    var ex = localStorage.getItem("ivans4_bp_extra");
+    if(ex && ex.length > 200000){ localStorage.removeItem("ivans4_bp_extra"); }
+    // Trim queue/drafts if they somehow ballooned (safety)
+    var q = localStorage.getItem(K_QUEUE);
+    if(q && q.length > 1500000){ localStorage.removeItem(K_QUEUE); }
+    var dr = localStorage.getItem(K_DRAFTS);
+    if(dr && dr.length > 1500000){ localStorage.removeItem(K_DRAFTS); }
+  }catch(e){}
+  // Load only the EXTRA uploaded BPs (small)
+  BP_EXTRA = {};
+  var stored = localStorage.getItem("ivans4_bp_extra");
+  if(stored){
+    try{ BP_EXTRA = JSON.parse(stored); }catch(e){ BP_EXTRA = {}; }
+  }
+  // Build the in-memory DB: seed (from HTML) + extras (from storage). NOT persisted merged.
+  BP_DB = {};
+  for(var ecc in BP_SEED){ BP_DB[ecc] = BP_SEED[ecc]; }
+  for(var ecc2 in BP_EXTRA){ BP_DB[ecc2] = BP_EXTRA[ecc2]; }
+  // CA mapping (small)
+  var ca = localStorage.getItem(K_CA);
+  if(ca){ try{ CA_MAP = JSON.parse(ca); }catch(e){ CA_MAP = {}; } }
+}
+function saveBP(){
+  // Persist ONLY the extras (uploaded), never the full seed - keeps storage small
+  try{ localStorage.setItem("ivans4_bp_extra", JSON.stringify(BP_EXTRA)); }catch(e){ showToast("Stockage plein - impossible de sauver les BP","err"); }
+}
+function saveCA(){ try{ localStorage.setItem(K_CA, JSON.stringify(CA_MAP)); }catch(e){ showToast("Stockage plein","err"); } }
+
+// ============ APP START ============
+function startApp(){
+  $("loginScreen").style.display = "none";
+  $("curUser").textContent = curUser.user;
+  $("curRole").textContent = curUser.role==="manager" ? "Manager" : "Agent";
+  // Show manager-only tabs
+  document.querySelectorAll('[data-mgr="1"]').forEach(function(el){
+    el.style.display = (curUser.role==="manager") ? "" : "none";
+  });
+  loadData();
+  loadQueue();
+  loadDraftsFromServer();
+  initApp();
+}
+
+function initApp(){
+  var d = new Date();
+  apiCall("/data?action=invtypes").then(function(res){
+    var sel = $("invType");
+    if(sel.options.length===0 && res.types){
+      res.types.forEach(function(t){
+        var o = document.createElement("option");
+        o.value = t.sub; o.textContent = t.name + " (" + t.sub + ")";
+        sel.appendChild(o);
+      });
+      updSubprocess();
+    }
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+  apiCall("/data?action=bpcount").then(function(res){
+    if(res.count!=null && $("bpCount")) $("bpCount").textContent = res.count.toLocaleString("fr-FR");
+  }).catch(function(){});
+  if($("chargeLines").children.length===0) addChargeLine();
+  $("sailingDate").value = d.getFullYear() + ("0"+(d.getMonth()+1)).slice(-2) + ("0"+d.getDate()).slice(-2);
+}
+
+function sw(t){
+  ["invoice","echange","batch","drafts","queue","bp","upload","accounts","aide"].forEach(function(x){
+    var el = $("tab-"+x); if(el) el.classList.toggle("hid", x!==t);
+    var tb = document.querySelector('.tab[data-tab="'+x+'"]'); if(tb) tb.classList.toggle("on", x===t);
+  });
+  if(t==="echange") initEchange();
+  if(t==="bp") bpRenderTable("");
+  if(t==="accounts"){ renderAccounts(); updStorageInfo(); }
+  if(t==="drafts") loadDraftsFromServer(renderDrafts);
+  if(t==="queue") loadQueue();
+}
+
+function updSubprocess(){ $("subprocess").value = $("invType").value; }
+
+// ============ BP AUTOCOMPLETE ============
+var bpAcMatches = [];
+function bpSearch(q){
+  q = (q||"").trim();
+  var list = $("bpAcList");
+  if(q.length < 2){ list.classList.remove("show"); return; }
+  bpAcMatches = [];
+  var qU = q.toUpperCase();
+  for(var ecc in BP_EXTRA){
+    if(ecc.toUpperCase().indexOf(qU) >= 0){
+      var parts = BP_EXTRA[ecc].split("|");
+      bpAcMatches.push({ecc:ecc, bp:parts[0], name:parts[1]||""});
+    }
+  }
+  apiCall("/data?action=bp&q=" + encodeURIComponent(q)).then(function(res){
+    var seen = {};
+    bpAcMatches.forEach(function(m){ seen[m.ecc]=1; });
+    (res.results||[]).forEach(function(m){ if(!seen[m.ecc]) bpAcMatches.push(m); });
+    if(bpAcMatches.length === 0){ list.classList.remove("show"); return; }
+    list.innerHTML = bpAcMatches.slice(0,30).map(function(m,i){
+      return '<div class="ac-item" onclick="bpPick('+i+')"><span class="code">'+m.ecc+'</span> &rarr; <span class="code">'+m.bp+'</span><div class="nm">'+m.name+'</div></div>';
+    }).join("");
+    list.classList.add("show");
+  }).catch(function(e){
+    if(e && e.blocked){ showBlocked(); return; }
+    if(bpAcMatches.length){
+      list.innerHTML = bpAcMatches.slice(0,30).map(function(m,i){
+        return '<div class="ac-item" onclick="bpPick('+i+')"><span class="code">'+m.ecc+'</span> &rarr; <span class="code">'+m.bp+'</span><div class="nm">'+m.name+'</div></div>';
+      }).join("");
+      list.classList.add("show");
+    }
+  });
+}
+function bpPick(i){
+  var m = bpAcMatches[i];
+  $("eccCode").value = m.ecc;
+  $("bpNum").value = m.bp;
+  $("clientName").value = m.name;
+  // Auto-fill contract account if mapped
+  if(CA_MAP[m.bp]){ $("contractAcc").value = CA_MAP[m.bp]; }
+  $("bpAcList").classList.remove("show");
+}
+document.addEventListener("click", function(e){
+  if(!e.target.closest(".ac-wrap")) { var l=$("bpAcList"); if(l) l.classList.remove("show"); }
+});
+
+// ============ BP TABLE ============
+function bpRenderTable(q){
+  q = (q||"").trim();
+  var body = $("bpTableBody");
+  if(!body) return;
+  if(q.length < 2){
+    body.innerHTML = '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--txt3)">Tapez au moins 2 caract&egrave;res pour rechercher</td></tr>';
+    return;
+  }
+  var rows = [];
+  var qU = q.toUpperCase();
+  for(var ecc in BP_EXTRA){
+    var parts = BP_EXTRA[ecc].split("|");
+    if(ecc.toUpperCase().indexOf(qU)>=0 || (parts[1]||"").toUpperCase().indexOf(qU)>=0){
+      var ca = CA_MAP[parts[0]] || "";
+      rows.push('<tr><td class="mono" style="color:var(--frost)">'+ecc+'</td><td class="mono">'+parts[0]+'</td><td style="color:var(--txt2)">'+(parts[1]||"")+'</td><td class="mono" style="color:'+(ca?"var(--ok)":"var(--txt3)")+'">'+(ca||"&mdash;")+'</td></tr>');
+    }
+  }
+  apiCall("/data?action=bp&q=" + encodeURIComponent(q)).then(function(res){
+    (res.results||[]).forEach(function(m){
+      var ca = CA_MAP[m.bp] || "";
+      rows.push('<tr><td class="mono" style="color:var(--frost)">'+m.ecc+'</td><td class="mono">'+m.bp+'</td><td style="color:var(--txt2)">'+m.name+'</td><td class="mono" style="color:'+(ca?"var(--ok)":"var(--txt3)")+'">'+(ca||"&mdash;")+'</td></tr>');
+    });
+    body.innerHTML = rows.join("") || '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--txt3)">Aucun r&eacute;sultat</td></tr>';
+  }).catch(function(e){
+    if(e&&e.blocked){ showBlocked(); return; }
+    body.innerHTML = rows.join("") || '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--txt3)">Erreur de connexion</td></tr>';
+  });
+}
+
+// ============ CHARGE LINES ============
+var chargeLineId = 0;
+function addChargeLine(){
+  var id = "cl_" + (chargeLineId++);
+  var div = document.createElement("div");
+  div.className = "line-row";
+  div.id = id;
+  div.innerHTML =
+    '<div class="fld ac-wrap"><label>Charge code / description</label>'+
+      '<input class="ip" placeholder="Tapez pour chercher..." autocomplete="off" oninput="chSearch(this,\''+id+'\')" onfocus="chSearch(this,\''+id+'\')">'+
+      '<input type="hidden" class="ch-code"><input type="hidden" class="ch-bit"><input type="hidden" class="ch-desc">'+
+      '<div class="ac-list ch-aclist"></div></div>'+
+    '<div class="fld"><label>Quantit&eacute;</label><input class="ip mono ch-qty" type="number" value="1" min="0" step="any" oninput="updInvSummary()"></div>'+
+    '<div class="fld"><label>Tarif</label><input class="ip mono ch-rate" type="number" value="0" min="0" step="any" oninput="updInvSummary()"></div>'+
+    '<div class="fld"><label>Montant</label><input class="ip mono ch-amount" readonly value="0"></div>'+
+    '<button class="del" onclick="delChargeLine(\''+id+'\')" title="Supprimer">&#10005;</button>';
+  $("chargeLines").appendChild(div);
+}
+function delChargeLine(id){ var el=$(id); if(el) el.remove(); updInvSummary(); }
+var chMatches = {};
+function chSearch(input, rowId){
+  var q = input.value.trim();
+  var row = $(rowId);
+  var list = row.querySelector(".ch-aclist");
+  if(q.length < 2){ list.classList.remove("show"); return; }
+  apiCall("/data?action=charges&q=" + encodeURIComponent(q)).then(function(res){
+    var matches = res.results || [];
+    chMatches[rowId] = matches;
+    if(matches.length===0){ list.classList.remove("show"); return; }
+    list.innerHTML = matches.map(function(m,i){
+      return '<div class="ac-item" onclick="chPick(\''+rowId+'\','+i+')"><span class="code">'+m.c+'</span> '+m.t+'<div class="nm">BIT: '+m.b+' &middot; '+m.o+'</div></div>';
+    }).join("");
+    list.classList.add("show");
+  }).catch(function(e){
+    if(e && e.blocked){ showBlocked(); return; }
+    list.classList.remove("show");
+  });
+}
+function chPick(rowId, i){
+  var m = chMatches[rowId][i];
+  var row = $(rowId);
+  row.querySelector("input.ip").value = m.c + " - " + m.t;
+  row.querySelector(".ch-code").value = m.c;
+  row.querySelector(".ch-bit").value = m.b;
+  row.querySelector(".ch-desc").value = m.t;
+  row.querySelector(".ch-aclist").classList.remove("show");
+  updInvSummary();
+}
+function updInvSummary(){
+  var rows = document.querySelectorAll(".line-row");
+  var total = 0, n = 0;
+  rows.forEach(function(r){
+    var qty = parseFloat(r.querySelector(".ch-qty").value)||0;
+    var rate = parseFloat(r.querySelector(".ch-rate").value)||0;
+    var amt = qty*rate;
+    r.querySelector(".ch-amount").value = amt.toLocaleString("fr-FR");
+    total += amt; n++;
+  });
+  $("invSummary").innerHTML = '<span class="pill pill-frost">'+n+' ligne(s)</span> &nbsp; Total: <b class="mono" style="color:var(--crystal)">'+total.toLocaleString("fr-FR")+' XOF</b>';
+}
+
+// ============ GENERATE ============
+function genInvoice(){
+  var v = validateInvoice();
+  var missing = v.errs.slice();
+  if(v.lines.length===0) missing.push("Au moins une ligne de charge valide");
+  if(missing.length){ showToast("Champs manquants : "+missing.join(", "), "err"); return; }
+  var data = collectInvoiceData(v.lines);
+  showToast("G\u00e9n\u00e9ration en cours...","ok");
+  apiCall("/generate", {method:"POST", body:{invoices:[data]}}).then(function(res){
+    if(res.ok && res.csv){
+      downloadCSV(res.csv, "IVAN_S4_" + data.bp + "_" + Date.now() + ".csv");
+      showToast("Fichier CSV g\u00e9n\u00e9r\u00e9","ok");
+    } else { showToast("Erreur: "+(res.error||"inconnue"),"err"); }
+  }).catch(function(e){
+    if(e && e.blocked){ showBlocked(); return; }
+    showToast("Erreur serveur: "+e.message,"err");
+  });
+}
+function collectInvoiceData(lines){
+  return {
+    subprocess: $("invType").value, bp: $("bpNum").value.trim(), contractAcc: $("contractAcc").value.trim(),
+    sailingDate: $("sailingDate").value.trim(), expImp: $("expImp").value, ubli: $("ubli").value.trim(),
+    bookingNum: $("bookingNum").value.trim(), reference: $("reference").value.trim(),
+    invGrouping: $("invGrouping").value.trim()||"1", clerkEmail: $("clerkEmail").value.trim(),
+    clerkName: $("clerkName").value.trim(), companyCode: $("companyCode").value.trim(),
+    businessArea: $("businessArea").value.trim(), profitCenter: $("profitCenter").value.trim(),
+    salesOffice: $("salesOffice").value.trim(), currency: $("currency").value.trim()||"XOF",
+    cbu: $("cbu").value.trim(), clientName: $("clientName").value.trim(), lines: lines
+  };
+}
+function resetInvoice(){
+  $("eccCode").value=""; $("bpNum").value=""; $("clientName").value=""; $("contractAcc").value="";
+  $("bookingNum").value=""; $("reference").value=""; $("clerkEmail").value=""; $("clerkName").value="";
+  $("chargeLines").innerHTML=""; chargeLineId=0; addChargeLine(); updInvSummary();
+  showToast("Formulaire r&eacute;initialis&eacute;","ok");
+}
+
+// ============ BP / CA UPLOAD ============
+function readSheet(file, cb){
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      var wb = XLSX.read(new Uint8Array(e.target.result), {type:"array"});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+      cb(rows);
+    }catch(err){ showToast("Erreur lecture: "+err.message,"err"); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function findCol(headerRow, names){
+  for(var i=0;i<headerRow.length;i++){
+    var h = String(headerRow[i]).toLowerCase().trim();
+    for(var j=0;j<names.length;j++){ if(h.indexOf(names[j])>=0) return i; }
+  }
+  return -1;
+}
+function bpUpload(file){
+  if(!file) return;
+  readSheet(file, function(rows){
+    if(rows.length<2){ showToast("Fichier vide","err"); return; }
+    var hdr = rows[0];
+    var iEcc = findCol(hdr, ["code ecc","ecc","ancien code","code client"]);
+    var iBp = findCol(hdr, ["business partner","bp","partner"]);
+    var iName = findCol(hdr, ["nom","name"]);
+    if(iEcc<0 || iBp<0){ showToast("Colonnes Code ECC + Business Partner requises","err"); return; }
+    var added=0, updated=0;
+    for(var r=1;r<rows.length;r++){
+      var ecc = String(rows[r][iEcc]||"").trim();
+      var bp = String(rows[r][iBp]||"").trim();
+      var name = iName>=0 ? String(rows[r][iName]||"").trim() : "";
+      if(!ecc || !bp) continue;
+      if(ecc in BP_DB) updated++; else added++;
+      BP_DB[ecc] = bp + "|" + name;
+      BP_EXTRA[ecc] = bp + "|" + name;
+    }
+    saveBP();
+    $("bpCount").textContent = Object.keys(BP_DB).length.toLocaleString("fr-FR");
+    $("bpUploadResult").innerHTML = '<span class="pill pill-ok">'+added+' ajout&eacute;(s)</span> <span class="pill pill-frost">'+updated+' mis &agrave; jour</span>';
+    showToast("Business Partners import&eacute;s","ok");
+  });
+}
+function caUpload(file){
+  if(!file) return;
+  readSheet(file, function(rows){
+    if(rows.length<2){ showToast("Fichier vide","err"); return; }
+    var hdr = rows[0];
+    var iBp = findCol(hdr, ["business partner","bp","partner"]);
+    var iEcc = findCol(hdr, ["code ecc","ecc","ancien code"]);
+    var iCa = findCol(hdr, ["contract account","contract","compte","ca"]);
+    if(iCa<0 || (iBp<0 && iEcc<0)){ showToast("Colonnes Business Partner (ou ECC) + Contract Account requises","err"); return; }
+    var linked=0, notfound=0;
+    for(var r=1;r<rows.length;r++){
+      var ca = String(rows[r][iCa]||"").trim();
+      if(!ca) continue;
+      var bp = "";
+      if(iBp>=0) bp = String(rows[r][iBp]||"").trim();
+      if(!bp && iEcc>=0){
+        var ecc = String(rows[r][iEcc]||"").trim();
+        if(ecc in BP_DB) bp = BP_DB[ecc].split("|")[0];
+      }
+      if(!bp){ notfound++; continue; }
+      CA_MAP[bp] = ca;
+      linked++;
+    }
+    saveCA();
+    $("caUploadResult").innerHTML = '<span class="pill pill-ok">'+linked+' rattach&eacute;(s)</span>' + (notfound? ' <span class="pill pill-err">'+notfound+' BP introuvable(s)</span>':'');
+    showToast("Contract Accounts rattach&eacute;s","ok");
+  });
+}
+function bpTemplate(){
+  var ws = XLSX.utils.aoa_to_sheet([["Code ECC","Business Partner","Nom"],["CI00999999","13999999","EXEMPLE CLIENT SARL"]]);
+  ws["!cols"]=[{wch:16},{wch:18},{wch:32}];
+  var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"BP");
+  var data=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+  downloadBlob(new Blob([data]),"MODELE_BUSINESS_PARTNERS.xlsx");
+}
+function caTemplate(){
+  var ws = XLSX.utils.aoa_to_sheet([["Business Partner","Code ECC","Contract Account"],["13999999","CI00999999","200010999999"]]);
+  ws["!cols"]=[{wch:18},{wch:16},{wch:18}];
+  var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"CA");
+  var data=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+  downloadBlob(new Blob([data]),"MODELE_CONTRACT_ACCOUNTS.xlsx");
+}
+function downloadBlob(blob, filename){
+  var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ============ BATCH ============
+var batchData = [];
+function batchTemplate(){
+  var headers = ["ECC Code","Business Partner","Contract Account","Subprocess","Charge Code","Charge Description","Quantity","Rate","Sailing Date (YYYYMMDD)","Export/Import (O/I)","Clerk Email","Clerk Name"];
+  var ex = ["CI00152913","13595340","200010718138","MIMN","100160","Storage - CY","2","11000","20260112","O","ivan.assani@maersk.com","IVAN ASSANI"];
+  var ws = XLSX.utils.aoa_to_sheet([headers, ex]);
+  ws["!cols"] = headers.map(function(){return {wch:18};});
+  var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "RECAP");
+  var data=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+  downloadBlob(new Blob([data]),"MODELE_RECAP_S4HANA.xlsx");
+}
+function batchLoad(file){
+  if(!file) return;
+  readSheet(file, function(rows){
+    var hi = -1;
+    for(var i=0;i<Math.min(rows.length,5);i++){
+      if(rows[i].some(function(c){return String(c).toLowerCase().indexOf("business partner")>=0;})){ hi=i; break; }
+    }
+    if(hi<0){ showToast("En-t&ecirc;te introuvable","err"); return; }
+    batchData = [];
+    for(var r=hi+1;r<rows.length;r++){
+      var row = rows[r];
+      if(!row[1] && !row[4]) continue;
+      batchData.push({
+        ecc:String(row[0]||"").trim(), bp:String(row[1]||"").trim(), contractAcc:String(row[2]||"").trim(),
+        subprocess:String(row[3]||"MIMN").trim(), chargeCode:String(row[4]||"").trim(), chargeDesc:String(row[5]||"").trim(),
+        qty:parseFloat(row[6])||1, rate:parseFloat(row[7])||0, sailingDate:String(row[8]||"").trim(),
+        expImp:String(row[9]||"O").trim(), clerkEmail:String(row[10]||"").trim(), clerkName:String(row[11]||"").trim()
+      });
+    }
+    var valid = batchData.filter(function(b){return b.bp&&b.chargeCode&&b.rate>0;}).length;
+    $("batchStats").innerHTML =
+      '<div class="stat"><div class="num">'+batchData.length+'</div><div class="lbl">Lignes totales</div></div>'+
+      '<div class="stat"><div class="num">'+valid+'</div><div class="lbl">Valides</div></div>'+
+      '<div class="stat"><div class="num">'+(batchData.length-valid)+'</div><div class="lbl">Erreurs</div></div>';
+    $("batchResults").classList.remove("hid");
+    showToast(batchData.length+" ligne(s) charg&eacute;e(s)","ok");
+  });
+}
+function batchGenerate(){
+  if(!batchData.length){ showToast("Aucune donn\u00e9e","err"); return; }
+  showToast("G\u00e9n\u00e9ration en cours...","ok");
+  var groups = {};
+  batchData.forEach(function(b){
+    if(!b.bp || !b.chargeCode || b.rate<=0) return;
+    var key = b.bp+"|"+b.contractAcc+"|"+b.subprocess;
+    if(!groups[key]){
+      groups[key] = {
+        subprocess:b.subprocess, bp:b.bp, contractAcc:b.contractAcc, sailingDate:b.sailingDate,
+        expImp:b.expImp, ubli:"MAEU", invGrouping:"1",
+        clerkEmail:b.clerkEmail, clerkName:b.clerkName, companyCode:"CI12", businessArea:"CI00",
+        profitCenter:"CI12ML01", salesOffice:"CI12", currency:"XOF", cbu:"", lines:[]
+      };
+    }
+    groups[key].lines.push({code:b.chargeCode, desc:b.chargeDesc, bit:"", qty:b.qty, rate:b.rate});
+  });
+  var invoices = Object.keys(groups).map(function(k){return groups[k];});
+  if(!invoices.length){ showToast("Aucune facture valide","err"); return; }
+
+  // Resolve BIT types via server, then generate each CSV via server
+  var codes = {};
+  invoices.forEach(function(inv){ inv.lines.forEach(function(l){ codes[l.code]=1; }); });
+  var codeList = Object.keys(codes);
+  var bitMap = {};
+  var pending = codeList.length;
+  if(pending===0){ doGen(); return; }
+  codeList.forEach(function(code){
+    apiCall("/data?action=bitfor&code=" + encodeURIComponent(code)).then(function(res){
+      bitMap[code] = res.bit || ""; pending--; if(pending===0) doGen();
+    }).catch(function(e){
+      if(e&&e.blocked){ showBlocked(); return; }
+      bitMap[code]=""; pending--; if(pending===0) doGen();
+    });
+  });
+  function doGen(){
+    invoices.forEach(function(inv){ inv.lines.forEach(function(l){ l.bit = bitMap[l.code]||""; }); });
+    var zip = new JSZip();
+    var p = invoices.length;
+    invoices.forEach(function(inv){
+      apiCall("/generate", {method:"POST", body:{invoices:[inv]}}).then(function(r){
+        if(r.ok && r.csv) zip.file("IVAN_S4_"+inv.bp+"_"+inv.contractAcc+".csv", r.csv);
+        p--; if(p===0) finish();
+      }).catch(function(e){
+        if(e&&e.blocked){ showBlocked(); return; }
+        p--; if(p===0) finish();
+      });
+    });
+    function finish(){
+      zip.generateAsync({type:"blob"}).then(function(blob){
+        downloadBlob(blob, "IVAN_S4_BATCH_"+Date.now()+".zip");
+        showToast(invoices.length+" fichier(s) g\u00e9n\u00e9r\u00e9(s)","ok");
+      });
+    }
+  }
+}
+
+// ============ QUEUE (FILE) ============
+var K_QUEUE = "ivans4_queue";
+var invoiceQueue = [];
+function loadQueue(){
+  // Load shared queue from server
+  apiCall("/store?action=getqueue").then(function(res){
+    invoiceQueue = res.queue || [];
+    updQueueBadge();
+    if(typeof renderQueue==="function" && $("queueList")) renderQueue();
+  }).catch(function(e){
+    if(e&&e.blocked){ showBlocked(); return; }
+    invoiceQueue = []; updQueueBadge();
+  });
+}
+function saveQueue(){
+  apiCall("/store", {method:"POST", body:{action:"setqueue", queue:invoiceQueue}}).catch(function(e){
+    if(e&&e.blocked) showBlocked();
+  });
+  updQueueBadge();
+}
+function updQueueBadge(){
+  var b = $("queueBadge");
+  if(!b) return;
+  if(invoiceQueue.length>0){ b.textContent = invoiceQueue.length; b.style.display = "inline-block"; }
+  else { b.style.display = "none"; }
+}
+function addToQueue(){
+  var missing = validateInvoice();
+  if(missing.lines.length===0 && missing.errs.length){ showToast("Champs manquants : "+missing.errs.join(", "),"err"); return; }
+  if(missing.errs.length){ showToast("Champs manquants : "+missing.errs.join(", "),"err"); return; }
+  var data = collectInvoiceData(missing.lines);
+  data._label = (data.clientName||data.bp) + " - " + data.subprocess;
+  data._ts = new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+  data._total = missing.lines.reduce(function(s,l){return s+l.qty*l.rate;},0);
+  invoiceQueue.push(data);
+  saveQueue();
+  showToast("Ajout&eacute; &agrave; la file ("+invoiceQueue.length+")","ok");
+  resetInvoice();
+}
+function renderQueue(){
+  var list = $("queueList");
+  if(invoiceQueue.length===0){
+    list.innerHTML = '<div style="text-align:center;color:var(--txt3);padding:30px;font-size:13px">La file est vide. Ajoutez des factures depuis l\'onglet Facturation.</div>';
+    $("queueActions").style.display = "none";
+    return;
+  }
+  list.innerHTML = invoiceQueue.map(function(q,i){
+    return '<div style="background:var(--void);border:1px solid var(--ice-line);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px">'+
+      '<div style="flex:1"><div style="font-weight:600;color:var(--crystal);font-size:14px">'+(q._label||q.bp)+'</div>'+
+      '<div style="font-size:12px;color:var(--txt2);margin-top:3px">BP '+q.bp+' &middot; CA '+q.contractAcc+' &middot; '+q.lines.length+' ligne(s) &middot; '+(q._total||0).toLocaleString("fr-FR")+' XOF</div></div>'+
+      '<div class="mono" style="font-size:11px;color:var(--txt3)">'+(q._ts||"")+'</div>'+
+      '<button class="bt bt-ghost" style="padding:7px 12px;font-size:12px" onclick="downloadQueueItem('+i+')" title="T\u00e9l\u00e9charger ce CSV">&#11015;</button>'+
+      '<button class="del" onclick="rmQueue('+i+')" title="Retirer">&#10005;</button></div>';
+  }).join("");
+  $("queueActions").style.display = "flex";
+}
+function rmQueue(i){ invoiceQueue.splice(i,1); saveQueue(); renderQueue(); }
+function clearQueue(){
+  if(!confirm("Vider toute la file ?")) return;
+  invoiceQueue = []; saveQueue(); renderQueue();
+  showToast("File vid&eacute;e","ok");
+}
+
+function downloadQueue(){
+  if(invoiceQueue.length===0){ showToast("File vide","err"); return; }
+  showToast("G\u00e9n\u00e9ration en cours...","ok");
+  var zip = new JSZip();
+  var pending = invoiceQueue.length;
+  invoiceQueue.forEach(function(inv, i){
+    apiCall("/generate", {method:"POST", body:{invoices:[inv]}}).then(function(res){
+      if(res.ok && res.csv){ zip.file("IVAN_S4_"+inv.bp+"_"+(i+1)+".csv", res.csv); }
+      pending--; if(pending===0){ finishZip(); }
+    }).catch(function(e){
+      if(e&&e.blocked){ showBlocked(); return; }
+      pending--; if(pending===0){ finishZip(); }
+    });
+  });
+  function finishZip(){
+    zip.generateAsync({type:"blob"}).then(function(blob){
+      downloadBlob(blob, "IVAN_S4_FILE_"+Date.now()+".zip");
+      showToast(invoiceQueue.length+" fichier(s) en ZIP","ok");
+    });
+  }
+}
+function downloadQueueIndividual(){
+  if(invoiceQueue.length===0){ showToast("File vide","err"); return; }
+  invoiceQueue.forEach(function(inv,i){
+    setTimeout(function(){
+      apiCall("/generate", {method:"POST", body:{invoices:[inv]}}).then(function(res){
+        if(res.ok && res.csv) downloadCSV(res.csv, "IVAN_S4_"+inv.bp+"_"+(i+1)+".csv");
+      }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+    }, i*400);
+  });
+  showToast(invoiceQueue.length+" t\u00e9l\u00e9chargement(s)","ok");
+}
+function downloadQueueItem(i){
+  var inv = invoiceQueue[i];
+  if(!inv){ showToast("Introuvable","err"); return; }
+  apiCall("/generate", {method:"POST", body:{invoices:[inv]}}).then(function(res){
+    if(res.ok && res.csv) downloadCSV(res.csv, "IVAN_S4_"+inv.bp+"_"+(i+1)+".csv");
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); else showToast("Erreur","err"); });
+}
+
+// ============ DRAFTS (BROUILLONS) ============
+var K_DRAFTS = "ivans4_drafts";
+var _draftsCache = [];
+function getDrafts(){ return _draftsCache; }
+function saveDraftsArr(arr){
+  _draftsCache = arr || [];
+  // Persist to server (shared across all PCs)
+  apiCall("/store", {method:"POST", body:{action:"setdrafts", drafts:_draftsCache}}).catch(function(e){
+    if(e&&e.blocked) showBlocked();
+  });
+}
+function loadDraftsFromServer(cb){
+  apiCall("/store?action=getdrafts").then(function(res){
+    _draftsCache = res.drafts || [];
+    if(cb) cb();
+  }).catch(function(e){
+    if(e&&e.blocked){ showBlocked(); return; }
+    _draftsCache = []; if(cb) cb();
+  });
+}
+function saveDraft(){
+  var v = validateInvoice();
+  if(v.lines.length===0){ showToast("Ajoutez au moins une ligne de charge avant de sauvegarder","err"); return; }
+  var data = collectInvoiceData(v.lines);
+  data._label = (data.clientName||data.bp) + " - " + data.subprocess;
+  data._date = new Date().toLocaleDateString("fr-FR");
+  data._bound = data.expImp;  // O=Export, I=Import
+  data._id = "d_" + Date.now();
+  var drafts = getDrafts();
+  drafts.push(data);
+  saveDraftsArr(drafts);
+  showToast("Brouillon "+(data.expImp==="O"?"Export":"Import")+" sauvegard&eacute;","ok");
+}
+function renderDrafts(){
+  var drafts = getDrafts();
+  var exp = drafts.filter(function(d){return d._bound==="O";});
+  var imp = drafts.filter(function(d){return d._bound==="I";});
+  $("draftsExport").innerHTML = renderDraftCards(exp, "Export");
+  $("draftsImport").innerHTML = renderDraftCards(imp, "Import");
+}
+function renderDraftCards(arr, label){
+  if(arr.length===0) return '<div style="text-align:center;color:var(--txt3);padding:20px;font-size:13px">Aucun brouillon '+label+'.</div>';
+  return arr.map(function(d){
+    return '<div style="background:var(--void);border:1px solid var(--ice-line);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px">'+
+      '<div style="flex:1;cursor:pointer" onclick="loadDraft(\''+d._id+'\')"><div style="font-weight:600;color:var(--crystal);font-size:14px">'+(d._label||d.bp)+'</div>'+
+      '<div style="font-size:12px;color:var(--txt2);margin-top:3px">BP '+d.bp+' &middot; '+d.lines.length+' ligne(s) &middot; '+d._date+'</div></div>'+
+      '<button class="bt bt-ghost" style="padding:8px 14px;font-size:12px" onclick="loadDraft(\''+d._id+'\')">Reprendre</button>'+
+      '<button class="del" onclick="delDraft(\''+d._id+'\')" title="Supprimer">&#10005;</button></div>';
+  }).join("");
+}
+function loadDraft(id){
+  var drafts = getDrafts();
+  var d = drafts.find(function(x){return x._id===id;});
+  if(!d){ showToast("Brouillon introuvable","err"); return; }
+  // Restore form
+  $("bpNum").value = d.bp||"";
+  $("contractAcc").value = d.contractAcc||"";
+  $("clientName").value = d.clientName||"";
+  $("eccCode").value = "";
+  $("sailingDate").value = d.sailingDate||"";
+  $("expImp").value = d.expImp||"O";
+  $("ubli").value = d.ubli||"MAEU";
+  $("bookingNum").value = d.bookingNum||"";
+  $("reference").value = d.reference||"";
+  $("invGrouping").value = d.invGrouping||"1";
+  $("clerkEmail").value = d.clerkEmail||"";
+  $("clerkName").value = d.clerkName||"";
+  $("companyCode").value = d.companyCode||"CI12";
+  $("businessArea").value = d.businessArea||"CI00";
+  $("profitCenter").value = d.profitCenter||"CI12ML01";
+  $("salesOffice").value = d.salesOffice||"CI12";
+  $("currency").value = d.currency||"XOF";
+  $("cbu").value = d.cbu||"";
+  // invType
+  for(var i=0;i<$("invType").options.length;i++){ if($("invType").options[i].value===d.subprocess){ $("invType").selectedIndex=i; break; } }
+  updSubprocess();
+  // charge lines
+  $("chargeLines").innerHTML=""; chargeLineId=0;
+  d.lines.forEach(function(line){
+    addChargeLine();
+    var rows = document.querySelectorAll(".line-row");
+    var row = rows[rows.length-1];
+    row.querySelector("input.ip").value = line.code + " - " + line.desc;
+    row.querySelector(".ch-code").value = line.code;
+    row.querySelector(".ch-bit").value = line.bit;
+    row.querySelector(".ch-desc").value = line.desc;
+    row.querySelector(".ch-qty").value = line.qty;
+    row.querySelector(".ch-rate").value = line.rate;
+  });
+  updInvSummary();
+  sw("invoice");
+  showToast("Brouillon charg&eacute;","ok");
+}
+function delDraft(id){
+  if(!confirm("Supprimer ce brouillon ?")) return;
+  var drafts = getDrafts().filter(function(x){return x._id!==id;});
+  saveDraftsArr(drafts);
+  renderDrafts();
+  showToast("Brouillon supprim&eacute;","ok");
+}
+
+// Shared validation helper
+function validateInvoice(){
+  var errs = [];
+  if(!$("bpNum").value.trim()) errs.push("Business Partner");
+  if(!$("contractAcc").value.trim()) errs.push("Contract Account");
+  if(!$("sailingDate").value.trim()) errs.push("Sailing Date");
+  if(!$("clerkEmail").value.trim()) errs.push("Clerk Email");
+  var lines = [];
+  document.querySelectorAll(".line-row").forEach(function(r){
+    var code = r.querySelector(".ch-code").value;
+    var desc = r.querySelector(".ch-desc").value;
+    var bit = r.querySelector(".ch-bit").value;
+    var qty = parseFloat(r.querySelector(".ch-qty").value)||0;
+    var rate = parseFloat(r.querySelector(".ch-rate").value)||0;
+    if(code && rate>0) lines.push({code:code,desc:desc,bit:bit,qty:qty,rate:rate});
+  });
+  return {errs:errs, lines:lines};
+}
+
+
+// ============ ONEDRIVE SYNC (Export/Import JSON) ============
+var SYNC_VERSION = "IVAN_S4_DATA_v1";
+function exportData(){
+  var bundle = {
+    _format: SYNC_VERSION,
+    _exportedBy: (curUser&&curUser.user)||"",
+    _exportedAt: new Date().toISOString(),
+    users: getUsers(),
+    bpExtra: BP_EXTRA,
+    caMap: CA_MAP,
+    drafts: getDrafts()
+  };
+  var json = JSON.stringify(bundle, null, 2);
+  var blob = new Blob([json], {type:"application/json"});
+  downloadBlob(blob, "ivan_data.json");
+  var st = $("syncStatus");
+  if(st){ st.style.color = "var(--ok)"; st.innerHTML = "&#10003; Donn&eacute;es export&eacute;es. Placez <b>ivan_data.json</b> dans votre dossier IVAN_Sync/ OneDrive."; }
+  showToast("Donn\u00e9es export\u00e9es","ok");
+}
+function importData(file){
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      var bundle = JSON.parse(e.target.result);
+      if(!bundle || bundle._format !== SYNC_VERSION){
+        if(!confirm("Ce fichier ne semble pas \u00eatre un export IVAN S4 valide. Importer quand m\u00eame ?")) return;
+      }
+      var summary = [];
+      // Merge users (managers can import accounts)
+      if(bundle.users && Array.isArray(bundle.users)){
+        if(curUser && curUser.role==="manager"){
+          var existing = getUsers();
+          var merged = existing.slice();
+          var addedU = 0;
+          bundle.users.forEach(function(nu){
+            if(!nu||!nu.user) return;
+            var found = merged.some(function(x){return x.user.toLowerCase()===nu.user.toLowerCase();});
+            if(!found){ merged.push(nu); addedU++; }
+          });
+          try{ localStorage.setItem(K_USERS, JSON.stringify(merged)); }catch(err){}
+          summary.push(addedU + " compte(s)");
+        }
+      }
+      // Merge BP extras
+      if(bundle.bpExtra && typeof bundle.bpExtra==="object"){
+        var addedBP = 0;
+        for(var ecc in bundle.bpExtra){
+          if(!(ecc in BP_EXTRA)) addedBP++;
+          BP_EXTRA[ecc] = bundle.bpExtra[ecc];
+          BP_DB[ecc] = bundle.bpExtra[ecc];
+        }
+        saveBP();
+        summary.push(addedBP + " BP");
+      }
+      // Merge CA map
+      if(bundle.caMap && typeof bundle.caMap==="object"){
+        var addedCA = 0;
+        for(var bp in bundle.caMap){
+          if(!(bp in CA_MAP)) addedCA++;
+          CA_MAP[bp] = bundle.caMap[bp];
+        }
+        saveCA();
+        summary.push(addedCA + " Contract Account(s)");
+      }
+      // Merge drafts
+      if(bundle.drafts && Array.isArray(bundle.drafts)){
+        var existingD = getDrafts();
+        var ids = {};
+        existingD.forEach(function(d){ if(d&&d._id) ids[d._id]=1; });
+        var addedD = 0;
+        bundle.drafts.forEach(function(d){
+          if(d && d._id && !ids[d._id]){ existingD.push(d); addedD++; }
+        });
+        saveDraftsArr(existingD);
+        summary.push(addedD + " brouillon(s)");
+      }
+      // Refresh UI
+      $("bpCount").textContent = Object.keys(BP_DB).length.toLocaleString("fr-FR");
+      try{ renderAccounts(); }catch(e){}
+      var st = $("syncStatus");
+      if(st){ st.style.color = "var(--ok)"; st.innerHTML = "&#10003; Import&eacute; : " + summary.join(", "); }
+      showToast("Donn\u00e9es import\u00e9es","ok");
+    }catch(err){
+      showToast("Erreur import : "+err.message,"err");
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Reminder to export on leaving (if checkbox enabled)
+window.addEventListener("beforeunload", function(e){
+  var cb = $("syncReminder");
+  if(cb && cb.checked){
+    e.preventDefault();
+    e.returnValue = "N'oubliez pas d'exporter vos donn\u00e9es vers OneDrive avant de quitter.";
+    return e.returnValue;
+  }
+});
+
+
+// ============ STORAGE MAINTENANCE ============
+function storageBytes(){
+  var total = 0;
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k = localStorage.key(i);
+      var v = localStorage.getItem(k);
+      total += (k.length + (v?v.length:0));
+    }
+  }catch(e){}
+  return total;
+}
+function updStorageInfo(){
+  var el = $("storageInfo");
+  if(!el) return;
+  var kb = (storageBytes()/1024).toFixed(0);
+  el.textContent = kb + " Ko utilis\u00e9s";
+  // Show each key size
+  var detail = [];
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k = localStorage.key(i);
+      var sz = (localStorage.getItem(k)||"").length;
+      if(sz > 10000) detail.push(k+": "+(sz/1024).toFixed(0)+"Ko");
+    }
+  }catch(e){}
+  if(detail.length) el.textContent += " (" + detail.join(", ") + ")";
+}
+function cleanStorage(){
+  if(!confirm("Nettoyer le stockage ?\n\nCela supprime les donn\u00e9es r\u00e9siduelles volumineuses mais GARDE vos comptes, brouillons et BP ajout\u00e9s.")) return;
+  try{
+    // Remove the big junk keys
+    localStorage.removeItem(K_BP);
+    var ex = localStorage.getItem("ivans4_bp_extra");
+    if(ex && ex.length > 200000) localStorage.removeItem("ivans4_bp_extra");
+    // Rebuild a clean compact version of everything essential
+    var users = getUsers();
+    localStorage.setItem(K_USERS, JSON.stringify(users));
+    showToast("Stockage nettoy\u00e9","ok");
+    updStorageInfo();
+  }catch(e){
+    // If even this fails, offer full reset
+    if(confirm("Le stockage est satur\u00e9. Tout r\u00e9initialiser ? (comptes seront remis par d\u00e9faut, pensez \u00e0 importer votre ivan_data.json ensuite)")){
+      try{ localStorage.clear(); }catch(e2){}
+      location.reload();
+    }
+  }
+}
+
+
+// ============ ÉCHANGE (CHB) MODULE ============
+var echSub = "echange";
+var echTemplates = null;     // loaded from server
+var echBpMatches = [];
+var echSelectedBp = null;
+
+function initEchange(){
+  // Show manager admin buttons
+  document.querySelectorAll('#tab-echange [data-mgr="1"]').forEach(function(el){
+    el.style.display = (curUser && curUser.role==="manager") ? "" : "none";
+  });
+  if(!echTemplates){
+    apiCall("/store?action=getchb").then(function(res){
+      echTemplates = res.templates;
+      renderEchCharges();
+    }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+  } else {
+    renderEchCharges();
+  }
+  if(!$("echSailing").value){
+    var d = new Date();
+    $("echSailing").value = d.getFullYear()+("0"+(d.getMonth()+1)).slice(-2)+("0"+d.getDate()).slice(-2);
+  }
+}
+
+function setEchSub(s){
+  echSub = s;
+  document.querySelectorAll(".ech-sub").forEach(function(b){
+    b.classList.toggle("on", b.getAttribute("data-sub")===s);
+  });
+  renderEchCharges();
+}
+
+function echCtx(){
+  return {
+    cnt: parseInt($("echCnt").value)||1,
+    teu: parseInt($("echTeu").value)||1,
+    weight: parseFloat($("echWeight").value)||0
+  };
+}
+
+function computeEchLines(){
+  if(!echTemplates || !echTemplates[echSub]) return [];
+  var ctx = echCtx();
+  return echTemplates[echSub].charges.map(function(ch){
+    var qty;
+    if(ch.base==="DOC") qty = ch.qty||1;
+    else if(ch.base==="CNT") qty = ctx.cnt;
+    else if(ch.base==="TEU") qty = ctx.teu;
+    else if(ch.base==="TO") qty = ctx.weight;
+    else qty = ch.qty||1;
+    var ht = qty * ch.rate;
+    var ta = ch.vat ? Math.round(ht*0.18) : 0;
+    return {d:ch.d, code:ch.code, bit:ch.bit, base:ch.base, qty:qty, rate:ch.rate, ht:ht, vat:ch.vat, ta:ta, ttc:ht+ta};
+  });
+}
+
+function renderEchCharges(){
+  var box = $("echChargesTable");
+  if(!box) return;
+  var lines = computeEchLines();
+  if(!lines.length){ box.innerHTML = '<div style="padding:16px;color:var(--txt3)">Chargement des charges...</div>'; return; }
+  var head = '<div class="ech-head"><div>Charge</div><div>Code S/4HANA</div><div>Base</div><div>Qt&eacute;</div><div>Taux</div><div>TVA</div></div>';
+  box.innerHTML = head + lines.map(function(l, i){
+    var codeWarn = !l.code ? ' ech-code-warn' : '';
+    var codeVal = l.code || '';
+    var codePlaceholder = l.code ? '' : '&#9888; code?';
+    return '<div class="ech-charge-row">'+
+      '<div>'+l.d+'</div>'+
+      '<div><input class="echCodeInput'+codeWarn+'" data-idx="'+i+'" value="'+codeVal+'" placeholder="'+(l.code?'':'à saisir')+'" onchange="updateEchCode('+i+',this.value)"></div>'+
+      '<div style="color:var(--txt3)">'+l.base+'</div>'+
+      '<div style="color:var(--txt2)">'+l.qty+'</div>'+
+      '<div style="color:var(--txt2)">'+fmtNum(l.rate)+'</div>'+
+      '<div style="color:'+(l.vat?'var(--ok)':'var(--txt3)')+'">'+(l.vat?'18%':'&mdash;')+'</div>'+
+    '</div>';
+  }).join("");
+  // Totals
+  var totHt = lines.reduce(function(s,l){return s+l.ht;},0);
+  var totTtc = lines.reduce(function(s,l){return s+l.ttc;},0);
+  var missingCodes = lines.filter(function(l){return !l.code;}).length;
+  $("echTotals").innerHTML =
+    '<div style="display:flex;justify-content:space-between"><span style="color:var(--txt2)">Total HT</span><span class="mono" style="color:var(--crystal)">'+fmtNum(totHt)+' XOF</span></div>'+
+    '<div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:var(--txt2)">Total TTC</span><span class="mono" style="color:var(--frost);font-weight:700">'+fmtNum(totTtc)+' XOF</span></div>'+
+    (missingCodes>0 ? '<div style="margin-top:8px;color:#fbbf24;font-size:12px">&#9888; '+missingCodes+' code(s) manquant(s) &mdash; &agrave; saisir avant g&eacute;n&eacute;ration</div>' : '');
+}
+
+function fmtNum(n){ return (n||0).toLocaleString("fr-FR"); }
+
+function updateEchCode(idx, val){
+  // Update the in-memory template code (session only; manager saves via admin)
+  if(echTemplates && echTemplates[echSub]){
+    echTemplates[echSub].charges[idx].code = val.trim();
+    renderEchCharges();
+  }
+}
+
+function echBpSearch(q){
+  q = (q||"").trim();
+  var list = $("echBpAc");
+  if(q.length<2){ list.classList.remove("show"); return; }
+  apiCall("/data?action=bp&q="+encodeURIComponent(q)).then(function(res){
+    echBpMatches = res.results||[];
+    if(!echBpMatches.length){ list.classList.remove("show"); return; }
+    list.innerHTML = echBpMatches.slice(0,30).map(function(m,i){
+      return '<div class="ac-item" onclick="echBpPick('+i+')"><span class="code">'+m.ecc+'</span> &rarr; <span class="code">'+m.bp+'</span><div class="nm">'+m.name+'</div></div>';
+    }).join("");
+    list.classList.add("show");
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+}
+function echBpPick(i){
+  var m = echBpMatches[i];
+  if(!m) return;
+  echSelectedBp = m;
+  $("echBp").value = m.ecc + " - " + m.name;
+  $("echBpAc").classList.remove("show");
+  // Auto-fill contract account if known
+  if(typeof CA_MAP!=="undefined" && CA_MAP[m.bp]) $("echContractAcc").value = CA_MAP[m.bp];
+}
+
+function collectEchData(){
+  var lines = computeEchLines();
+  // Convert to the invoice format expected by /generate
+  // Each charge line -> qty/rate/code/bit
+  var invLines = lines.map(function(l){
+    return {code:l.code, desc:l.d, bit:l.bit||"COFR", qty:l.qty, rate:l.rate};
+  });
+  return {
+    subprocess: "MIMN",  // standard import
+    bp: echSelectedBp ? echSelectedBp.bp : "",
+    contractAcc: $("echContractAcc").value.trim(),
+    sailingDate: $("echSailing").value.trim(),
+    expImp: "I",
+    ubli: "MAEU",
+    invGrouping: "1",
+    clerkEmail: $("echClerkEmail").value.trim(),
+    clerkName: $("echClerkName").value.trim(),
+    companyCode: "CI12", businessArea: "CI00", profitCenter: "CI12ML01",
+    salesOffice: "CI12", currency: "XOF", cbu: "",
+    _echType: echSub, _bl: $("echBl").value.trim(),
+    lines: invLines
+  };
+}
+
+function validateEch(){
+  var errs = [];
+  if(!echSelectedBp) errs.push("Code Payeur");
+  if(!$("echContractAcc").value.trim()) errs.push("Compte Contrat");
+  if(!$("echSailing").value.trim()) errs.push("Date sailing");
+  if(!$("echClerkEmail").value.trim()) errs.push("Email agent");
+  var lines = computeEchLines();
+  var missingCodes = lines.filter(function(l){return !l.code;});
+  if(missingCodes.length) errs.push(missingCodes.length+" code(s) charge manquant(s)");
+  return errs;
+}
+
+function genEchange(){
+  var errs = validateEch();
+  if(errs.length){ showToast("Manquant : "+errs.join(", "),"err"); return; }
+  var data = collectEchData();
+  showToast("G\u00e9n\u00e9ration en cours...","ok");
+  apiCall("/generate", {method:"POST", body:{invoices:[data]}}).then(function(res){
+    if(res.ok && res.csv){
+      downloadCSV(res.csv, "IVAN_S4_ECH_"+echSub.toUpperCase()+"_"+data.bp+"_"+Date.now()+".csv");
+      showToast("Fichier &Eacute;change g\u00e9n\u00e9r\u00e9","ok");
+    } else { showToast("Erreur: "+(res.error||"inconnue"),"err"); }
+  }).catch(function(e){
+    if(e&&e.blocked){ showBlocked(); return; }
+    showToast("Erreur serveur: "+e.message,"err");
+  });
+}
+
+function addEchToQueue(){
+  var errs = validateEch();
+  if(errs.length){ showToast("Manquant : "+errs.join(", "),"err"); return; }
+  var data = collectEchData();
+  invoiceQueue.push(data);
+  saveQueue();
+  showToast("Ajout\u00e9 \u00e0 la file","ok");
+}
+
+// CHB code administration (manager)
+function openChbAdmin(){
+  var card = $("chbAdminCard");
+  if(!card) return;
+  var showing = card.style.display!=="none";
+  card.style.display = showing ? "none" : "block";
+  if(!showing) renderChbAdmin();
+}
+function renderChbAdmin(){
+  var body = $("chbAdminBody");
+  if(!body || !echTemplates) return;
+  var html = "";
+  ["echange","transit","tbl"].forEach(function(sub){
+    if(!echTemplates[sub]) return;
+    html += '<div style="margin-bottom:18px"><div style="font-weight:700;color:var(--frost);margin-bottom:8px">'+echTemplates[sub].label+'</div>';
+    echTemplates[sub].charges.forEach(function(ch, i){
+      var warn = !ch.code ? ' ech-code-warn' : '';
+      html += '<div style="display:grid;grid-template-columns:1.4fr 0.8fr 0.7fr 0.9fr;gap:8px;margin-bottom:6px;align-items:center;font-size:12px">'+
+        '<div style="color:var(--txt2)">'+ch.d+'</div>'+
+        '<input class="ip'+warn+'" style="font-size:11px;padding:5px" value="'+(ch.code||"")+'" placeholder="code S/4HANA" onchange="setChbCode(\''+sub+'\','+i+',\'code\',this.value)">'+
+        '<input class="ip" style="font-size:11px;padding:5px" value="'+(ch.bit||"")+'" placeholder="BIT" onchange="setChbCode(\''+sub+'\','+i+',\'bit\',this.value)">'+
+        '<input class="ip" style="font-size:11px;padding:5px" type="number" value="'+ch.rate+'" onchange="setChbCode(\''+sub+'\','+i+',\'rate\',this.value)">'+
+      '</div>';
+    });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function setChbCode(sub, idx, field, val){
+  if(!echTemplates[sub]) return;
+  if(field==="rate") echTemplates[sub].charges[idx][field] = parseFloat(val)||0;
+  else echTemplates[sub].charges[idx][field] = val.trim();
+}
+function saveChbAdmin(){
+  apiCall("/store", {method:"POST", body:{action:"setchb", templates:echTemplates}}).then(function(res){
+    if(res.ok){ showToast("Codes CHB enregistr\u00e9s pour l'\u00e9quipe","ok"); renderEchCharges(); }
+    else { showToast(res.error||"Erreur","err"); }
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); else showToast("Erreur serveur","err"); });
+}
+function resetChbAdmin(){
+  if(!confirm("R\u00e9initialiser tous les codes CHB aux valeurs par d\u00e9faut ?")) return;
+  apiCall("/store", {method:"POST", body:{action:"resetchb"}}).then(function(res){
+    if(res.ok){ echTemplates = res.templates; renderChbAdmin(); renderEchCharges(); showToast("R\u00e9initialis\u00e9","ok"); }
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+}
+
+function showToast(msg, type){
+  var t = document.createElement("div");
+  t.className = "toast" + (type?" "+type:"");
+  t.innerHTML = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.style.opacity="0"; t.style.transition="opacity .3s"; setTimeout(function(){t.remove();},300); }, 3200);
+}
+
+// ============ LICENSE CHECK (via server) ============
+function showLicenseBlock(msg){ showBlocked(); }
+function checkLicense(onValid){
+  var done = false;
+  var timer = setTimeout(function(){ if(done) return; done=true; showBlocked(); }, 9000);
+  apiCall("/license").then(function(res){
+    if(done) return; done = true; clearTimeout(timer);
+    if(res && res.active){ onValid(); } else { showBlocked(); }
+  }).catch(function(e){
+    if(done) return; done = true; clearTimeout(timer);
+    showBlocked();
+  });
+}
+
+// ============ BOOT ============
+checkLicense(function(){
+  $("loginScreen").style.display = "flex";
+  // OneDrive step removed - go straight to login (server hosts everything now)
+  var s1=$("loginStep1"), s2=$("loginStep2");
+  if(s1) s1.style.display="none";
+  if(s2) s2.style.display="block";
+  if(checkSession()){ startApp(); }
+});
+</script>
+</div>
+</body>
+</html>
