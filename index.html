@@ -163,6 +163,12 @@ textarea.ip{resize:vertical;min-height:70px}
 .ech-charge-row input{padding:6px 8px;font-size:12px;background:var(--void);border:1px solid var(--ice-line);border-radius:6px;color:var(--crystal);width:100%}
 .ech-code-warn{color:#fbbf24}
 .ech-head{display:grid;grid-template-columns:1.6fr 0.8fr 0.6fr 0.7fr 0.9fr 0.5fr;gap:8px;padding:8px;font-size:11px;color:var(--txt3);text-transform:uppercase;font-weight:600}
+
+.ech-opt{flex:1;padding:14px;border:1px solid var(--ice-line);border-radius:10px;background:var(--void);color:var(--txt2);font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:.2s}
+.ech-opt.on{background:var(--grad-ice);color:var(--void);border-color:transparent;box-shadow:0 0 18px rgba(56,189,248,.3)}
+.ech-crow{display:grid;grid-template-columns:1.7fr 0.7fr 0.5fr 0.6fr 0.8fr 0.4fr;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--ice-line);font-size:12.5px}
+.ech-crow input{padding:6px;font-size:12px;background:var(--void);border:1px solid var(--ice-line);border-radius:6px;color:var(--crystal);width:100%}
+.ech-chead{display:grid;grid-template-columns:1.7fr 0.7fr 0.5fr 0.6fr 0.8fr 0.4fr;gap:8px;padding:8px;font-size:11px;color:var(--txt3);text-transform:uppercase;font-weight:600}
 </style>
 </head>
 <body>
@@ -213,7 +219,7 @@ textarea.ip{resize:vertical;min-height:70px}
             <div class="u-name" id="curUser">&mdash;</div>
             <div class="u-role" id="curRole">&mdash;</div>
           </div>
-          <button class="u-logout" onclick="doLogout()">Quitter</button>
+          <button class="u-logout" onclick="openProfile()" style="margin-right:6px">Profil</button><button class="u-logout" onclick="doLogout()">Quitter</button>
         </div>
       </div>
     </div>
@@ -222,9 +228,8 @@ textarea.ip{resize:vertical;min-height:70px}
   <!-- TABS -->
   <div class="tabs">
     <div class="tab on" data-tab="invoice" onclick="sw('invoice')">&#10052; Facturation</div>
-    <div class="tab" data-tab="echange" onclick="sw('echange')">&#8644; &Eacute;change Import</div>
+    <div class="tab" data-tab="echange" onclick="sw('echange')">&#8644; &Eacute;change</div>
     <div class="tab" data-tab="batch" onclick="sw('batch')">&#9783; Batch</div>
-    <div class="tab" data-tab="drafts" onclick="sw('drafts')">&#128221; Brouillons</div>
     <div class="tab" data-tab="queue" onclick="sw('queue')">&#9783; File <span id="queueBadge" class="pill pill-frost" style="margin-left:4px;display:none">0</span></div>
     <div class="tab" data-tab="bp" onclick="sw('bp')">&#9819; Business Partners</div>
     <div class="tab" data-tab="upload" onclick="sw('upload')">&#11014; Imports</div>
@@ -342,7 +347,6 @@ textarea.ip{resize:vertical;min-height:70px}
       <div style="display:flex;gap:12px;flex-wrap:wrap">
         <button class="bt bt-ice" onclick="genInvoice()">&#10052; G&eacute;n&eacute;rer le fichier (CSV)</button>
         <button class="bt bt-ghost" onclick="addToQueue()">&#9783; Ajouter &agrave; la file</button>
-        <button class="bt bt-ghost" onclick="saveDraft()">&#128221; Sauvegarder brouillon</button>
         <button class="bt bt-ghost" onclick="resetInvoice()">R&eacute;initialiser</button>
       </div>
     </div>
@@ -351,85 +355,100 @@ textarea.ip{resize:vertical;min-height:70px}
   <!-- ============ BATCH TAB ============ -->
   <div id="tab-echange" class="hid">
     <div class="cd">
-      <div class="ct"><span class="dot"></span> Facturation &Eacute;change Import &mdash; CHB</div>
-      <p style="font-size:13.5px;color:var(--txt2);line-height:1.7;margin-bottom:16px">
-        Charges forfaitaires pr&eacute;-remplies selon le sous-type. Les codes marqu&eacute;s
-        <span style="color:var(--warn,#fbbf24)">&#9888; &agrave; valider</span> doivent &ecirc;tre v&eacute;rifi&eacute;s.
-      </p>
+      <div class="ct"><span class="dot"></span> Facturation &Eacute;change</div>
 
-      <!-- Sub-type selector -->
-      <div style="display:flex;gap:10px;margin-bottom:18px">
-        <button class="ech-sub on" data-sub="echange" onclick="setEchSub('echange')">&Eacute;change</button>
-        <button class="ech-sub" data-sub="transit" onclick="setEchSub('transit')">Transit</button>
-        <button class="ech-sub" data-sub="tbl" onclick="setEchSub('tbl')">TBL</button>
-      </div>
-
-      <!-- Common fields -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-        <div>
-          <label class="lb">Code Payeur (BP / ECC)</label>
-          <input class="ip" id="echBp" placeholder="Rechercher BP..." oninput="echBpSearch(this.value)" autocomplete="off">
-          <div id="echBpAc" class="ac-list"></div>
-        </div>
-        <div>
-          <label class="lb">Compte Contrat (VKONT)</label>
-          <input class="ip" id="echContractAcc" placeholder="Ex: 200010718138">
-        </div>
-        <div>
-          <label class="lb">N&deg; BL</label>
-          <input class="ip" id="echBl" placeholder="N&deg; connaissement">
-        </div>
-        <div>
-          <label class="lb">Date sailing</label>
-          <input class="ip" id="echSailing" placeholder="AAAAMMJJ">
-        </div>
-        <div>
-          <label class="lb">Email agent</label>
-          <input class="ip" id="echClerkEmail" placeholder="prenom.nom@maersk.com">
-        </div>
-        <div>
-          <label class="lb">Nom agent</label>
-          <input class="ip" id="echClerkName" placeholder="NOM Pr&eacute;nom">
+      <!-- Step 1: Import or Export -->
+      <div style="margin-bottom:16px">
+        <label class="lb">Sens de l'op&eacute;ration</label>
+        <div style="display:flex;gap:10px;margin-top:6px">
+          <button class="ech-opt" data-io="I" onclick="setEchIO('I')">&#11015; Import</button>
+          <button class="ech-opt" data-io="O" onclick="setEchIO('O')">&#11014; Export</button>
         </div>
       </div>
 
-      <!-- Container / weight inputs -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px">
-        <div>
-          <label class="lb">Nombre conteneurs (CNT)</label>
-          <input class="ip" id="echCnt" type="number" min="1" value="1" onchange="renderEchCharges()">
+      <!-- Step 2: Port + subtype (shown after I/O chosen) -->
+      <div id="echConfig" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+          <div>
+            <label class="lb">Port</label>
+            <select class="ip" id="echPort" onchange="onEchPortChange()">
+              <option value="abidjan">Abidjan</option>
+              <option value="sanpedro">San Pedro</option>
+            </select>
+          </div>
+          <div id="echSubWrap">
+            <label class="lb">Sous-type</label>
+            <select class="ip" id="echSubtype" onchange="renderEchForm()">
+              <option value="echange">&Eacute;change</option>
+              <option value="transit">Transit</option>
+              <option value="tbl">TBL</option>
+            </select>
+          </div>
         </div>
-        <div>
-          <label class="lb">TEU total</label>
-          <input class="ip" id="echTeu" type="number" min="1" value="1" onchange="renderEchCharges()">
+
+        <!-- The form (same shape as Facturation) -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <label class="lb">Type de facture</label>
+            <input class="ip" value="Std Invoice (MIMN)" disabled style="opacity:.7">
+          </div>
+          <div>
+            <label class="lb">Sens (param&egrave;tre)</label>
+            <select class="ip" id="echParamIO">
+              <option value="I">Import</option>
+              <option value="O">Export</option>
+            </select>
+          </div>
+          <div>
+            <label class="lb">Code Payeur (BP / ECC)</label>
+            <input class="ip" id="echBp" placeholder="Rechercher BP..." oninput="echBpSearch(this.value)" autocomplete="off">
+            <div id="echBpAc" class="ac-list"></div>
+          </div>
+          <div>
+            <label class="lb">Compte Contrat (VKONT)</label>
+            <input class="ip" id="echContractAcc" placeholder="Ex: 200010718138">
+          </div>
+          <div>
+            <label class="lb">N&deg; BL <span style="color:var(--txt3)">(= Ref / PO / Booking)</span></label>
+            <input class="ip" id="echBl" placeholder="N&deg; connaissement" oninput="onEchBlChange()">
+          </div>
+          <div>
+            <label class="lb">UBLI <span style="color:var(--txt3)">(auto MAEU+BL)</span></label>
+            <input class="ip" id="echUbli" placeholder="MAEU..." readonly style="opacity:.8">
+          </div>
+          <div id="echArrivalWrap">
+            <label class="lb">Arrival date <span style="color:var(--txt3)">(import)</span></label>
+            <input class="ip" id="echArrival" placeholder="AAAAMMJJ">
+          </div>
+          <div id="echSailingWrap">
+            <label class="lb">Sailing date <span style="color:var(--txt3)">(export)</span></label>
+            <input class="ip" id="echSailing" placeholder="AAAAMMJJ">
+          </div>
+          <div>
+            <label class="lb">Collection Business Unit (CBU)</label>
+            <input class="ip" id="echCbu" value="81360" placeholder="81360">
+          </div>
+          <div>
+            <label class="lb">External billing footer <span style="color:var(--txt3)">(Header Text SAP)</span></label>
+            <input class="ip" id="echFooter" placeholder="Texte d'ent&ecirc;te SAP">
+          </div>
         </div>
-        <div>
-          <label class="lb">Poids (TO)</label>
-          <input class="ip" id="echWeight" type="number" min="0" value="0" onchange="renderEchCharges()">
+
+        <!-- Container / weight -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px">
+          <div><label class="lb">Conteneurs (CNT)</label><input class="ip" id="echCnt" type="number" min="1" value="1" onchange="renderEchCharges()"></div>
+          <div><label class="lb">TEU total</label><input class="ip" id="echTeu" type="number" min="1" value="1" onchange="renderEchCharges()"></div>
+          <div><label class="lb">Poids (TO)</label><input class="ip" id="echWeight" type="number" min="0" value="0" onchange="renderEchCharges()"></div>
         </div>
-      </div>
 
-      <!-- Charge lines (computed from template) -->
-      <div style="margin-bottom:8px;font-weight:600;color:var(--frost);font-size:13px">CHARGES &Agrave; FACTURER</div>
-      <div id="echChargesTable"></div>
+        <div style="margin-bottom:8px;font-weight:600;color:var(--frost);font-size:13px">CHARGES &Agrave; FACTURER</div>
+        <div id="echChargesTable"></div>
+        <div id="echTotals" style="margin-top:12px;padding:14px;background:var(--void);border-radius:10px;font-size:14px"></div>
 
-      <div id="echTotals" style="margin-top:12px;padding:14px;background:var(--void);border-radius:10px;font-size:14px"></div>
-
-      <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-        <button class="bt bt-ice" onclick="genEchange()">&#10052; G&eacute;n&eacute;rer le fichier (CSV)</button>
-        <button class="bt bt-ghost" onclick="addEchToQueue()">&#9783; Ajouter &agrave; la file</button>
-        <button class="bt bt-ghost" data-mgr="1" onclick="openChbAdmin()" style="display:none">&#9881; G&eacute;rer les codes</button>
-      </div>
-    </div>
-
-    <!-- CHB code admin (manager) -->
-    <div class="cd" id="chbAdminCard" style="display:none">
-      <div class="ct"><span class="dot"></span> Administration des codes CHB</div>
-      <p style="font-size:13px;color:var(--txt2);margin-bottom:14px">Corrigez les codes S/4HANA et taux. Sauvegard&eacute; sur le serveur pour toute l'&eacute;quipe.</p>
-      <div id="chbAdminBody"></div>
-      <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="bt bt-ice" onclick="saveChbAdmin()">&#128190; Enregistrer les codes</button>
-        <button class="bt bt-ghost" onclick="resetChbAdmin()">&#8635; R&eacute;initialiser</button>
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          <button class="bt bt-ice" onclick="genEchange()">&#10052; G&eacute;n&eacute;rer le fichier (CSV)</button>
+          <button class="bt bt-ghost" onclick="addEchToQueue()">&#9783; Ajouter &agrave; la file</button>
+        </div>
       </div>
     </div>
   </div>
@@ -547,6 +566,10 @@ textarea.ip{resize:vertical;min-height:70px}
         <div class="fld"><label>Mot de passe</label><input class="ip" id="newPass" placeholder="mot de passe"></div>
         <div class="fld"><label>R&ocirc;le</label><select class="ip" id="newRole"><option value="agent">Agent</option><option value="manager">Manager</option></select></div>
       </div>
+      <div class="grid g2" style="margin-bottom:16px">
+        <div class="fld"><label>Email agent (clerk email)</label><input class="ip" id="newEmail" placeholder="prenom.nom@maersk.com"></div>
+        <div class="fld"><label>Nom agent (clerk name)</label><input class="ip" id="newName" placeholder="NOM Pr&eacute;nom"></div>
+      </div>
       <button class="bt bt-ice" onclick="addAccount()">&#43; Cr&eacute;er le compte</button>
       <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--ice-line)">
         <div style="font-size:12px;color:var(--txt2);margin-bottom:8px">Espace de stockage : <span id="storageInfo" class="mono" style="color:var(--frost)">&mdash;</span></div>
@@ -563,20 +586,6 @@ textarea.ip{resize:vertical;min-height:70px}
   </div>
 
   <!-- ============ DRAFTS TAB ============ -->
-  <div id="tab-drafts" class="hid">
-    <div class="cd">
-      <div class="ct"><span class="dot"></span> Brouillons Export</div>
-      <p style="font-size:12.5px;color:var(--txt2);margin-bottom:14px">Factures export sauvegard&eacute;es. Cliquez pour reprendre.</p>
-      <div id="draftsExport"></div>
-    </div>
-    <div class="cd">
-      <div class="ct"><span class="dot" style="background:var(--warn);box-shadow:0 0 10px var(--warn)"></span> Brouillons Import</div>
-      <p style="font-size:12.5px;color:var(--txt2);margin-bottom:14px">Factures import sauvegard&eacute;es. Cliquez pour reprendre.</p>
-      <div id="draftsImport"></div>
-    </div>
-  </div>
-
-  <!-- ============ QUEUE TAB ============ -->
   <div id="tab-queue" class="hid">
     <div class="cd">
       <div class="ct"><span class="dot"></span> File de g&eacute;n&eacute;ration</div>
@@ -782,10 +791,12 @@ function addAccount(){
   var u = String(uEl.value||"").trim();
   var p = String(pEl.value||"");
   var r = rEl.value || "agent";
+  var email = $("newEmail") ? $("newEmail").value.trim() : "";
+  var name = $("newName") ? $("newName").value.trim() : "";
   if(!u || !p){ showToast("Nom et mot de passe requis","err"); return; }
-  apiCall("/store", {method:"POST", body:{action:"adduser", user:u, pass:p, role:r}}).then(function(res){
+  apiCall("/store", {method:"POST", body:{action:"adduser", user:u, pass:p, role:r, email:email, name:name}}).then(function(res){
     if(res.ok){
-      uEl.value=""; pEl.value="";
+      uEl.value=""; pEl.value=""; if($("newEmail"))$("newEmail").value=""; if($("newName"))$("newName").value="";
       showToast("Compte cr\u00e9\u00e9 : "+u,"ok");
       renderAccounts();
     } else {
@@ -855,7 +866,6 @@ function startApp(){
   });
   loadData();
   loadQueue();
-  loadDraftsFromServer();
   initApp();
 }
 
@@ -880,14 +890,13 @@ function initApp(){
 }
 
 function sw(t){
-  ["invoice","echange","batch","drafts","queue","bp","upload","accounts","aide"].forEach(function(x){
+  ["invoice","echange","batch","queue","bp","upload","accounts","aide"].forEach(function(x){
     var el = $("tab-"+x); if(el) el.classList.toggle("hid", x!==t);
     var tb = document.querySelector('.tab[data-tab="'+x+'"]'); if(tb) tb.classList.toggle("on", x===t);
   });
   if(t==="echange") initEchange();
   if(t==="bp") bpRenderTable("");
   if(t==="accounts"){ renderAccounts(); updStorageInfo(); }
-  if(t==="drafts") loadDraftsFromServer(renderDrafts);
   if(t==="queue") loadQueue();
 }
 
@@ -1630,230 +1639,225 @@ function cleanStorage(){
 }
 
 
-// ============ ÉCHANGE (CHB) MODULE ============
-var echSub = "echange";
-var echTemplates = null;     // loaded from server
+// (ancien module échange retiré)
+
+
+
+
+
+// CHB code administration (manager)
+
+// ============ ÉCHANGE MODULE (v2) ============
+var echIO = null;            // "I" or "O"
+var echTpl = null;           // templates loaded from server
 var echBpMatches = [];
 var echSelectedBp = null;
+var echLines = [];
 
 function initEchange(){
-  // Show manager admin buttons
-  document.querySelectorAll('#tab-echange [data-mgr="1"]').forEach(function(el){
-    el.style.display = (curUser && curUser.role==="manager") ? "" : "none";
-  });
-  if(!echTemplates){
-    apiCall("/store?action=getchb").then(function(res){
-      echTemplates = res.templates;
-      renderEchCharges();
+  if(!echTpl){
+    apiCall("/store?action=getecht").then(function(res){
+      echTpl = res.templates;
+      if(echIO) renderEchForm();
     }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
-  } else {
-    renderEchCharges();
   }
-  if(!$("echSailing").value){
-    var d = new Date();
-    $("echSailing").value = d.getFullYear()+("0"+(d.getMonth()+1)).slice(-2)+("0"+d.getDate()).slice(-2);
-  }
+  // Pre-fill clerk from current user (handled at generate time)
 }
 
-function setEchSub(s){
-  echSub = s;
-  document.querySelectorAll(".ech-sub").forEach(function(b){
-    b.classList.toggle("on", b.getAttribute("data-sub")===s);
+function setEchIO(io){
+  echIO = io;
+  document.querySelectorAll(".ech-opt").forEach(function(b){
+    b.classList.toggle("on", b.getAttribute("data-io")===io);
   });
+  $("echConfig").style.display = "block";
+  $("echParamIO").value = io;
+  // Show/hide date fields
+  $("echArrivalWrap").style.display = (io==="I") ? "block" : "none";
+  $("echSailingWrap").style.display = (io==="O") ? "block" : "none";
+  // default date today
+  var d = new Date();
+  var today = d.getFullYear()+("0"+(d.getMonth()+1)).slice(-2)+("0"+d.getDate()).slice(-2);
+  if(io==="I" && !$("echArrival").value) $("echArrival").value = today;
+  if(io==="O" && !$("echSailing").value) $("echSailing").value = today;
+  renderEchForm();
+}
+
+function onEchPortChange(){
+  var port = $("echPort").value;
+  // San Pedro has no sub-types (single standard template)
+  $("echSubWrap").style.display = (port==="sanpedro") ? "none" : "block";
+  renderEchForm();
+}
+
+function getEchSubtype(){
+  var port = $("echPort").value;
+  if(port==="sanpedro") return "standard";
+  return $("echSubtype").value;
+}
+
+function renderEchForm(){
+  if(!echTpl || !echIO) return;
+  // Sync param IO with date fields
+  var io = $("echParamIO").value || echIO;
+  $("echArrivalWrap").style.display = (io==="I") ? "block" : "none";
+  $("echSailingWrap").style.display = (io==="O") ? "block" : "none";
   renderEchCharges();
 }
 
-function echCtx(){
-  return {
-    cnt: parseInt($("echCnt").value)||1,
-    teu: parseInt($("echTeu").value)||1,
-    weight: parseFloat($("echWeight").value)||0
-  };
+function resolveCode(code, io){
+  if(code && typeof code==="object"){ return io==="I" ? code.imp : code.exp; }
+  return code;
 }
 
 function computeEchLines(){
-  if(!echTemplates || !echTemplates[echSub]) return [];
-  var ctx = echCtx();
-  return echTemplates[echSub].charges.map(function(ch){
+  var port = $("echPort").value;
+  var sub = getEchSubtype();
+  if(!echTpl[port] || !echTpl[port].subtypes[sub]) return [];
+  var io = $("echParamIO").value || echIO;
+  var cnt = parseInt($("echCnt").value)||1;
+  var teu = parseInt($("echTeu").value)||1;
+  var weight = parseFloat($("echWeight").value)||0;
+  return echTpl[port].subtypes[sub].charges.map(function(ch){
     var qty;
-    if(ch.base==="DOC") qty = ch.qty||1;
-    else if(ch.base==="CNT") qty = ctx.cnt;
-    else if(ch.base==="TEU") qty = ctx.teu;
-    else if(ch.base==="TO") qty = ctx.weight;
-    else qty = ch.qty||1;
+    if(ch.base==="DOC") qty = (typeof ch.qty==="number") ? ch.qty : 1;
+    else if(ch.base==="CNT") qty = cnt;
+    else if(ch.base==="TEU") qty = teu;
+    else if(ch.base==="TO") qty = weight;
+    else qty = 1;
+    var code = resolveCode(ch.code, io);
     var ht = qty * ch.rate;
     var ta = ch.vat ? Math.round(ht*0.18) : 0;
-    return {d:ch.d, code:ch.code, bit:ch.bit, base:ch.base, qty:qty, rate:ch.rate, ht:ht, vat:ch.vat, ta:ta, ttc:ht+ta};
+    return {d:ch.d, code:code, base:ch.base, qty:qty, rate:ch.rate, vat:ch.vat, ht:ht, ta:ta, ttc:ht+ta};
   });
 }
 
 function renderEchCharges(){
   var box = $("echChargesTable");
   if(!box) return;
-  var lines = computeEchLines();
-  if(!lines.length){ box.innerHTML = '<div style="padding:16px;color:var(--txt3)">Chargement des charges...</div>'; return; }
-  var head = '<div class="ech-head"><div>Charge</div><div>Code S/4HANA</div><div>Base</div><div>Qt&eacute;</div><div>Taux</div><div>TVA</div></div>';
-  box.innerHTML = head + lines.map(function(l, i){
-    var codeWarn = !l.code ? ' ech-code-warn' : '';
-    var codeVal = l.code || '';
-    var codePlaceholder = l.code ? '' : '&#9888; code?';
-    return '<div class="ech-charge-row">'+
+  echLines = computeEchLines();
+  if(!echLines.length){ box.innerHTML='<div style="padding:14px;color:var(--txt3)">Aucune charge</div>'; return; }
+  var head='<div class="ech-chead"><div>Charge</div><div>Code</div><div>Base</div><div>Qt&eacute;</div><div>Taux</div><div>TVA</div></div>';
+  box.innerHTML = head + echLines.map(function(l){
+    return '<div class="ech-crow">'+
       '<div>'+l.d+'</div>'+
-      '<div><input class="echCodeInput'+codeWarn+'" data-idx="'+i+'" value="'+codeVal+'" placeholder="'+(l.code?'':'à saisir')+'" onchange="updateEchCode('+i+',this.value)"></div>'+
+      '<div class="mono" style="color:var(--frost)">'+l.code+'</div>'+
       '<div style="color:var(--txt3)">'+l.base+'</div>'+
       '<div style="color:var(--txt2)">'+l.qty+'</div>'+
-      '<div style="color:var(--txt2)">'+fmtNum(l.rate)+'</div>'+
+      '<div style="color:var(--txt2)">'+echFmt(l.rate)+'</div>'+
       '<div style="color:'+(l.vat?'var(--ok)':'var(--txt3)')+'">'+(l.vat?'18%':'&mdash;')+'</div>'+
     '</div>';
   }).join("");
-  // Totals
-  var totHt = lines.reduce(function(s,l){return s+l.ht;},0);
-  var totTtc = lines.reduce(function(s,l){return s+l.ttc;},0);
-  var missingCodes = lines.filter(function(l){return !l.code;}).length;
+  var totHt = echLines.reduce(function(s,l){return s+l.ht;},0);
+  var totTtc = echLines.reduce(function(s,l){return s+l.ttc;},0);
   $("echTotals").innerHTML =
-    '<div style="display:flex;justify-content:space-between"><span style="color:var(--txt2)">Total HT</span><span class="mono" style="color:var(--crystal)">'+fmtNum(totHt)+' XOF</span></div>'+
-    '<div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:var(--txt2)">Total TTC</span><span class="mono" style="color:var(--frost);font-weight:700">'+fmtNum(totTtc)+' XOF</span></div>'+
-    (missingCodes>0 ? '<div style="margin-top:8px;color:#fbbf24;font-size:12px">&#9888; '+missingCodes+' code(s) manquant(s) &mdash; &agrave; saisir avant g&eacute;n&eacute;ration</div>' : '');
+    '<div style="display:flex;justify-content:space-between"><span style="color:var(--txt2)">Total HT</span><span class="mono">'+echFmt(totHt)+' XOF</span></div>'+
+    '<div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:var(--txt2)">Total TTC</span><span class="mono" style="color:var(--frost);font-weight:700">'+echFmt(totTtc)+' XOF</span></div>';
 }
+function echFmt(n){ return (n||0).toLocaleString("fr-FR"); }
 
-function fmtNum(n){ return (n||0).toLocaleString("fr-FR"); }
-
-function updateEchCode(idx, val){
-  // Update the in-memory template code (session only; manager saves via admin)
-  if(echTemplates && echTemplates[echSub]){
-    echTemplates[echSub].charges[idx].code = val.trim();
-    renderEchCharges();
-  }
+function onEchBlChange(){
+  var bl = $("echBl").value.trim();
+  $("echUbli").value = bl ? ("MAEU"+bl) : "";
 }
 
 function echBpSearch(q){
-  q = (q||"").trim();
-  var list = $("echBpAc");
+  q=(q||"").trim();
+  var list=$("echBpAc");
   if(q.length<2){ list.classList.remove("show"); return; }
   apiCall("/data?action=bp&q="+encodeURIComponent(q)).then(function(res){
-    echBpMatches = res.results||[];
+    echBpMatches=res.results||[];
     if(!echBpMatches.length){ list.classList.remove("show"); return; }
-    list.innerHTML = echBpMatches.slice(0,30).map(function(m,i){
+    list.innerHTML=echBpMatches.slice(0,30).map(function(m,i){
       return '<div class="ac-item" onclick="echBpPick('+i+')"><span class="code">'+m.ecc+'</span> &rarr; <span class="code">'+m.bp+'</span><div class="nm">'+m.name+'</div></div>';
     }).join("");
     list.classList.add("show");
   }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
 }
 function echBpPick(i){
-  var m = echBpMatches[i];
-  if(!m) return;
-  echSelectedBp = m;
-  $("echBp").value = m.ecc + " - " + m.name;
+  var m=echBpMatches[i]; if(!m) return;
+  echSelectedBp=m;
+  $("echBp").value=m.ecc+" - "+m.name;
   $("echBpAc").classList.remove("show");
-  // Auto-fill contract account if known
-  if(typeof CA_MAP!=="undefined" && CA_MAP[m.bp]) $("echContractAcc").value = CA_MAP[m.bp];
+  if(typeof CA_MAP!=="undefined" && CA_MAP[m.bp]) $("echContractAcc").value=CA_MAP[m.bp];
 }
 
 function collectEchData(){
-  var lines = computeEchLines();
-  // Convert to the invoice format expected by /generate
-  // Each charge line -> qty/rate/code/bit
-  var invLines = lines.map(function(l){
-    return {code:l.code, desc:l.d, bit:l.bit||"COFR", qty:l.qty, rate:l.rate};
+  var io = $("echParamIO").value || echIO;
+  var bl = $("echBl").value.trim();
+  var lines = computeEchLines().map(function(l){
+    return {code:l.code, desc:l.d, bit:"COFR", qty:l.qty, rate:l.rate, unit:l.base==="TO"?"TO":(l.base==="DOC"?"EA":l.base)};
   });
   return {
-    subprocess: "MIMN",  // standard import
-    bp: echSelectedBp ? echSelectedBp.bp : "",
-    contractAcc: $("echContractAcc").value.trim(),
-    sailingDate: $("echSailing").value.trim(),
-    expImp: "I",
-    ubli: "MAEU",
-    invGrouping: "1",
-    clerkEmail: $("echClerkEmail").value.trim(),
-    clerkName: $("echClerkName").value.trim(),
-    companyCode: "CI12", businessArea: "CI00", profitCenter: "CI12ML01",
-    salesOffice: "CI12", currency: "XOF", cbu: "",
-    _echType: echSub, _bl: $("echBl").value.trim(),
-    lines: invLines
+    subprocess:"MIMN", bp: echSelectedBp?echSelectedBp.bp:"",
+    contractAcc:$("echContractAcc").value.trim(),
+    sailingDate: io==="O" ? $("echSailing").value.trim() : "",
+    arrivalDate: io==="I" ? $("echArrival").value.trim() : "",
+    expImp: io, ubli:$("echUbli").value.trim(), bl:bl,
+    cbu:$("echCbu").value.trim(), extFooter:$("echFooter").value.trim(),
+    invGrouping:"1",
+    clerkEmail: (curUser&&curUser.email)?curUser.email:"",
+    clerkName: (curUser&&curUser.name)?curUser.name:"",
+    companyCode:"CI12", businessArea:"CI00", profitCenter:"CI12ML01",
+    salesOffice:"CI12", currency:"XOF",
+    lines:lines
   };
 }
 
 function validateEch(){
-  var errs = [];
+  var errs=[];
   if(!echSelectedBp) errs.push("Code Payeur");
   if(!$("echContractAcc").value.trim()) errs.push("Compte Contrat");
-  if(!$("echSailing").value.trim()) errs.push("Date sailing");
-  if(!$("echClerkEmail").value.trim()) errs.push("Email agent");
-  var lines = computeEchLines();
-  var missingCodes = lines.filter(function(l){return !l.code;});
-  if(missingCodes.length) errs.push(missingCodes.length+" code(s) charge manquant(s)");
+  if(!$("echBl").value.trim()) errs.push("N° BL");
+  var io=$("echParamIO").value||echIO;
+  if(io==="I" && !$("echArrival").value.trim()) errs.push("Arrival date");
+  if(io==="O" && !$("echSailing").value.trim()) errs.push("Sailing date");
   return errs;
 }
 
 function genEchange(){
-  var errs = validateEch();
+  var errs=validateEch();
   if(errs.length){ showToast("Manquant : "+errs.join(", "),"err"); return; }
-  var data = collectEchData();
+  var data=collectEchData();
   showToast("G\u00e9n\u00e9ration en cours...","ok");
-  apiCall("/generate", {method:"POST", body:{invoices:[data]}}).then(function(res){
-    if(res.ok && res.csv){
-      downloadCSV(res.csv, "IVAN_S4_ECH_"+echSub.toUpperCase()+"_"+data.bp+"_"+Date.now()+".csv");
+  apiCall("/generate",{method:"POST",body:{invoices:[data]}}).then(function(res){
+    if(res.ok&&res.csv){
+      downloadCSV(res.csv,"IVAN_S4_ECH_"+($("echPort").value).toUpperCase()+"_"+data.bp+"_"+Date.now()+".csv");
       showToast("Fichier &Eacute;change g\u00e9n\u00e9r\u00e9","ok");
     } else { showToast("Erreur: "+(res.error||"inconnue"),"err"); }
-  }).catch(function(e){
-    if(e&&e.blocked){ showBlocked(); return; }
-    showToast("Erreur serveur: "+e.message,"err");
-  });
+  }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur serveur: "+e.message,"err"); });
 }
 
 function addEchToQueue(){
-  var errs = validateEch();
+  var errs=validateEch();
   if(errs.length){ showToast("Manquant : "+errs.join(", "),"err"); return; }
-  var data = collectEchData();
-  invoiceQueue.push(data);
+  invoiceQueue.push(collectEchData());
   saveQueue();
   showToast("Ajout\u00e9 \u00e0 la file","ok");
 }
 
-// CHB code administration (manager)
-function openChbAdmin(){
-  var card = $("chbAdminCard");
-  if(!card) return;
-  var showing = card.style.display!=="none";
-  card.style.display = showing ? "none" : "block";
-  if(!showing) renderChbAdmin();
+
+// ============ USER PROFILE ============
+function openProfile(){
+  if(!curUser) return;
+  $("profEmail").value = curUser.email || "";
+  $("profName").value = curUser.name || "";
+  $("profPass").value = "";
+  $("profileModal").style.display = "flex";
 }
-function renderChbAdmin(){
-  var body = $("chbAdminBody");
-  if(!body || !echTemplates) return;
-  var html = "";
-  ["echange","transit","tbl"].forEach(function(sub){
-    if(!echTemplates[sub]) return;
-    html += '<div style="margin-bottom:18px"><div style="font-weight:700;color:var(--frost);margin-bottom:8px">'+echTemplates[sub].label+'</div>';
-    echTemplates[sub].charges.forEach(function(ch, i){
-      var warn = !ch.code ? ' ech-code-warn' : '';
-      html += '<div style="display:grid;grid-template-columns:1.4fr 0.8fr 0.7fr 0.9fr;gap:8px;margin-bottom:6px;align-items:center;font-size:12px">'+
-        '<div style="color:var(--txt2)">'+ch.d+'</div>'+
-        '<input class="ip'+warn+'" style="font-size:11px;padding:5px" value="'+(ch.code||"")+'" placeholder="code S/4HANA" onchange="setChbCode(\''+sub+'\','+i+',\'code\',this.value)">'+
-        '<input class="ip" style="font-size:11px;padding:5px" value="'+(ch.bit||"")+'" placeholder="BIT" onchange="setChbCode(\''+sub+'\','+i+',\'bit\',this.value)">'+
-        '<input class="ip" style="font-size:11px;padding:5px" type="number" value="'+ch.rate+'" onchange="setChbCode(\''+sub+'\','+i+',\'rate\',this.value)">'+
-      '</div>';
-    });
-    html += '</div>';
-  });
-  body.innerHTML = html;
-}
-function setChbCode(sub, idx, field, val){
-  if(!echTemplates[sub]) return;
-  if(field==="rate") echTemplates[sub].charges[idx][field] = parseFloat(val)||0;
-  else echTemplates[sub].charges[idx][field] = val.trim();
-}
-function saveChbAdmin(){
-  apiCall("/store", {method:"POST", body:{action:"setchb", templates:echTemplates}}).then(function(res){
-    if(res.ok){ showToast("Codes CHB enregistr\u00e9s pour l'\u00e9quipe","ok"); renderEchCharges(); }
-    else { showToast(res.error||"Erreur","err"); }
-  }).catch(function(e){ if(e&&e.blocked) showBlocked(); else showToast("Erreur serveur","err"); });
-}
-function resetChbAdmin(){
-  if(!confirm("R\u00e9initialiser tous les codes CHB aux valeurs par d\u00e9faut ?")) return;
-  apiCall("/store", {method:"POST", body:{action:"resetchb"}}).then(function(res){
-    if(res.ok){ echTemplates = res.templates; renderChbAdmin(); renderEchCharges(); showToast("R\u00e9initialis\u00e9","ok"); }
-  }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+function closeProfile(){ $("profileModal").style.display = "none"; }
+function saveProfile(){
+  var body = {action:"updateprofile", user:curUser.user, email:$("profEmail").value.trim(), name:$("profName").value.trim()};
+  var np = $("profPass").value;
+  if(np) body.newpass = np;
+  apiCall("/store", {method:"POST", body:body}).then(function(res){
+    if(res.ok){
+      curUser.email = res.user.email;
+      curUser.name = res.user.name;
+      try{ localStorage.setItem(K_SESSION, JSON.stringify(curUser)); }catch(e){}
+      showToast("Profil mis \u00e0 jour","ok");
+      closeProfile();
+    } else { showToast(res.error||"Erreur","err"); }
+  }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur serveur","err"); });
 }
 
 function showToast(msg, type){
@@ -1889,5 +1893,23 @@ checkLicense(function(){
 });
 </script>
 </div>
+
+  <div id="profileModal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:20px">
+    <div style="max-width:420px;width:100%;background:var(--grad-panel);border:1px solid var(--ice-line);border-radius:18px;padding:32px">
+      <h3 style="font-size:18px;font-weight:700;color:var(--frost);margin-bottom:6px">Mon profil</h3>
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:18px">Ces informations remplissent automatiquement l'agent (email + nom) sur vos factures.</p>
+      <label class="lb">Email (clerk email address)</label>
+      <input class="ip" id="profEmail" placeholder="prenom.nom@maersk.com" style="margin-bottom:12px">
+      <label class="lb">Nom (clerk contact name)</label>
+      <input class="ip" id="profName" placeholder="NOM Pr&eacute;nom" style="margin-bottom:12px">
+      <label class="lb">Nouveau mot de passe <span style="color:var(--txt3)">(laisser vide pour garder)</span></label>
+      <input class="ip" id="profPass" type="password" placeholder="&bull;&bull;&bull;&bull;" style="margin-bottom:18px">
+      <div style="display:flex;gap:10px">
+        <button class="bt bt-ice" onclick="saveProfile()">&#128190; Enregistrer</button>
+        <button class="bt bt-ghost" onclick="closeProfile()">Annuler</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

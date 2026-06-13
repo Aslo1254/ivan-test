@@ -9,6 +9,7 @@ const path = require('path');
 
 // Default CHB (Échange) templates - shipped with the app
 const CHB_DEFAULTS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'chb_templates.json'), 'utf8'));
+const ECH_DEFAULTS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'echange_templates.json'), 'utf8'));
 
 const redis = Redis.fromEnv();
 
@@ -16,10 +17,11 @@ const redis = Redis.fromEnv();
 const K_USERS = "ivan:users";
 const K_DRAFTS = "ivan:drafts";
 const K_QUEUE = "ivan:queue";
-const K_CHB = "ivan:chb_templates";  // manager's corrected CHB templates
+const K_CHB = "ivan:chb_templates";
+const K_ECHT = "ivan:echange_templates";  // manager-corrected échange templates
 
 // Default manager account (guaranteed to always exist)
-const DEFAULT_USER = { user:"ivan", pass:"ivan2026", role:"manager" };
+const DEFAULT_USER = { user:"ivan", pass:"ivan2026", role:"manager", email:"ivan.assani@maersk.com", name:"Ivan ASSANI" };
 
 async function getUsers(){
   let users = await redis.get(K_USERS);
@@ -54,7 +56,7 @@ module.exports = async (req, res) => {
       const p = (req.body && req.body.pass || "");
       const users = await getUsers();
       const found = users.find(function(x){ return x.user.toLowerCase()===u.toLowerCase() && x.pass===p; });
-      if(found){ res.status(200).json({ ok:true, user:{user:found.user, role:found.role} }); }
+      if(found){ res.status(200).json({ ok:true, user:{user:found.user, role:found.role, email:found.email||"", name:found.name||""} }); }
       else { res.status(200).json({ ok:false, error:"Nom d'utilisateur ou mot de passe incorrect" }); }
       return;
     }
@@ -72,14 +74,30 @@ module.exports = async (req, res) => {
       const u = (req.body && req.body.user || "").trim();
       const p = (req.body && req.body.pass || "");
       const role = (req.body && req.body.role) === "manager" ? "manager" : "agent";
+      const email = (req.body && req.body.email || "").trim();
+      const name = (req.body && req.body.name || "").trim();
       if(!u || !p){ res.status(200).json({ ok:false, error:"Nom et mot de passe requis" }); return; }
       const users = await getUsers();
       if(users.some(function(x){ return x.user.toLowerCase()===u.toLowerCase(); })){
         res.status(200).json({ ok:false, error:"Ce nom d'utilisateur existe déjà" }); return;
       }
-      users.push({ user:u, pass:p, role:role });
+      users.push({ user:u, pass:p, role:role, email:email, name:name });
       await redis.set(K_USERS, users);
       res.status(200).json({ ok:true, users: users.map(function(x){ return {user:x.user, role:x.role}; }) });
+      return;
+    }
+
+    // ===== UPDATE OWN PROFILE (email, name, password) =====
+    if(action === 'updateprofile'){
+      const u = (req.body && req.body.user || "").trim();
+      const users = await getUsers();
+      const idx = users.findIndex(function(x){ return x.user.toLowerCase()===u.toLowerCase(); });
+      if(idx < 0){ res.status(200).json({ ok:false, error:"Utilisateur introuvable" }); return; }
+      if(req.body.email !== undefined) users[idx].email = String(req.body.email).trim();
+      if(req.body.name !== undefined) users[idx].name = String(req.body.name).trim();
+      if(req.body.newpass) users[idx].pass = String(req.body.newpass);
+      await redis.set(K_USERS, users);
+      res.status(200).json({ ok:true, user:{user:users[idx].user, role:users[idx].role, email:users[idx].email||"", name:users[idx].name||""} });
       return;
     }
 
@@ -140,6 +158,26 @@ module.exports = async (req, res) => {
       // Reset to factory defaults
       await redis.set(K_CHB, CHB_DEFAULTS);
       res.status(200).json({ ok:true, templates: CHB_DEFAULTS });
+      return;
+    }
+
+    // ===== ÉCHANGE TEMPLATES (v2) =====
+    if(action === 'getecht'){
+      let tpl = await redis.get(K_ECHT);
+      if(!tpl){ tpl = ECH_DEFAULTS; }
+      res.status(200).json({ ok:true, templates: tpl });
+      return;
+    }
+    if(action === 'setecht'){
+      const templates = (req.body && req.body.templates);
+      if(!templates){ res.status(200).json({ ok:false, error:"Templates manquants" }); return; }
+      await redis.set(K_ECHT, templates);
+      res.status(200).json({ ok:true });
+      return;
+    }
+    if(action === 'resetecht'){
+      await redis.set(K_ECHT, ECH_DEFAULTS);
+      res.status(200).json({ ok:true, templates: ECH_DEFAULTS });
       return;
     }
 
