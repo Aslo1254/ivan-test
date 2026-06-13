@@ -42,6 +42,9 @@ function buildEchangeCharges(params){
     const isMun = /municipale|red mun/i.test(ch.d);
     const isCom = /communale|red com/i.test(ch.d);
 
+    // "Redevance" lines are visible by default in the review; others are masked
+    const isRedevance = isPort || isMun || isCom || /portuaire|s\u00e9curit|security|isps|communaut/i.test(ch.d);
+
     if((isPort || isMun || isCom) && commodities.length > 0){
       // One line per commodity
       commodities.forEach(function(cm){
@@ -53,7 +56,7 @@ function buildEchangeCharges(params){
         else if(isMun) rate = comm ? comm.m : ch.rate;
         else rate = ch.rate; // communale flat (e.g. 20)
         const commName = comm ? comm.d.substring(0,30) : 'divers';
-        lines.push({code:code, desc:ch.d+' ('+commName+')', bit:'COFR', qty:w, rate:rate, unit:'TO', vat:ch.vat});
+        lines.push({code:code, desc:ch.d+' ('+commName+')', bit:'COFR', qty:w, rate:rate, unit:'TO', vat:ch.vat, redevance:true});
       });
     } else {
       // Standard charge
@@ -63,11 +66,14 @@ function buildEchangeCharges(params){
       else if(ch.base==='TEU') qty = teu;
       else if(ch.base==='TO') qty = totalWeight;
       else qty = 1;
-      lines.push({code:code, desc:ch.d, bit:'COFR', qty:qty, rate:ch.rate, unit:(ch.base==='TO'?'TO':'EA'), vat:ch.vat});
+      lines.push({code:code, desc:ch.d, bit:'COFR', qty:qty, rate:ch.rate, unit:(ch.base==='TO'?'TO':'EA'), vat:ch.vat, redevance:isRedevance});
     }
   });
   return lines;
 }
+
+const CREDIT_SUBS = {"MCMN":1,"MCVS":1,"MCVP":1,"MCCC":1,"IMCC":1,"IMEC":1,"MCCG":1};
+function isCredit(inv){ return !!CREDIT_SUBS[inv.subprocess]; }
 
 function buildItRow(inv, line, seq){
   const row = new Array(N_IT + 1).fill("");
@@ -109,14 +115,20 @@ function buildTtRow(recordType, seq, email, name){
   if(recordType==="CNT") row[56]=String(seq);
   return row;
 }
-function buildExtractCSV(invoices){
+function buildExtractCSV(invoices, opts){
+  opts = opts || {};
   const out = [];
   out.push("400;SMMI;");
   out.push(IT_HDR.join(";"));
   out.push(TT_HDR.join(";"));
-  invoices.forEach(function(inv){
+  invoices.forEach(function(inv, invIdx){
+    // BULK mode: assign Invoice Grouping 1, 2, 3... per invoice in the file
+    if(opts.bulk){ inv = Object.assign({}, inv, {invGrouping: String(invIdx + 1)}); }
+    const credit = isCredit(inv);
     inv.lines.forEach(function(line, li){
-      line.amount = line.qty * line.rate;
+      const raw = line.qty * line.rate;
+      // CREDIT types: amounts become negative
+      line.amount = credit ? -Math.abs(raw) : raw;
       out.push(buildItRow(inv, line, li+1).join(";"));
     });
     out.push(buildTtRow("CLK", 1, "", "").join(";"));
@@ -153,7 +165,8 @@ module.exports = async (req, res) => {
         return;
       }
     }
-    const csv = buildExtractCSV(invoices);
+    const bulk = !!(body && body.bulk);
+    const csv = buildExtractCSV(invoices, {bulk: bulk});
     res.status(200).json({ ok:true, csv: csv });
   }catch(err){
     res.status(500).json({error: 'Erreur génération: ' + err.message});

@@ -11,6 +11,7 @@ const path = require('path');
 const CHB_DEFAULTS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'chb_templates.json'), 'utf8'));
 const ECH_DEFAULTS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'echange_templates.json'), 'utf8'));
 const CBU_LIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'cbu_list.json'), 'utf8'));
+const CA_MAP_DEFAULT = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'ca_map.json'), 'utf8'));
 
 const redis = Redis.fromEnv();
 
@@ -22,6 +23,7 @@ const K_CHB = "ivan:chb_templates";
 const K_ECHT = "ivan:echange_templates";
 const K_HISTORY = "ivan:history";
 const K_CBU = "ivan:cbu_list";
+const K_CA_OVERRIDES = "ivan:ca_overrides";  // manager edits per BP: {bp: [{ca,name}]}
 
 // Default manager account (guaranteed to always exist)
 const DEFAULT_USER = { user:"ivan", pass:"ivan2026", role:"manager", email:"ivan.assani@maersk.com", name:"Ivan ASSANI" };
@@ -223,6 +225,37 @@ module.exports = async (req, res) => {
       if(!cbu){ res.status(200).json({ ok:false, error:"Donn\u00e9es manquantes" }); return; }
       await redis.set(K_CBU, cbu);
       res.status(200).json({ ok:true });
+      return;
+    }
+
+    // ===== CONTRACT ACCOUNTS (per BP, manager-editable) =====
+    if(action === 'getca'){
+      const bp = String((req.body && req.body.bp) || (req.query && req.query.bp) || "").trim();
+      if(!bp){ res.status(200).json({ ok:true, accounts: [] }); return; }
+      const overrides = (await redis.get(K_CA_OVERRIDES)) || {};
+      // If manager has overridden this BP, use that; else defaults
+      const list = overrides[bp] !== undefined ? overrides[bp] : (CA_MAP_DEFAULT[bp] || []);
+      res.status(200).json({ ok:true, accounts: list });
+      return;
+    }
+    if(action === 'setca'){
+      // Manager sets the full list of accounts for a BP
+      const bp = String((req.body && req.body.bp) || "").trim();
+      const accounts = (req.body && req.body.accounts);
+      if(!bp || !Array.isArray(accounts)){ res.status(200).json({ ok:false, error:"BP et comptes requis" }); return; }
+      const overrides = (await redis.get(K_CA_OVERRIDES)) || {};
+      overrides[bp] = accounts;
+      await redis.set(K_CA_OVERRIDES, overrides);
+      res.status(200).json({ ok:true, accounts: accounts });
+      return;
+    }
+    if(action === 'resetca'){
+      // Reset a BP to factory defaults (remove override)
+      const bp = String((req.body && req.body.bp) || "").trim();
+      const overrides = (await redis.get(K_CA_OVERRIDES)) || {};
+      delete overrides[bp];
+      await redis.set(K_CA_OVERRIDES, overrides);
+      res.status(200).json({ ok:true, accounts: CA_MAP_DEFAULT[bp] || [] });
       return;
     }
 

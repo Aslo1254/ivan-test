@@ -9,6 +9,7 @@ const BP_DB = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'bp_d
 const CHARGES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'charges.json'), 'utf8'));
 const INV_TYPES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'inv_types.json'), 'utf8'));
 const COMMODITIES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'commodities.json'), 'utf8'));
+const CA_MAP_DEFAULT = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'ca_map.json'), 'utf8'));
 const { isLicenseActive } = require('./license.js');
 
 module.exports = async (req, res) => {
@@ -101,6 +102,14 @@ module.exports = async (req, res) => {
         }
       }
       res.status(200).json({ ok:true, results: matches });
+      return;
+    }
+
+    // Contract accounts for a BP (defaults only; overrides served by store.js)
+    if(action === 'cafor'){
+      const bp = String((req.query.bp || (req.body && req.body.bp) || "")).trim();
+      const list = CA_MAP_DEFAULT[bp] || [];
+      res.status(200).json({ ok:true, accounts: list });
       return;
     }
 

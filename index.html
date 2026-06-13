@@ -4,8 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IVAN S4 &mdash; Maersk C&ocirc;te d'Ivoire</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%230a1628%27/%3E%3Ctext x=%2750%27 y=%2768%27 font-size=%2756%27 text-anchor=%27middle%27 fill=%27%2338bdf8%27 font-family=%27Arial,sans-serif%27 font-weight=%27bold%27%3EI%3C/text%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script>
+(function(){
+  if (typeof pdfjsLib === "undefined") return;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  window._fnePdfWorkerReady = true;
+})();
+</script>
+
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -238,6 +249,7 @@ textarea.ip{resize:vertical;min-height:70px}
     <div class="tab on" data-tab="invoice" onclick="sw('invoice')">&#10052; Facturation</div>
     <div class="tab" data-tab="echange" onclick="sw('echange')">&#8644; &Eacute;change</div>
     <div class="tab" data-tab="history" onclick="sw('history')">&#128220; Historique</div>
+    <div class="tab" data-tab="fne" onclick="sw('fne')">&#9889; FNE</div>
     <div class="tab" data-tab="queue" onclick="sw('queue')">&#9783; File <span id="queueBadge" class="pill pill-frost" style="margin-left:4px;display:none">0</span></div>
     <div class="tab" data-tab="bp" onclick="sw('bp')">&#9819; Business Partners</div>
     <div class="tab" data-tab="upload" onclick="sw('upload')">&#11014; Imports</div>
@@ -277,13 +289,20 @@ textarea.ip{resize:vertical;min-height:70px}
       </div>
       <div class="grid g2" style="margin-top:16px">
         <div class="fld">
-          <label>Contract Account <span class="req">*</span></label>
+          <label>Contract Account <span class="req">*</span> <span data-mgr="1" style="display:none;float:right"><a href="#" onclick="openCaAdmin(_factCurrentBp);return false;" style="font-size:11px;color:var(--sky)">&#9881; g&eacute;rer</a></span></label>
           <input class="ip mono" id="contractAcc" placeholder="saisie manuelle ou auto si rattach&eacute;">
+          <div id="factCaChooser"></div>
         </div>
         <div class="fld">
           <label>Nom client (info)</label>
           <input class="ip" id="clientName" readonly placeholder="auto">
         </div>
+      <div class="grid g2" style="margin-top:16px">
+        <div class="fld" style="grid-column:1 / -1">
+          <label>Header Text SAP <span style="color:var(--txt3);font-weight:400;font-size:11px">(saisie manuelle)</span></label>
+          <input class="ip" id="factHeaderText" placeholder="Texte d'ent&ecirc;te SAP (external billing footer)">
+        </div>
+      </div>
       </div>
     </div>
 
@@ -407,8 +426,9 @@ textarea.ip{resize:vertical;min-height:70px}
             <div id="echBpAc" class="ac-list"></div>
           </div>
           <div>
-            <label class="lb">Compte Contrat (VKONT)</label>
+            <label class="lb">Compte Contrat (VKONT) <span data-mgr="1" style="display:none"><a href="#" onclick="openCaAdmin(echSelectedBp?echSelectedBp.bp:null);return false;" style="font-size:11px;color:var(--sky)">&#9881; g&eacute;rer</a></span></label>
             <input class="ip" id="echContractAcc" placeholder="Ex: 200010718138">
+            <div id="echCaChooser"></div>
           </div>
           <div>
             <label class="lb">N&deg; BL <span style="color:var(--txt3)">(= Ref / PO / Booking)</span></label>
@@ -431,8 +451,16 @@ textarea.ip{resize:vertical;min-height:70px}
             <input class="ip" id="echCbu" value="81360">
           </div>
           <div>
-            <label class="lb">External billing footer <span style="color:var(--txt3)">(Header Text SAP)</span></label>
-            <input class="ip" id="echFooter" placeholder="Texte d'ent&ecirc;te SAP">
+            <label class="lb">Client final</label>
+            <input class="ip" id="echCliFinal" placeholder="Nom du client final" oninput="updateEchFooter()">
+          </div>
+          <div>
+            <label class="lb">Zone de livraison</label>
+            <input class="ip" id="echZone" placeholder="Ex: ZONE 1, ZONE 4..." oninput="updateEchFooter()">
+          </div>
+          <div style="grid-column:1 / -1">
+            <label class="lb">External billing footer <span style="color:var(--txt3)">(Header Text SAP &mdash; auto, modifiable)</span></label>
+            <input class="ip" id="echFooter" placeholder="Se remplit automatiquement..." oninput="echFooterEdited=true">
           </div>
         </div>
 
@@ -454,7 +482,7 @@ textarea.ip{resize:vertical;min-height:70px}
       <!-- REVIEW: cocher/décocher + montants -->
       <div id="echReview" style="display:none;margin-top:20px;border-top:1px solid var(--ice-line);padding-top:20px">
         <div style="font-weight:700;color:var(--frost);font-size:15px;margin-bottom:6px">R&eacute;vision des charges</div>
-        <p style="font-size:12px;color:var(--txt2);margin-bottom:14px">D&eacute;cochez les lignes &agrave; retirer. Modifiez les valeurs si besoin.</p>
+        <p style="font-size:12px;color:var(--txt2);margin-bottom:14px">Les redevances figurent par d&eacute;faut. Cochez une ligne masqu&eacute;e pour la faire figurer, d&eacute;cochez pour retirer. Valeurs modifiables.</p>
         <div id="echReviewLines"></div>
         <div id="echReviewTotals" style="margin-top:12px;padding:14px;background:var(--void);border-radius:10px;font-size:14px"></div>
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
@@ -502,11 +530,12 @@ textarea.ip{resize:vertical;min-height:70px}
     <div class="cd">
       <div class="ct"><span class="dot"></span> File de g&eacute;n&eacute;ration</div>
       <p style="font-size:13.5px;color:var(--txt2);line-height:1.7;margin-bottom:16px">
-        Ajoutez plusieurs factures &agrave; la file depuis l'onglet Facturation, puis t&eacute;l&eacute;chargez-les toutes ici (chaque facture = un fichier CSV, group&eacute;s en ZIP).
+        Ajoutez plusieurs factures &agrave; la file depuis l'onglet Facturation, puis t&eacute;l&eacute;chargez-les toutes ici (en bloc = 1 seul CSV avec toutes les factures distingu&eacute;es par Invoice Grouping 1, 2, 3... ; ZIP = un CSV par facture).
       </p>
       <div id="queueList"></div>
       <div id="queueActions" style="display:none;margin-top:16px;gap:12px;flex-wrap:wrap">
-        <button class="bt bt-ice" onclick="downloadQueue()">&#11015; T&eacute;l&eacute;charger en ZIP</button>
+        <button class="bt bt-ice" onclick="downloadQueueBulk()">&#11015; T&eacute;l&eacute;charger en bloc (1 CSV)</button>
+        <button class="bt bt-ghost" onclick="downloadQueue()">&#11015; T&eacute;l&eacute;charger en ZIP</button>
         <button class="bt bt-ghost" onclick="downloadQueueIndividual()">&#11015; T&eacute;l&eacute;charger individuellement</button>
         <button class="bt bt-ghost" onclick="clearQueue()">Vider la file</button>
       </div>
@@ -514,6 +543,249 @@ textarea.ip{resize:vertical;min-height:70px}
   </div>
 
   <!-- ============ AIDE TAB ============ -->
+  <div id="tab-fne" class="hid">
+  <div class="cd" style="background:linear-gradient(135deg,var(--panel2) 0%,var(--void) 100%);color:#fff;border:none">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
+      <div style="width:48px;height:48px;background:rgba(0,212,255,.2);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px">&#9889;</div>
+      <div>
+        <div style="font-size:20px;font-weight:800;letter-spacing:.5px">FNE Batch Auto</div>
+        <div style="font-size:12px;color:rgba(0,212,255,.9);margin-top:2px">N PDFs Solar/IFS &rarr; N factures FNE g&#233;n&#233;r&#233;es automatiquement sur le portail DGI</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TUTORIEL FNE -->
+  <div class="cd" style="background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);border-left:4px solid #d97706">
+    <div style="font-weight:800;font-size:16px;color:#78350f;display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <span style="font-size:22px">&#128218;</span> Comment &#231;a marche &mdash; Mode d'emploi FNE Batch Auto
+    </div>
+
+    <div style="font-size:13.5px;color:#451a03;line-height:1.7;background:rgba(255,255,255,.5);padding:14px 18px;border-radius:8px;margin-bottom:14px">
+      <strong>&#127919; Objectif :</strong> transformer une pile de PDFs Solar/IFS en factures FNE officielles cr&#233;&#233;es automatiquement sur le portail DGI <code>services.fne.dgi.gouv.ci</code>, sans saisie manuelle.
+    </div>
+
+    <!-- ETAPE 1: BOOKMARKLET -->
+    <div style="background:#fff;border-radius:10px;padding:16px 18px;margin-bottom:12px;border-left:4px solid #7c3aed">
+      <div style="font-weight:800;color:#5b21b6;font-size:14px;margin-bottom:10px">
+        <span style="background:#7c3aed;color:#fff;padding:3px 10px;border-radius:50%;font-size:13px;margin-right:8px">1</span>
+        Installer le bookmarklet (une seule fois)
+      </div>
+      <ol style="margin:0 0 12px 0;padding-left:24px;font-size:13.5px;color:#1f2937;line-height:1.9">
+        <li>Affichez la barre de favoris de votre navigateur : <kbd style="background:#f3f4f6;padding:2px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:12px;font-family:monospace">Ctrl + Maj + B</kbd></li>
+        <li>Glissez le bouton orange ci-dessous <strong>directement dans votre barre de favoris</strong></li>
+        <li>C'est install&#233;. &#192; refaire seulement si vous changez de PC ou de navigateur.</li>
+      </ol>
+      <div style="background:#fef3c7;padding:12px;border-radius:8px;text-align:center;border:2px dashed #d97706">
+        <div style="font-size:12px;color:#92400e;margin-bottom:8px;font-weight:600">&#8595; GLISSEZ CE BOUTON DANS VOS FAVORIS &#8595;</div>
+        <a id="fneBookmarklet" href="#" draggable="true" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;text-decoration:none;border-radius:10px;font-weight:800;font-size:16px;box-shadow:0 4px 14px rgba(245,158,11,.4);cursor:grab">&#9889; IVAN-FNE-BATCH</a>
+      </div>
+    </div>
+
+    <!-- ETAPE 2: CHARGER LES PDFs -->
+    <div style="background:#fff;border-radius:10px;padding:16px 18px;margin-bottom:12px;border-left:4px solid #0891b2">
+      <div style="font-weight:800;color:#0e7490;font-size:14px;margin-bottom:10px">
+        <span style="background:#0891b2;color:#fff;padding:3px 10px;border-radius:50%;font-size:13px;margin-right:8px">2</span>
+        Charger les PDFs dans IVAN
+      </div>
+      <ol style="margin:0;padding-left:24px;font-size:13.5px;color:#1f2937;line-height:1.9">
+        <li>Descendez sur la <strong>zone bleue ci-dessous</strong> ("Charger les PDFs")</li>
+        <li>Glissez-d&#233;posez 1 ou plusieurs PDFs Solar/IFS dans cette zone</li>
+        <li>Ou cliquez sur la zone et s&#233;lectionnez plusieurs fichiers avec <kbd style="background:#f3f4f6;padding:2px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:12px;font-family:monospace">Ctrl + clic</kbd></li>
+        <li>IVAN parse automatiquement chaque PDF et extrait NCC, soci&#233;t&#233;, articles, montants</li>
+        <li>V&#233;rifiez le r&#233;capitulatif &mdash; les lignes en rouge signalent une erreur de parsing</li>
+      </ol>
+    </div>
+
+    <!-- ETAPE 3: CONFIGURER ET ACTIVER -->
+    <div style="background:#fff;border-radius:10px;padding:16px 18px;margin-bottom:12px;border-left:4px solid #16a34a">
+      <div style="font-weight:800;color:#15803d;font-size:14px;margin-bottom:10px">
+        <span style="background:#16a34a;color:#fff;padding:3px 10px;border-radius:50%;font-size:13px;margin-right:8px">3</span>
+        Configurer et activer le batch
+      </div>
+      <ol style="margin:0;padding-left:24px;font-size:13.5px;color:#1f2937;line-height:1.9">
+        <li>Dans la section <strong>"Lancement du batch"</strong> (plus bas) :</li>
+        <li>R&#233;glez <strong>Pause de s&#233;curit&#233;</strong> sur <code>10 factures</code> (popup de confirmation tous les 10)</li>
+        <li>R&#233;glez <strong>D&#233;lai entre actions</strong> sur <code>Normal (2.5s)</code> pour commencer</li>
+        <li>Cliquez <strong>"Activer le batch"</strong> &mdash; la queue est sauvegard&#233;e dans le navigateur</li>
+      </ol>
+    </div>
+
+    <!-- ETAPE 4: SUR LE PORTAIL FNE -->
+    <div style="background:#fff;border-radius:10px;padding:16px 18px;margin-bottom:12px;border-left:4px solid #dc2626">
+      <div style="font-weight:800;color:#b91c1c;font-size:14px;margin-bottom:10px">
+        <span style="background:#dc2626;color:#fff;padding:3px 10px;border-radius:50%;font-size:13px;margin-right:8px">4</span>
+        Aller sur le portail FNE
+      </div>
+      <ol style="margin:0;padding-left:24px;font-size:13.5px;color:#1f2937;line-height:1.9">
+        <li>Cliquez sur <strong>"Ouvrir le portail FNE"</strong> dans IVAN (ouvre un nouvel onglet)</li>
+        <li>Connectez-vous au portail DGI normalement</li>
+        <li>Naviguez jusqu'&#224; <strong>"G&#233;n&#233;rer la facture"</strong> (formulaire vide)</li>
+        <li>Dans votre barre de favoris, cliquez <strong>une seule fois</strong> sur <strong>&#9889; IVAN-FNE-BATCH</strong></li>
+        <li>Un overlay flottant appara&#238;t : le batch tourne automatiquement</li>
+        <li>Tous les 10 factures (selon votre config) : popup "Continuer ?" pour s&#233;curit&#233;</li>
+      </ol>
+    </div>
+
+    <!-- ETAPE 5: RECUPERER LES RESULTATS -->
+    <div style="background:#fff;border-radius:10px;padding:16px 18px;margin-bottom:12px;border-left:4px solid #6366f1">
+      <div style="font-weight:800;color:#4338ca;font-size:14px;margin-bottom:10px">
+        <span style="background:#6366f1;color:#fff;padding:3px 10px;border-radius:50%;font-size:13px;margin-right:8px">5</span>
+        R&#233;cup&#233;rer les num&#233;ros FNE
+      </div>
+      <ol style="margin:0;padding-left:24px;font-size:13.5px;color:#1f2937;line-height:1.9">
+        <li>Quand le batch est termin&#233;, revenez sur IVAN onglet <strong>FNE</strong></li>
+        <li>La section <strong>"R&#233;sultats"</strong> liste tous les num&#233;ros FNE obtenus</li>
+        <li>Cliquez <strong>"Exporter CSV"</strong> pour t&#233;l&#233;charger le rapport complet</li>
+        <li>Conservez le CSV pour la tra&#231;abilit&#233; comptable</li>
+      </ol>
+    </div>
+
+    <!-- SI CA PLANTE -->
+    <div style="background:#fff;border-radius:10px;padding:16px 18px;margin-bottom:14px;border-left:4px solid #f59e0b">
+      <div style="font-weight:800;color:#b45309;font-size:14px;margin-bottom:10px">
+        <span style="background:#f59e0b;color:#fff;padding:3px 10px;border-radius:50%;font-size:13px;margin-right:8px">&#9888;</span>
+        Si quelque chose ne marche pas
+      </div>
+      <ul style="margin:0;padding-left:24px;font-size:13.5px;color:#1f2937;line-height:1.9">
+        <li><strong>Overlay orange sur le portail :</strong> recliquez sur le bookmarklet IVAN-FNE-BATCH, &#231;a reprend o&#249; &#231;a s'est arr&#234;t&#233;</li>
+        <li><strong>Une facture &#233;choue :</strong> elle est marqu&#233;e en erreur, le batch continue avec la suivante (pas de blocage)</li>
+        <li><strong>Pause volontaire :</strong> fermez l'onglet du portail, le batch est gel&#233; ; reprenez quand vous voulez</li>
+      </ul>
+    </div>
+
+    <!-- AVERTISSEMENT FINAL -->
+    <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:14px 18px;border-radius:8px;font-size:13px;color:#7f1d1d;line-height:1.7">
+      <strong>&#9888; Important :</strong> les factures FNE sont <strong>officielles et irr&#233;versibles</strong> une fois g&#233;n&#233;r&#233;es. Pour vos premiers tests, faites un batch de <strong>2 &#224; 3 PDFs seulement</strong> avec un d&#233;lai <strong>Normal ou Lent</strong>. Augmentez progressivement quand vous &#234;tes confiant.
+    </div>
+
+  </div>
+
+
+  <div class="cd">
+    <div class="ct"><span class="dot"></span> 1. Charger les PDFs (multi-fichiers)</div>
+    <div id="fnePdfDrop" style="border:2px dashed var(--ice-line2);border-radius:10px;padding:32px;text-align:center;cursor:pointer;background:var(--void);transition:.2s" onclick="document.getElementById('fnePdfInput').click()">
+      <div style="font-size:36px;margin-bottom:8px">&#128196;</div>
+      <div style="font-size:14px;font-weight:600;color:var(--void)">Glissez 1 &#224; N PDFs ici (multi-s&#233;lection support&#233;e)</div>
+      <div style="font-size:12px;color:var(--txt3);margin-top:4px">ou cliquez pour parcourir &#8212; Ctrl+clic pour s&#233;lection multiple</div>
+      <input type="file" id="fnePdfInput" accept=".pdf" multiple style="display:none" onchange="fneLoadFiles(this.files)">
+    </div>
+    <div id="fneParseProgress" class="hid" style="margin-top:14px;padding:12px;background:var(--sky-d);border-left:3px solid var(--frost);border-radius:8px;font-size:13px"></div>
+  </div>
+
+  <div id="fneStatsArea" class="hid">
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> 2. R&#233;capitulatif des PDFs</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+        <div style="padding:14px;background:var(--sky-d);border-radius:10px;text-align:center;border-left:3px solid var(--frost)">
+          <div style="font-size:11px;color:var(--void);text-transform:uppercase;font-weight:600">Total PDFs</div>
+          <div style="font-size:24px;font-weight:800;color:var(--void);margin-top:4px" id="fneTotal">0</div>
+        </div>
+        <div style="padding:14px;background:var(--green-d);border-radius:10px;text-align:center;border-left:3px solid var(--ok)">
+          <div style="font-size:11px;color:#15803d;text-transform:uppercase;font-weight:600">Pars&#233;s OK</div>
+          <div style="font-size:24px;font-weight:800;color:#15803d;margin-top:4px" id="fneParsedOk">0</div>
+        </div>
+        <div style="padding:14px;background:#fef2f2;border-radius:10px;text-align:center;border-left:3px solid #dc2626">
+          <div style="font-size:11px;color:#991b1b;text-transform:uppercase;font-weight:600">Erreurs parsing</div>
+          <div style="font-size:24px;font-weight:800;color:#991b1b;margin-top:4px" id="fneParseErr">0</div>
+        </div>
+        <div style="padding:14px;background:#fff7ed;border-radius:10px;text-align:center;border-left:3px solid #ea580c">
+          <div style="font-size:11px;color:#9a3412;text-transform:uppercase;font-weight:600">Articles totaux</div>
+          <div style="font-size:24px;font-weight:800;color:#9a3412;margin-top:4px" id="fneArtCount">0</div>
+        </div>
+      </div>
+      <div style="overflow-x:auto;max-height:400px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead style="position:sticky;top:0;background:var(--void);color:#fff">
+            <tr>
+              <th style="padding:8px;text-align:left">#</th>
+              <th style="padding:8px;text-align:left">Fichier PDF</th>
+              <th style="padding:8px;text-align:left">NCC client</th>
+              <th style="padding:8px;text-align:left">Soci&#233;t&#233;</th>
+              <th style="padding:8px;text-align:center">Articles</th>
+              <th style="padding:8px;text-align:right">Total HT</th>
+              <th style="padding:8px;text-align:center">Statut</th>
+              <th style="padding:8px;text-align:center"></th>
+            </tr>
+          </thead>
+          <tbody id="fneQueueBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="cd" style="background:linear-gradient(135deg,#fef3c7,#fde68a);border-left:3px solid #d97706">
+      <div class="ct" style="color:#92400e"><span class="dot" style="background:#d97706"></span> 3. Lancement du batch</div>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+        <div>
+          <label style="font-size:11px;color:#92400e;text-transform:uppercase;font-weight:600">Pause de s&#233;curit&#233; tous les</label>
+          <select class="ip" id="fnePauseEvery" style="width:140px">
+            <option value="0">Aucune pause</option>
+            <option value="5">5 factures</option>
+            <option value="10" selected>10 factures</option>
+            <option value="20">20 factures</option>
+            <option value="50">50 factures</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#92400e;text-transform:uppercase;font-weight:600">D&#233;lai entre actions</label>
+          <select class="ip" id="fneDelay" style="width:140px">
+            <option value="1500">Rapide (1.5s)</option>
+            <option value="2500" selected>Normal (2.5s)</option>
+            <option value="4000">Lent (4s)</option>
+            <option value="6000">Tr&#232;s lent (6s)</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="bt" onclick="fneStartBatch()" style="background:#d97706;color:#fff;font-weight:700">&#9889; Activer le batch (charger dans le bookmarklet)</button>
+        <button class="bt" onclick="fneOpenSite()" style="background:var(--ok);color:#fff">Ouvrir le portail FNE</button>
+        <button class="bt" onclick="fneResetBatch()" style="background:#6b7280;color:#fff">&#8634; R&#233;initialiser</button>
+      </div>
+      <div id="fneBatchStatus" style="margin-top:14px;font-size:12px;color:#92400e"></div>
+    </div>
+
+    <div id="fneResultsArea" class="hid">
+      <div class="cd" style="background:var(--green-d);border-left:3px solid var(--ok)">
+        <div class="ct" style="color:#15803d"><span class="dot" style="background:var(--ok)"></span> 5. R&#233;sultats du batch</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+          <div style="padding:12px;background:#fff;border-radius:8px;text-align:center;border-left:3px solid var(--ok)">
+            <div style="font-size:11px;color:#15803d;text-transform:uppercase;font-weight:600">Cr&#233;&#233;es OK</div>
+            <div style="font-size:24px;font-weight:800;color:#15803d;margin-top:4px" id="fneResOk">0</div>
+          </div>
+          <div style="padding:12px;background:#fff;border-radius:8px;text-align:center;border-left:3px solid #dc2626">
+            <div style="font-size:11px;color:#991b1b;text-transform:uppercase;font-weight:600">Erreurs</div>
+            <div style="font-size:24px;font-weight:800;color:#991b1b;margin-top:4px" id="fneResErr">0</div>
+          </div>
+          <div style="padding:12px;background:#fff;border-radius:8px;text-align:center;border-left:3px solid #f59e0b">
+            <div style="font-size:11px;color:#92400e;text-transform:uppercase;font-weight:600">En attente</div>
+            <div style="font-size:24px;font-weight:800;color:#92400e;margin-top:4px" id="fneResPending">0</div>
+          </div>
+        </div>
+        <div style="overflow-x:auto;max-height:400px;overflow-y:auto;background:#fff;border-radius:8px">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead style="position:sticky;top:0;background:var(--void);color:#fff">
+              <tr>
+                <th style="padding:8px;text-align:left">#</th>
+                <th style="padding:8px;text-align:left">Fichier</th>
+                <th style="padding:8px;text-align:left">NCC</th>
+                <th style="padding:8px;text-align:left">N&#176; FNE</th>
+                <th style="padding:8px;text-align:center">Statut</th>
+              </tr>
+            </thead>
+            <tbody id="fneResultsBody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="bt" onclick="fneExportResults()" style="background:var(--ok);color:#fff">&#128190; Exporter en CSV</button>
+          <button class="bt" onclick="fneRefreshResults()" style="background:var(--frost);color:#fff">&#8634; Rafra&#238;chir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BMC BATCH MODULE -->
+
+
   <div id="tab-aide" class="hid">
     <div class="cd">
       <div class="ct"><span class="dot"></span> Mode d'emploi &mdash; Facturation S/4HANA</div>
@@ -802,13 +1074,14 @@ function initApp(){
 }
 
 function sw(t){
-  ["invoice","echange","queue","bp","upload","accounts","aide","dashboard","history"].forEach(function(x){
+  ["invoice","echange","queue","bp","upload","accounts","aide","dashboard","history","fne"].forEach(function(x){
     var el = $("tab-"+x); if(el) el.classList.toggle("hid", x!==t);
     var tb = document.querySelector('.tab[data-tab="'+x+'"]'); if(tb) tb.classList.toggle("on", x===t);
   });
   if(t==="echange") initEchange();
   if(t==="dashboard") renderDashboard();
   if(t==="history") renderHistory();
+  if(t==="fne") initFneTab();
   if(t==="bp") bpRenderTable("");
   if(t==="accounts"){ renderAccounts(); updStorageInfo(); }
   if(t==="queue") loadQueue();
@@ -854,10 +1127,12 @@ function bpPick(i){
   $("eccCode").value = m.ecc;
   $("bpNum").value = m.bp;
   $("clientName").value = m.name;
-  // Auto-fill contract account if mapped
-  if(CA_MAP[m.bp]){ $("contractAcc").value = CA_MAP[m.bp]; }
+  _factCurrentBp = m.bp;
+  // Auto-fill contract account from server (handles multiple accounts)
+  loadContractAccounts(m.bp, "contractAcc", "factCaChooser");
   $("bpAcList").classList.remove("show");
 }
+var _factCurrentBp = null;
 document.addEventListener("click", function(e){
   if(!e.target.closest(".ac-wrap")) { var l=$("bpAcList"); if(l) l.classList.remove("show"); }
 });
@@ -978,7 +1253,9 @@ function collectInvoiceData(lines){
     sailingDate: $("sailingDate").value.trim(), expImp: $("expImp").value, ubli: $("ubli").value.trim(),
     bookingNum: $("bookingNum").value.trim(), reference: $("reference").value.trim(),
     invGrouping: $("invGrouping").value.trim()||"1", clerkEmail: $("clerkEmail").value.trim(),
-    clerkName: $("clerkName").value.trim(), companyCode: $("companyCode").value.trim(),
+    clerkName: $("clerkName").value.trim(),
+    extFooter: ($("factHeaderText") ? $("factHeaderText").value.trim() : ""),
+    companyCode: $("companyCode").value.trim(),
     businessArea: $("businessArea").value.trim(), profitCenter: $("profitCenter").value.trim(),
     salesOffice: $("salesOffice").value.trim(), currency: $("currency").value.trim()||"XOF",
     cbu: $("cbu").value.trim(), clientName: $("clientName").value.trim(), lines: lines
@@ -1240,6 +1517,17 @@ function clearQueue(){
   if(!confirm("Vider toute la file ?")) return;
   invoiceQueue = []; saveQueue(); renderQueue();
   showToast("File vid&eacute;e","ok");
+}
+
+function downloadQueueBulk(){
+  if(!invoiceQueue.length){ showToast("File vide","err"); return; }
+  showToast("G\u00e9n\u00e9ration du fichier group\u00e9...","ok");
+  apiCall("/generate", {method:"POST", body:{invoices:invoiceQueue, bulk:true}}).then(function(res){
+    if(res.ok && res.csv){
+      downloadCSV(res.csv, "IVAN_S4_BLOC_"+invoiceQueue.length+"factures_"+Date.now()+".csv");
+      showToast(invoiceQueue.length+" factures dans 1 fichier (Invoice Grouping 1 \u00e0 "+invoiceQueue.length+")","ok");
+    } else { showToast("Erreur: "+(res.error||"inconnue"),"err"); }
+  }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur serveur","err"); });
 }
 
 function downloadQueue(){
@@ -1600,6 +1888,26 @@ function getEchSubtype(){ return $("echPort").value==="sanpedro" ? "standard" : 
 
 function onEchBlChange(){ var bl=$("echBl").value.trim(); $("echUbli").value = bl?("MAEU"+bl):""; }
 
+var echFooterEdited = false;  // true once user manually edits the footer
+function echCompanyName(){
+  // Name of company tied to BP (from picked BP), else the manual BP text
+  if(echSelectedBp && !echSelectedBp.manual && echSelectedBp.name) return echSelectedBp.name;
+  if(echSelectedBp && echSelectedBp.manual) return echSelectedBp.bp;
+  return ($("echBp").value||"").trim();
+}
+function buildEchFooter(){
+  var company = echCompanyName();
+  var cli = ($("echCliFinal").value||"").trim();
+  var zone = ($("echZone").value||"").trim();
+  var h = company + " P/C " + cli + "//LIVRAISON " + zone + "// Frais de EIR-CH";
+  return h;
+}
+function updateEchFooter(){
+  // Only auto-fill if user hasn't manually edited
+  if(echFooterEdited) return;
+  $("echFooter").value = buildEchFooter();
+}
+
 // ---- Commodities (éclatement) ----
 function addEchCommodity(){
   var id = echCommNid++;
@@ -1659,6 +1967,7 @@ function echBpSearch(q){
   var list=$("echBpAc");
   // manual entry allowed: store raw if no pick
   echSelectedBp = {bp:q, name:"(manuel)", manual:true};
+  updateEchFooter();
   if(q.length<2){ list.classList.remove("show"); return; }
   apiCall("/data?action=bp&q="+encodeURIComponent(q)).then(function(res){
     echBpMatches=res.results||[];
@@ -1674,7 +1983,8 @@ function echBpPick(i){
   echSelectedBp={bp:m.bp, name:m.name, ecc:m.ecc, manual:false};
   $("echBp").value=m.ecc+" - "+m.name;
   $("echBpAc").classList.remove("show");
-  if(typeof CA_MAP!=="undefined" && CA_MAP[m.bp]) $("echContractAcc").value=CA_MAP[m.bp];
+  loadContractAccounts(m.bp, "echContractAcc", "echCaChooser");
+  updateEchFooter();
 }
 
 function collectEchMeta(){
@@ -1687,7 +1997,8 @@ function collectEchMeta(){
     sailingDate: io==="O"?$("echSailing").value.trim():"",
     arrivalDate: io==="I"?$("echArrival").value.trim():"",
     expImp:io, ubli:$("echUbli").value.trim(), bl:bl,
-    cbu:$("echCbu").value.trim(), extFooter:$("echFooter").value.trim(),
+    cbu:$("echCbu").value.trim(), extFooter:($("echFooter").value.trim() || buildEchFooter()),
+    cliFinal:$("echCliFinal").value.trim(), zone:$("echZone").value.trim(),
     invGrouping:"1",
     clerkEmail:(curUser&&curUser.email)?curUser.email:"",
     clerkName:(curUser&&curUser.name)?curUser.name:"",
@@ -1722,7 +2033,8 @@ function genEchangeReview(){
   showToast("Calcul des charges...","ok");
   apiCall("/generate",{method:"POST",body:{echangeCharges:params}}).then(function(res){
     if(res.ok && res.lines){
-      echReviewLines = res.lines.map(function(l){ return Object.assign({on:true}, l); });
+      // Mark II system: redevances visible (figurent), le reste masqué par défaut
+      echReviewLines = res.lines.map(function(l){ return Object.assign({on: !!l.redevance}, l); });
       renderEchReview();
       $("echReview").style.display="block";
       $("echS4").style.display="none";
@@ -1959,6 +2271,385 @@ function confirmIfWarnings(data){
   return confirm("\u26a0 Points \u00e0 v\u00e9rifier avant g\u00e9n\u00e9ration :\n\n- " + w.join("\n- ") + "\n\nG\u00e9n\u00e9rer quand m\u00eame ?");
 }
 
+
+// ============ CONTRACT ACCOUNTS (multi per BP) ============
+function loadContractAccounts(bp, targetFieldId, chooserContainerId){
+  if(!bp){ return; }
+  apiCall("/store?action=getca&bp="+encodeURIComponent(bp)).then(function(res){
+    var accounts = res.accounts || [];
+    var field = $(targetFieldId);
+    var chooser = chooserContainerId ? $(chooserContainerId) : null;
+    if(!accounts.length){
+      // none mapped: leave manual
+      if(chooser) chooser.innerHTML = "";
+      return;
+    }
+    // Pick one by default (first)
+    field.value = accounts[0].ca;
+    // If multiple, show a selector
+    if(chooser){
+      if(accounts.length > 1){
+        chooser.innerHTML = '<label class="lb" style="margin-top:6px">Plusieurs comptes pour ce BP &mdash; choisir :</label>'+
+          '<select class="ip" onchange="document.getElementById(\''+targetFieldId+'\').value=this.value">'+
+          accounts.map(function(a){ return '<option value="'+a.ca+'">'+a.ca+(a.name?(' &mdash; '+a.name):'')+'</option>'; }).join("")+
+          '</select>';
+      } else {
+        chooser.innerHTML = "";
+      }
+    }
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+}
+
+// ===== Manager admin: edit contract accounts for a BP =====
+var _caAdminBp = null, _caAdminList = [];
+function openCaAdmin(bp){
+  if(!bp){ showToast("S\u00e9lectionnez d'abord un BP","err"); return; }
+  _caAdminBp = bp;
+  apiCall("/store?action=getca&bp="+encodeURIComponent(bp)).then(function(res){
+    _caAdminList = (res.accounts||[]).slice();
+    renderCaAdmin();
+    $("caAdminModal").style.display = "flex";
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+}
+function renderCaAdmin(){
+  $("caAdminBp").textContent = _caAdminBp;
+  var box = $("caAdminList");
+  if(!_caAdminList.length){ box.innerHTML = '<div style="color:var(--txt3);padding:10px">Aucun compte. Ajoutez-en un.</div>'; return; }
+  box.innerHTML = _caAdminList.map(function(a, i){
+    return '<div style="display:grid;grid-template-columns:1fr 1.2fr 36px;gap:8px;margin-bottom:6px;align-items:center">'+
+      '<input class="ip mono" style="font-size:12px;padding:6px" value="'+escAttr(a.ca)+'" onchange="caAdminEdit('+i+',\'ca\',this.value)">'+
+      '<input class="ip" style="font-size:12px;padding:6px" value="'+escAttr(a.name||"")+'" placeholder="nom (optionnel)" onchange="caAdminEdit('+i+',\'name\',this.value)">'+
+      '<button class="bt-del" style="padding:6px" onclick="caAdminDel('+i+')">&#10005;</button>'+
+    '</div>';
+  }).join("");
+}
+function caAdminEdit(i, field, val){ _caAdminList[i][field] = val.trim(); }
+function caAdminDel(i){ _caAdminList.splice(i,1); renderCaAdmin(); }
+function caAdminAdd(){ _caAdminList.push({ca:"", name:""}); renderCaAdmin(); }
+function saveCaAdmin(){
+  var clean = _caAdminList.filter(function(a){ return a.ca; });
+  apiCall("/store", {method:"POST", body:{action:"setca", bp:_caAdminBp, accounts:clean}}).then(function(res){
+    if(res.ok){ showToast("Comptes enregistr\u00e9s","ok"); $("caAdminModal").style.display="none"; }
+    else showToast(res.error||"Erreur","err");
+  }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur serveur","err"); });
+}
+function closeCaAdmin(){ $("caAdminModal").style.display="none"; }
+
+const FNE_QUEUE_KEY="ivan_fne_batch_queue";
+const FNE_STATE_KEY="ivan_fne_batch_state";
+const FNE_CONFIG_KEY="ivan_fne_batch_config";
+let fneBatchQueue=[];
+
+function fneFmtMoney(n){return (parseFloat(n)||0).toLocaleString("fr-FR");}
+
+async function fneLoadFiles(files){
+  if(!files||!files.length)return;
+  var prog=$("fneParseProgress");
+  prog.classList.remove("hid");
+  prog.innerHTML='\u23f3 Lecture de '+files.length+' PDF(s)...';
+  if(typeof pdfjsLib==="undefined"){
+    prog.innerHTML='<span style="color:var(--red)">PDF.js non charg\u00e9. R\u00e9essayez ou rechargez la page.</span>';
+    return;
+  }
+  for(var i=0;i<files.length;i++){
+    var f=files[i];
+    prog.innerHTML='\u23f3 Lecture '+(i+1)+'/'+files.length+' : '+f.name;
+    try{
+      // Wait up to 5s for the Blob worker URL to be ready (more reliable than direct CDN URL)
+      var waitMs=0;
+      while(!window._fnePdfWorkerReady && waitMs<5000){
+        await new Promise(function(res){setTimeout(res,200);});
+        waitMs+=200;
+      }
+      var ab=await f.arrayBuffer();
+      // Race PDF loading against a 45s timeout so a hung PDF can't block the batch
+      var loadingTask=pdfjsLib.getDocument({data:ab,verbosity:0});
+      var pdfPromise=loadingTask.promise;
+      var timeoutPromise=new Promise(function(_,rej){setTimeout(function(){
+        try{loadingTask.destroy();}catch(e){}
+        rej(new Error("Timeout 45s - PDF non lisible"));
+      },45000);});
+      var pdf=await Promise.race([pdfPromise,timeoutPromise]);
+      var fullText="";
+      for(var p=1;p<=pdf.numPages;p++){
+        var page=await pdf.getPage(p);
+        var content=await page.getTextContent();
+        fullText+=content.items.map(function(it){return it.str;}).join(" ")+"\n";
+      }
+      var parsed=fneParseTextToObj(fullText);
+      var entry={
+        idx: fneBatchQueue.length+1,
+        fileName: f.name,
+        ncc: parsed.ncc,
+        company: parsed.company,
+        footer: parsed.footer,
+        phone: parsed.phone||"",
+        email: parsed.email||"",
+        items: parsed.items,
+        totalHt: parsed.items.reduce(function(s,it){return s+(it.qty*it.price);},0),
+        parseOk: parsed.ncc&&parsed.items.length>0,
+        parseErr: (!parsed.ncc?"NCC manquant ":"")+(!parsed.items.length?"Aucun article":""),
+        status: "pending",
+        fneNum: ""
+      };
+      fneBatchQueue.push(entry);
+    }catch(err){
+      fneBatchQueue.push({
+        idx: fneBatchQueue.length+1,
+        fileName: f.name,
+        ncc:"", company:"", items:[], totalHt:0,
+        parseOk:false, parseErr:"Erreur lecture PDF: "+err.message,
+        status:"error", fneNum:""
+      });
+    }
+  }
+  prog.innerHTML='\u2713 '+files.length+' PDF(s) trait\u00e9(s)';
+  setTimeout(function(){prog.classList.add("hid");},2000);
+  fneRenderQueue();
+  $("fneStatsArea").classList.remove("hid");
+}
+
+function fneParseTextToObj(txt){
+  var r={ncc:"",company:"",footer:"",phone:"",email:"",items:[]};
+  var mc=txt.match(/(?:35-ML-)?(CI\d{6}|DK\d{8})/);
+  if(mc)r.ncc=mc[1];
+  var inv="",mi=txt.match(/II\d{7}/);
+  if(mi)inv=mi[0];
+  var ref="",mr=txt.match(/(?:Our Reference|Reference)[\s\S]*?(\d{8,10})/i);
+  if(mr)ref=mr[1];
+  r.footer=(inv&&ref)?(inv+" - "+ref):(inv||ref||"");
+  var mn=txt.match(/Invoice Address\s*([A-Z][A-Z &\-]+)/);
+  if(mn)r.company=mn[1].trim();
+  if(r.ncc&&typeof CL!=="undefined"){
+    var match=CL.find(function(cl){return cl.c===r.ncc;});
+    if(match){
+      if(match.t)r.phone=match.t;
+      if(match.e)r.email=match.e;
+    }
+  }
+  var lineRe=/(\d+)\s+(\w+)\s+(.+?)\s+(VAT \d+|N|\w+)\s+([\d.,]+)\s+(\w+)\s+([\d,.]+)\s+([\d,.]+)/g;
+  var m;
+  while((m=lineRe.exec(txt))!==null){
+    var taxCode=m[4].indexOf("VAT")>=0?"A":"C";
+    r.items.push({
+      qty:parseFloat(m[5].replace(/,/g,""))||1,
+      reference:m[2],
+      description:m[3].trim(),
+      unit:m[6],
+      price:parseFloat(m[7].replace(/,/g,""))||0,
+      tax:taxCode
+    });
+  }
+  return r;
+}
+
+function fneRenderQueue(){
+  $("fneTotal").innerHTML=fneBatchQueue.length;
+  $("fneParsedOk").innerHTML=fneBatchQueue.filter(function(e){return e.parseOk;}).length;
+  $("fneParseErr").innerHTML=fneBatchQueue.filter(function(e){return !e.parseOk;}).length;
+  $("fneArtCount").innerHTML=fneBatchQueue.reduce(function(s,e){return s+(e.items?e.items.length:0);},0);
+  var body=$("fneQueueBody");
+  if(!body)return;
+  body.innerHTML=fneBatchQueue.map(function(e,i){
+    var statusBadge;
+    if(!e.parseOk){
+      statusBadge='<span style="padding:3px 8px;background:#dc2626;color:#fff;border-radius:4px;font-size:11px;font-weight:700" title="'+(e.parseErr||"")+'">PARSE ERR</span>';
+    }else if(e.status==="success"){
+      statusBadge='<span style="padding:3px 8px;background:var(--ok);color:#fff;border-radius:4px;font-size:11px;font-weight:700">OK</span>';
+    }else if(e.status==="submitted"){
+      statusBadge='<span style="padding:3px 8px;background:#f59e0b;color:#fff;border-radius:4px;font-size:11px;font-weight:700">EN COURS</span>';
+    }else if(e.status==="error"){
+      statusBadge='<span style="padding:3px 8px;background:#dc2626;color:#fff;border-radius:4px;font-size:11px;font-weight:700">ERR</span>';
+    }else{
+      statusBadge='<span style="padding:3px 8px;background:#94a3b8;color:#fff;border-radius:4px;font-size:11px;font-weight:700">PR\u00caT</span>';
+    }
+    return '<tr style="border-bottom:1px solid var(--ice-line2)">'
+      +'<td style="padding:6px 8px">'+e.idx+'</td>'
+      +'<td style="padding:6px 8px;font-size:11px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e.fileName+'">'+e.fileName+'</td>'
+      +'<td style="padding:6px 8px;font-family:monospace">'+(e.ncc||"-")+'</td>'
+      +'<td style="padding:6px 8px;font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(e.company||"-")+'</td>'
+      +'<td style="padding:6px 8px;text-align:center">'+(e.items?e.items.length:0)+'</td>'
+      +'<td style="padding:6px 8px;text-align:right">'+fneFmtMoney(e.totalHt)+'</td>'
+      +'<td style="padding:6px 8px;text-align:center">'+statusBadge+'</td>'
+      +'<td style="padding:6px 8px;text-align:center"><button onclick="fneRemoveFromQueue('+i+')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px" title="Retirer">\u00d7</button></td>'
+      +'</tr>';
+  }).join("");
+}
+
+function fneRemoveFromQueue(i){
+  if(!confirm("Retirer ce PDF de la file ?"))return;
+  fneBatchQueue.splice(i,1);
+  fneBatchQueue.forEach(function(e,j){e.idx=j+1;});
+  fneRenderQueue();
+}
+
+function fneStartBatch(){
+  var pending=fneBatchQueue.filter(function(e){return e.parseOk&&e.status==="pending";});
+  if(!pending.length){
+    alert("Aucune facture pr\u00eate \u00e0 envoyer.");
+    return;
+  }
+  if(!confirm("D\u00e9marrer le batch de "+pending.length+" facture(s) FNE ? Ces factures seront cr\u00e9\u00e9es de mani\u00e8re IRR\u00c9VERSIBLE sur le portail DGI.")){
+    return;
+  }
+  try{
+    localStorage.setItem(FNE_QUEUE_KEY,JSON.stringify(fneBatchQueue));
+    localStorage.setItem(FNE_STATE_KEY,"running");
+    localStorage.setItem(FNE_CONFIG_KEY,JSON.stringify({
+      pauseEvery: parseInt($("fnePauseEvery").value)||0,
+      delay: parseInt($("fneDelay").value)||2500
+    }));
+    $("fneBatchStatus").innerHTML='<strong style="color:#15803d">\u2713 Batch activ\u00e9 ('+pending.length+' factures).</strong><br>1) Cliquez "Ouvrir le portail FNE" \u2192 2) Connectez-vous \u2192 3) Allez sur "G\u00e9n\u00e9rer la facture" \u2192 4) Cliquez le favori <strong>IVAN-FNE-BATCH</strong> une seule fois';
+    $("fneResultsArea").classList.remove("hid");
+    fneRefreshResults();
+  }catch(e){
+    alert("Erreur: "+e.message);
+  }
+}
+
+function fneResetBatch(){
+  if(!confirm("R\u00e9initialiser le batch ?"))return;
+  fneBatchQueue=[];
+  try{
+    localStorage.removeItem(FNE_QUEUE_KEY);
+    localStorage.removeItem(FNE_STATE_KEY);
+    localStorage.removeItem(FNE_CONFIG_KEY);
+  }catch(e){}
+  fneRenderQueue();
+  $("fneStatsArea").classList.add("hid");
+  $("fneResultsArea").classList.add("hid");
+  $("fneBatchStatus").innerHTML="";
+}
+
+function fneRefreshResults(){
+  try{
+    var raw=localStorage.getItem(FNE_QUEUE_KEY);
+    if(raw){
+      var q=JSON.parse(raw);
+      fneBatchQueue=q;
+      fneRenderQueue();
+    }
+  }catch(e){}
+  var ok=fneBatchQueue.filter(function(e){return e.status==="success";}).length;
+  var err=fneBatchQueue.filter(function(e){return e.status==="error";}).length;
+  var pending=fneBatchQueue.filter(function(e){return e.parseOk&&(e.status==="pending"||e.status==="submitted");}).length;
+  $("fneResOk").innerHTML=ok;
+  $("fneResErr").innerHTML=err;
+  $("fneResPending").innerHTML=pending;
+  var body=$("fneResultsBody");
+  if(body){
+    body.innerHTML=fneBatchQueue.filter(function(e){return e.parseOk;}).map(function(e){
+      var statusBadge;
+      if(e.status==="success")statusBadge='<span style="padding:3px 8px;background:var(--ok);color:#fff;border-radius:4px;font-size:11px;font-weight:700">\u2713 OK</span>';
+      else if(e.status==="error")statusBadge='<span style="padding:3px 8px;background:#dc2626;color:#fff;border-radius:4px;font-size:11px;font-weight:700" title="'+(e.errMsg||"")+'">ERR</span>';
+      else if(e.status==="submitted")statusBadge='<span style="padding:3px 8px;background:#f59e0b;color:#fff;border-radius:4px;font-size:11px;font-weight:700">EN COURS</span>';
+      else statusBadge='<span style="padding:3px 8px;background:#94a3b8;color:#fff;border-radius:4px;font-size:11px;font-weight:700">EN ATTENTE</span>';
+      return '<tr style="border-bottom:1px solid var(--ice-line2)">'
+        +'<td style="padding:6px 8px">'+e.idx+'</td>'
+        +'<td style="padding:6px 8px;font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e.fileName+'</td>'
+        +'<td style="padding:6px 8px;font-family:monospace">'+(e.ncc||"-")+'</td>'
+        +'<td style="padding:6px 8px;font-family:monospace;font-weight:700">'+(e.fneNum||"-")+'</td>'
+        +'<td style="padding:6px 8px;text-align:center">'+statusBadge+'</td>'
+        +'</tr>';
+    }).join("");
+  }
+}
+
+function fneExportResults(){
+  if(!fneBatchQueue.length){alert("Rien \u00e0 exporter");return;}
+  var lines=["Index;Fichier PDF;NCC client;Soci\u00e9t\u00e9;Articles;Total HT;N FNE;Statut"];
+  fneBatchQueue.forEach(function(e){
+    lines.push([e.idx,'"'+e.fileName+'"',e.ncc,'"'+(e.company||"").replace(/"/g,'""')+'"',e.items?e.items.length:0,e.totalHt,e.fneNum||"",e.status].join(";"));
+  });
+  var csv="\ufeff"+lines.join("\r\n");
+  var blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="FNE_BATCH_RESULTS_"+new Date().toISOString().slice(0,10)+".csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function fneOpenSite(){
+  window.open("https://www.services.fne.dgi.gouv.ci/fr/invoice-management/generate","_blank");
+}
+
+function fneBuildBookmarklet(){
+  var code='(function(){'
++'var QK="'+FNE_QUEUE_KEY+'",SK="'+FNE_STATE_KEY+'",CK="'+FNE_CONFIG_KEY+'";'
++'if(window.__ivanFne){alert("IVAN-FNE-BATCH d\\u00e9j\\u00e0 actif sur cette page.");return;}'
++'window.__ivanFne=true;'
++'function gQ(){try{return JSON.parse(localStorage.getItem(QK)||"[]");}catch(e){return[];}}'
++'function sQ(q){localStorage.setItem(QK,JSON.stringify(q));}'
++'function gS(){return localStorage.getItem(SK)||"idle";}'
++'function sS(s){localStorage.setItem(SK,s);}'
++'function gC(){try{return JSON.parse(localStorage.getItem(CK)||"{}");}catch(e){return{};}}'
++'var cfg=gC(),delay=cfg.delay||2500,pauseEvery=cfg.pauseEvery||0;'
++'var processedSinceLastPause=0;'
++'var ovr=document.createElement("div");'
++'ovr.id="ivan-fne-ovr";'
++'ovr.style.cssText="position:fixed;top:10px;right:10px;z-index:999999;background:linear-gradient(135deg,#fbbf24,#7c3aed);color:#fff;padding:12px 18px;border-radius:10px;font-family:sans-serif;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:300px";'
++'ovr.innerHTML="\\u26a1 IVAN-FNE-BATCH<br><span id=\\\"ifs\\\" style=\\\"font-size:12px;font-weight:400\\\">Initialisation...</span><br><button onclick=\\\"localStorage.setItem(\\\\\\\""+SK+"\\\\\\\",\\\\\\\"paused\\\\\\\");this.parentNode.remove();window.__ivanFne=false\\\" style=\\\"margin-top:6px;background:rgba(255,255,255,.2);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer\\\">Arr\\u00eater</button>";'
++'document.body.appendChild(ovr);'
++'function setStatus(t){var e=document.getElementById("ifs");if(e)e.innerHTML=t;}'
++'function findField(hints){var labels=document.querySelectorAll("label,div,span");for(var i=0;i<labels.length;i++){var t=(labels[i].textContent||"").toLowerCase().trim();for(var j=0;j<hints.length;j++){if(t.indexOf(hints[j])===0||t===hints[j]){var p=labels[i].closest("div,fieldset")||labels[i].parentElement;if(p){var inp=p.querySelector("input,textarea,select");if(inp)return inp;}}}}return null;}'
++'var H={clientCompanyName:["nom de la soci","nom du client","raison sociale","client","company name"],clientNcc:["ncc","contribuable","tax id","identifiant fiscal"],clientPhone:["telephone","tel","phone"],clientEmail:["email","e-mail","mail","courriel"],footer:["autres mentions","autre mention","mention","reference","footer"]};'
++'function fillForm(inv){var filled=0;Object.keys(H).forEach(function(k){var v=k==="clientCompanyName"?inv.company:k==="clientNcc"?inv.ncc:k==="clientPhone"?inv.phone:k==="clientEmail"?inv.email:inv.footer;if(!v)return;var f=findField(H[k]);if(f){if(f.tagName==="SELECT"){var opt=Array.from(f.options).find(function(o){return o.text.toLowerCase().indexOf(String(v).toLowerCase())>=0;});if(opt)f.value=opt.value;}else{f.value=v;}f.dispatchEvent(new Event("input",{bubbles:true}));f.dispatchEvent(new Event("change",{bubbles:true}));f.style.background="rgba(0,212,255,.15)";filled++;}});if(inv.items&&inv.items[0]){var it=inv.items[0];var IH={quantity:["quantite","qty","quantity"],reference:["reference","ref","code"],description:["description","designation","libelle"],unit:["unite de mesure","unite","unit"],price:["pu ht","prix unitaire","prix"]};Object.keys(IH).forEach(function(k){if(it[k]===undefined||it[k]===null||it[k]==="")return;var f=findField(IH[k]);if(f){f.value=it[k];f.dispatchEvent(new Event("input",{bubbles:true}));f.dispatchEvent(new Event("change",{bubbles:true}));f.style.background="rgba(251,191,36,.15)";filled++;}});}return filled;}'
++'function clickGen(){var btns=document.querySelectorAll("button");for(var i=0;i<btns.length;i++){var t=(btns[i].textContent||"").trim();if(/G.n.rer la facture$/i.test(t)&&!btns[i].disabled){btns[i].click();return true;}}return false;}'
++'function clickPlus(){var btns=document.querySelectorAll("button,a");for(var i=0;i<btns.length;i++){var t=(btns[i].textContent||"").trim();if(/G.n.rer la facture\\s*\\+/i.test(t)){btns[i].click();return true;}}return false;}'
++'function readLatestNum(){var rows=document.querySelectorAll("table tbody tr,table tr");for(var i=0;i<rows.length;i++){var cells=rows[i].querySelectorAll("td");if(cells.length>1){var txt=(cells[0].textContent||cells[1].textContent||"").trim();if(/^\\d{10,}/.test(txt))return txt;}}return"";}'
++'function isFormPage(){return location.href.indexOf("/generate")>=0||document.body.textContent.indexOf("Sauvegarder la facture")>=0;}'
++'function isListPage(){return location.href.indexOf("type=issued")>=0||/Mes Factures et re.us/i.test(document.body.textContent);}'
++'var iter=setInterval(function(){'
++'if(gS()!=="running"){clearInterval(iter);setStatus("Arr\\u00eat\\u00e9");return;}'
++'var q=gQ();'
++'var ok=q.filter(function(e){return e.status==="success";}).length;'
++'var pendIdx=q.findIndex(function(e){return e.parseOk&&e.status==="pending";});'
++'var submIdx=q.findIndex(function(e){return e.parseOk&&e.status==="submitted";});'
++'if(pendIdx<0&&submIdx<0){sS("done");clearInterval(iter);setStatus("\\u2713 Termin\\u00e9 ("+ok+" cr\\u00e9\\u00e9es)");alert("IVAN-FNE-BATCH: Termin\\u00e9. "+ok+" facture(s) cr\\u00e9\\u00e9e(s).");return;}'
++'if(isFormPage()&&pendIdx>=0){'
++'var inv=q[pendIdx];'
++'setStatus("Remplissage "+inv.idx+"/"+q.length+"<br><small>"+(inv.fileName||"").substring(0,40)+"</small>");'
++'var filled=fillForm(inv);'
++'setTimeout(function(){if(clickGen()){q[pendIdx].status="submitted";sQ(q);setStatus("Soumis "+inv.idx+", attente liste...");}else{q[pendIdx].status="error";q[pendIdx].errMsg="Bouton G\\u00e9n\\u00e9rer introuvable";sQ(q);}},delay/2);'
++'}else if(isListPage()&&submIdx>=0){'
++'var inv2=q[submIdx];'
++'var num=readLatestNum();'
++'if(num){q[submIdx].fneNum=num;q[submIdx].status="success";sQ(q);ok++;processedSinceLastPause++;setStatus("\\u2713 "+ok+" cr\\u00e9\\u00e9e(s) (n "+num.substring(0,12)+"...)");'
++'if(pauseEvery>0&&processedSinceLastPause>=pauseEvery){if(!confirm("IVAN-FNE-BATCH: pause s\\u00e9curit\\u00e9 apr\\u00e8s "+ok+" factures. Continuer ?")){sS("paused");return;}processedSinceLastPause=0;}'
++'var morePending=q.some(function(e){return e.parseOk&&e.status==="pending";});'
++'if(morePending){setTimeout(function(){if(!clickPlus()){setStatus("\\u26a0 Cliquez \\\"G\\u00e9n\\u00e9rer la facture +\\\" manuellement");}},delay);}else{sS("done");clearInterval(iter);alert("IVAN-FNE-BATCH: Termin\\u00e9. "+ok+" facture(s) cr\\u00e9\\u00e9e(s).");}'
++'}else{setStatus("Liste charg\\u00e9e, lecture du n FNE...");}'
++'}else{setStatus("Navigation en cours...<br><small>OK: "+ok+"/"+q.length+"</small>");}'
++'},delay);'
++'setStatus("D\\u00e9marrage du batch ("+gQ().filter(function(e){return e.parseOk&&e.status==="pending";}).length+" en attente)");'
++'})();';
+  return "javascript:"+encodeURIComponent(code);
+}
+
+function fneInstallBookmarklet(){
+  var a=$("fneBookmarklet");
+  if(a)a.href=fneBuildBookmarklet();
+}
+
+// Auto-install bookmarklet when FNE tab opens
+
+
+
+function initFneTab(){
+  try{ if(typeof fneInstallBookmarklet==="function") fneInstallBookmarklet(); }catch(e){}
+  try{ if(typeof fneRenderQueue==="function") fneRenderQueue(); }catch(e){}
+  try{ if(typeof fneRefreshResults==="function") fneRefreshResults(); }catch(e){}
+  // Setup PDF drop zone
+  var drop=$("fnePdfDrop"), inp=$("fnePdfInput");
+  if(drop&&inp){
+    drop.ondragover=function(e){e.preventDefault();drop.style.borderColor="var(--glow)";drop.style.background="rgba(56,189,248,.08)";};
+    drop.ondragleave=function(e){drop.style.borderColor="var(--ice-line2)";drop.style.background="var(--void)";};
+    drop.ondrop=function(e){e.preventDefault();drop.style.borderColor="var(--ice-line2)";drop.style.background="var(--void)";if(e.dataTransfer.files&&e.dataTransfer.files.length)fneLoadFiles(e.dataTransfer.files);};
+  }
+}
+
 function showToast(msg, type){
   var t = document.createElement("div");
   t.className = "toast" + (type?" "+type:"");
@@ -2006,6 +2697,20 @@ checkLicense(function(){
       <div style="display:flex;gap:10px">
         <button class="bt bt-ice" onclick="saveProfile()">&#128190; Enregistrer</button>
         <button class="bt bt-ghost" onclick="closeProfile()">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="caAdminModal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:20px">
+    <div style="max-width:520px;width:100%;background:var(--grad-panel,var(--panel2));border:1px solid var(--ice-line);border-radius:18px;padding:28px;max-height:80vh;overflow-y:auto">
+      <h3 style="font-size:17px;font-weight:700;color:var(--frost);margin-bottom:4px">Comptes contrat &mdash; BP <span id="caAdminBp" class="mono"></span></h3>
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:16px">Ajoutez, modifiez ou supprimez les comptes rattach&eacute;s. Enregistr&eacute; sur le serveur pour toute l'&eacute;quipe.</p>
+      <div id="caAdminList"></div>
+      <button class="bt bt-ghost" style="font-size:12px;padding:8px 14px;margin-top:8px" onclick="caAdminAdd()">&#43; Ajouter un compte</button>
+      <div style="display:flex;gap:10px;margin-top:18px">
+        <button class="bt bt-ice" onclick="saveCaAdmin()">&#128190; Enregistrer</button>
+        <button class="bt bt-ghost" onclick="closeCaAdmin()">Annuler</button>
       </div>
     </div>
   </div>
