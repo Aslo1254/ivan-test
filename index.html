@@ -198,6 +198,39 @@ textarea.ip{resize:vertical;min-height:70px}
 .home-tile-arrow{font-size:13px;font-weight:600;color:var(--frost);transition:color .2s}
 .home-tile:hover .home-tile-arrow{color:var(--glow)}
 @media(max-width:640px){.home-grid{grid-template-columns:1fr}.home-tile{padding:20px}}
+
+.stepper-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding:18px 20px;background:linear-gradient(160deg,rgba(19,40,58,.6),rgba(10,20,32,.6));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--ice-line);border-radius:16px;overflow-x:auto}
+.step-node{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;flex-shrink:0;opacity:.5;transition:opacity .25s}
+.step-node.active{opacity:1}
+.step-node.done{opacity:.85}
+.step-num{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;background:var(--void);border:1px solid var(--ice-line2);color:var(--txt2);transition:.25s}
+.step-node.active .step-num{background:var(--grad-ice);color:var(--void);border-color:transparent;box-shadow:0 0 16px rgba(56,189,248,.4)}
+.step-node.done .step-num{background:var(--ok);color:var(--void);border-color:transparent}
+.step-label{font-size:11.5px;font-weight:600;color:var(--txt2);white-space:nowrap}
+.step-node.active .step-label{color:var(--frost)}
+.step-line{flex:1;height:2px;background:var(--ice-line);margin:0 8px;min-width:16px;margin-bottom:20px}
+.step-actions{display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px}
+.fact-step.hid{display:none}
+@media(max-width:720px){.stepper-nav{padding:14px 10px}.step-label{display:none}.step-line{min-width:8px;margin:0 4px}}
+
+/* === Ice Mode polish (Phase 2) === */
+.bt{transition:transform .16s,box-shadow .16s,background .16s,border-color .16s}
+.bt-ice:hover{transform:translateY(-1px);box-shadow:0 6px 26px rgba(56,189,248,.42)}
+.bt-ghost:hover{border-color:var(--glow);color:var(--glow);background:rgba(56,189,248,.06)}
+.ip:focus{border-color:var(--glow);box-shadow:0 0 0 3px rgba(56,189,248,.12)}
+.fact-step{animation:fadeInStep .3s ease}
+@keyframes fadeInStep{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.cd{transition:border-color .2s,box-shadow .2s}
+.home-tile-ic{transition:transform .25s}
+.home-tile:hover .home-tile-ic{transform:scale(1.06)}
+/* Mobile responsive improvements */
+@media(max-width:720px){
+  .grid.g2,.grid.g3{grid-template-columns:1fr!important}
+  .cd{padding:18px}
+  .tabs{flex-wrap:wrap;gap:4px}
+  .tab{padding:10px 14px;font-size:12.5px}
+  .bt{padding:11px 18px;font-size:13.5px}
+}
 </style>
 </head>
 <body>
@@ -271,8 +304,34 @@ textarea.ip{resize:vertical;min-height:70px}
   </div>
 
   <!-- ============ INVOICE TAB ============ -->
-  <div id="tab-invoice">
-    <div class="cd">
+  <div id="tab-invoice" class="hid">
+    <!-- Stepper navigation -->
+    <div class="stepper-nav" id="factStepperNav">
+      <div class="step-node" data-step="0" onclick="goFactStep(0)">
+        <div class="step-num">1</div>
+        <div class="step-label">Type</div>
+      </div><div class="step-line"></div><div class="step-node" data-step="1" onclick="goFactStep(1)">
+        <div class="step-num">2</div>
+        <div class="step-label">Client</div>
+      </div><div class="step-line"></div><div class="step-node" data-step="2" onclick="goFactStep(2)">
+        <div class="step-num">3</div>
+        <div class="step-label">Références</div>
+      </div><div class="step-line"></div><div class="step-node" data-step="3" onclick="goFactStep(3)">
+        <div class="step-num">4</div>
+        <div class="step-label">Charges</div>
+      </div><div class="step-line"></div><div class="step-node" data-step="4" onclick="goFactStep(4)">
+        <div class="step-num">5</div>
+        <div class="step-label">Vérification</div>
+      </div><div class="step-line"></div><div class="step-node" data-step="5" onclick="goFactStep(5)">
+        <div class="step-num">6</div>
+        <div class="step-label">Génération</div>
+      </div>
+    </div>
+    <!-- Step panels -->
+    <div id="factSteps">
+      <div class="fact-step" data-step="0">
+      <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">&Eacute;tape 1/6 &mdash; Choisissez le type de facture</div>
+      <div class="cd">
       <div class="ct"><span class="dot"></span> Type de facture</div>
       <div class="grid g2">
         <div class="fld">
@@ -286,7 +345,14 @@ textarea.ip{resize:vertical;min-height:70px}
       </div>
     </div>
 
-    <div class="cd">
+    
+      <div class="step-actions">
+        <span></span>
+        <button class="bt bt-ice" onclick="nextFactStep()">Suivant &rarr;</button>
+      </div>
+    </div><div class="fact-step hid" data-step="1">
+      <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">&Eacute;tape 2/6 &mdash; Identifiez le client et son compte</div>
+      <div class="cd">
       <div class="ct"><span class="dot"></span> Client &amp; comptes</div>
       <div class="grid g2">
         <div class="fld ac-wrap">
@@ -319,13 +385,14 @@ textarea.ip{resize:vertical;min-height:70px}
       </div>
     </div>
 
-    <div class="cd">
-      <div class="ct"><span class="dot"></span> Lignes de charges</div>
-      <div class="lines" id="chargeLines"></div>
-      <button class="bt bt-ghost" onclick="addChargeLine()" style="margin-top:6px">&#43; Ajouter une ligne</button>
-    </div>
-
-    <div class="cd">
+    
+      <div class="step-actions">
+        <button class="bt bt-ghost" onclick="prevFactStep()">&larr; Pr&eacute;c&eacute;dent</button>
+        <button class="bt bt-ice" onclick="nextFactStep()">Suivant &rarr;</button>
+      </div>
+    </div><div class="fact-step hid" data-step="2">
+      <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">&Eacute;tape 3/6 &mdash; Dates, BL, booking et références</div>
+      <div class="cd">
       <div class="ct"><span class="dot"></span> Param&egrave;tres facture</div>
       <div class="grid g3">
         <div class="fld">
@@ -367,7 +434,27 @@ textarea.ip{resize:vertical;min-height:70px}
       </div>
     </div>
 
-    <div class="cd">
+    
+      <div class="step-actions">
+        <button class="bt bt-ghost" onclick="prevFactStep()">&larr; Pr&eacute;c&eacute;dent</button>
+        <button class="bt bt-ice" onclick="nextFactStep()">Suivant &rarr;</button>
+      </div>
+    </div><div class="fact-step hid" data-step="3">
+      <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">&Eacute;tape 4/6 &mdash; Ajoutez les lignes de charges</div>
+      <div class="cd">
+      <div class="ct"><span class="dot"></span> Lignes de charges</div>
+      <div class="lines" id="chargeLines"></div>
+      <button class="bt bt-ghost" onclick="addChargeLine()" style="margin-top:6px">&#43; Ajouter une ligne</button>
+    </div>
+
+    
+      <div class="step-actions">
+        <button class="bt bt-ghost" onclick="prevFactStep()">&larr; Pr&eacute;c&eacute;dent</button>
+        <button class="bt bt-ice" onclick="nextFactStep()">Suivant &rarr;</button>
+      </div>
+    </div><div class="fact-step hid" data-step="4">
+      <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">&Eacute;tape 5/6 &mdash; Vérifiez les codes et informations</div>
+      <div class="cd">
       <div class="ct"><span class="dot"></span> Codes fixes (configurables)</div>
       <div class="grid g3">
         <div class="fld"><label>Company Code</label><input class="ip mono" id="companyCode" value="CI12"></div>
@@ -381,7 +468,14 @@ textarea.ip{resize:vertical;min-height:70px}
       </div>
     </div>
 
-    <div class="cd">
+    
+      <div class="step-actions">
+        <button class="bt bt-ghost" onclick="prevFactStep()">&larr; Pr&eacute;c&eacute;dent</button>
+        <button class="bt bt-ice" onclick="nextFactStep()">Suivant &rarr;</button>
+      </div>
+    </div><div class="fact-step hid" data-step="5">
+      <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">&Eacute;tape 6/6 &mdash; Générez le fichier CSV</div>
+      <div class="cd">
       <div class="ct"><span class="dot"></span> G&eacute;n&eacute;ration</div>
       <div id="invSummary" style="margin-bottom:16px;font-size:13px;color:var(--txt2)"></div>
       <div style="display:flex;gap:12px;flex-wrap:wrap">
@@ -390,9 +484,14 @@ textarea.ip{resize:vertical;min-height:70px}
         <button class="bt bt-ghost" onclick="resetInvoice()">R&eacute;initialiser</button>
       </div>
     </div>
+      <div class="step-actions">
+        <button class="bt bt-ghost" onclick="prevFactStep()">&larr; Pr&eacute;c&eacute;dent</button>
+        <span></span>
+      </div>
+    </div>
+    </div>
   </div>
 
-  <!-- ============ BATCH TAB ============ -->
   <div id="tab-echange" class="hid">
     <div class="cd">
       <div class="ct"><span class="dot"></span> Facturation &Eacute;change</div>
@@ -1149,6 +1248,7 @@ function sw(t){
   });
   if(t==="echange") initEchange();
   if(t==="home") renderHome();
+  if(t==="invoice"){ _factStep=0; renderFactStepper(); }
   if(t==="dashboard") renderDashboard();
   if(t==="history") renderHistory();
   if(t==="fne") initFneTab();
@@ -2853,6 +2953,30 @@ function updateModeBadge(){
     b.style.background = "rgba(56,189,248,.08)";
   }
 }
+
+
+// ============ PARCOURS GUID\u00c9 FACTURATION (stepper) ============
+var _factStep = 0;
+var _factTotal = 6;
+function renderFactStepper(){
+  document.querySelectorAll("#factStepperNav .step-node").forEach(function(n){
+    var s = parseInt(n.getAttribute("data-step"));
+    n.classList.toggle("active", s===_factStep);
+    n.classList.toggle("done", s<_factStep);
+  });
+  document.querySelectorAll("#factSteps .fact-step").forEach(function(p){
+    var s = parseInt(p.getAttribute("data-step"));
+    p.classList.toggle("hid", s!==_factStep);
+  });
+}
+function goFactStep(n){
+  if(n<0||n>=_factTotal) return;
+  _factStep = n;
+  renderFactStepper();
+  var box=$("factSteps"); if(box) box.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function nextFactStep(){ if(_factStep<_factTotal-1) goFactStep(_factStep+1); }
+function prevFactStep(){ if(_factStep>0) goFactStep(_factStep-1); }
 
 function showToast(msg, type){
   var t = document.createElement("div");
