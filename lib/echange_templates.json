@@ -1,0 +1,312 @@
+{
+  "abidjan": {
+    "label": "Abidjan",
+    "subtypes": {
+      "echange": {
+        "label": "Échange",
+        "charges": [
+          {
+            "d": "Frais de dossier",
+            "base": "DOC",
+            "qty": 1,
+            "rate": 35000,
+            "vat": 1,
+            "code": "ODF"
+          },
+          {
+            "d": "Redevance Portuaire",
+            "base": "TO",
+            "qty": "weight",
+            "rate": 11000,
+            "vat": 1,
+            "code": "PTX",
+            "note": "taux marchandise (def 11000)"
+          },
+          {
+            "d": "Redevance Municipale",
+            "base": "TO",
+            "qty": "weight",
+            "rate": 1200,
+            "vat": 0,
+            "code": "PTX"
+          },
+          {
+            "d": "Redevance Communale",
+            "base": "TO",
+            "qty": "weight",
+            "rate": 20,
+            "vat": 0,
+            "code": "PTX"
+          },
+          {
+            "d": "Port Security Service (ISPS+SER)",
+            "base": "TEU",
+            "qty": "teu",
+            "rate": 14500,
+            "vat": 0,
+            "code": {
+              "imp": "PSI",
+              "exp": "PSE"
+            },
+            "note": "9900 ISPS + 4600 SER = 14500"
+          },
+          {
+            "d": "Taxe Sydam",
+            "base": "DOC",
+            "qty": 1,
+            "rate": 5000,
+            "vat": 1,
+            "code": {
+              "imp": "GTI",
+              "exp": "GTE"
+            }
+          },
+          {
+            "d": "Timbre pour connaissement",
+            "base": "DOC",
+            "qty": 1,
+            "rate": 5000,
+            "vat": 0,
+            "code": {
+              "imp": "DSI",
+              "exp": "DSE"
+            }
+          },
+          {
+            "d": "Déchargement de camion tiers",
+            "base": "TEU",
+            "qty": "teu",
+            "rate": 25000,
+            "vat": 0,
+            "code": {
+              "imp": "HDI",
+              "exp": "HDE"
+            }
+          },
+          {
+            "d": "Frais édition EIR",
+            "base": "CNT",
+            "qty": "cnt",
+            "rate": 10000,
+            "vat": 1,
+            "code": {
+              "imp": "EHI",
+              "exp": "EHE"
+            }
+          }
+        ]
+      },
+      "transit": {
+        "label": "Transit",
+        "charges": [
+          {
+            "d": "Frais de dossier",
+            "base": "DOC",
+            "qty": 1,
+            "rate": 35000,
+            "vat": 1,
+            "code": "ODF"
+          },
+          {
+            "d": "Red Port Transit",
+            "base": "TEU",
+            "qty": "teu",
+            "rate": 75000,
+            "vat": 1,
+            "code": "PTX"
+          },
+          {
+            "d": "Port Security Service (ISPS+SER)",
+            "base": "TEU",
+            "qty": "teu",
+            "rate": 14500,
+            "vat": 0,
+            "code": {
+              "imp": "PSI",
+              "exp": "PSE"
+            }
+          },
+          {
+            "d": "Taxe Sydam",
+            "base": "DOC",
+            "qty": 1,
+            "rate": 5000,
+            "vat": 1,
+            "code": {
+              "imp": "GTI",
+              "exp": "GTE"
+            }
+          },
+          {
+            "d": "Timbre pour connaissement",
+            "base": "DOC",
+            "qty": 1,
+            "rate": 5000,
+            "vat": 0,
+            "code": {
+              "imp": "DSI",
+              "exp": "DSE"
+            }
+          },
+          {
+            "d": "Déchargement de camion tiers",
+            "base": "TEU",
+            "qty": "teu",
+            "rate": 25000,
+            "vat": 1,
+            "code": {
+              "imp": "HDI",
+              "exp": "HDE"
+            }
+          },
+          {
+            "d": "Frais édition EIR",
+            "base": "CNT",
+            "qty": "cnt",
+            "rate": 10000,
+            "vat": 1,
+            "code": {
+              "imp": "EHI",
+              "exp": "EHE"
+            }
+          }
+        ]
+      },
+      "tbl": {
+        "label": "TBL",
+        "charges": [
+          {
+            "d": "Frais de dossier",
+            "base": "DOC",
+            "qty": 1,
+            "rate": 35000,
+            "vat": 1,
+            "code": "ODF"
+          },
+          {
+            "d": "Red Port Transit",
+            "base": "CNT",
+            "qty": "cnt",
+            "rate": 75000,
+            "vat": 1,
+            "code": "PTX"
+          },
+          {
+            "d": "Port Security Service (ISPS+SER)",
+            "base": "CNT",
+            "qty": "cnt",
+            "rate": 14500,
+            "vat": 0,
+            "code": {
+              "imp": "PSI",
+              "exp": "PSE"
+            }
+          },
+          {
+            "d": "Taxe Sydam",
+            "base": "DOC",
+            "qty": 1,
+            "rate": 5000,
+            "vat": 1,
+            "code": {
+              "imp": "GTI",
+              "exp": "GTE"
+            }
+          },
+          {
+            "d": "Timbre pour connaissement",
+            "base": "DOC",
+            "qty": 1,
+            "rate": 5000,
+            "vat": 0,
+            "code": {
+              "imp": "DSI",
+              "exp": "DSE"
+            }
+          },
+          {
+            "d": "Frais édition EIR",
+            "base": "CNT",
+            "qty": "cnt",
+            "rate": 10000,
+            "vat": 1,
+            "code": {
+              "imp": "EHI",
+              "exp": "EHE"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "sanpedro": {
+    "label": "San Pedro",
+    "subtypes": {
+      "standard": {
+        "label": "Standard",
+        "charges": [
+          {
+            "d": "Container service charge",
+            "base": "TEU",
+            "qty": "teu",
+            "rate": 25000,
+            "vat": 0,
+            "code": {
+              "imp": "HDI",
+              "exp": "HDE"
+            }
+          },
+          {
+            "d": "Frais de dossier",
+            "base": "DOC",
+            "qty": 1,
+            "rate": 30000,
+            "vat": 0,
+            "code": "ODF"
+          },
+          {
+            "d": "Cleaning",
+            "base": "TEU",
+            "qty": "teu",
+            "rate": 5000,
+            "vat": 0,
+            "code": {
+              "imp": "CCI",
+              "exp": "CCE"
+            }
+          },
+          {
+            "d": "Communauté portuaire",
+            "base": "TO",
+            "qty": "weight",
+            "rate": 20,
+            "vat": 0,
+            "code": "PTX"
+          },
+          {
+            "d": "Timbre",
+            "base": "DOC",
+            "qty": 1,
+            "rate": 5000,
+            "vat": 0,
+            "code": {
+              "imp": "DSI",
+              "exp": "DSE"
+            }
+          },
+          {
+            "d": "Taxe Sydam",
+            "base": "DOC",
+            "qty": 1,
+            "rate": 5000,
+            "vat": 0,
+            "code": {
+              "imp": "GTI",
+              "exp": "GTE"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
