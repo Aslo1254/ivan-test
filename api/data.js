@@ -8,6 +8,7 @@ const path = require('path');
 const BP_DB = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'bp_data.json'), 'utf8'));
 const CHARGES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'charges.json'), 'utf8'));
 const INV_TYPES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'inv_types.json'), 'utf8'));
+const COMMODITIES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'commodities.json'), 'utf8'));
 const { isLicenseActive } = require('./license.js');
 
 module.exports = async (req, res) => {
@@ -84,6 +85,22 @@ module.exports = async (req, res) => {
       let bit = "";
       for(let i=0;i<CHARGES.length;i++){ if(CHARGES[i].c===code){ bit=CHARGES[i].b; break; } }
       res.status(200).json({ ok:true, bit: bit });
+      return;
+    }
+
+    // Commodity search (returns matches; rates kept but client needs them only for display selection)
+    if(action === 'commodity'){
+      const q = String((req.query.q || (req.body && req.body.q) || "")).trim().toUpperCase();
+      if(q.length < 2){ res.status(200).json({ ok:true, results: [] }); return; }
+      const matches = [];
+      for(let i=0;i<COMMODITIES.length;i++){
+        const c = COMMODITIES[i];
+        if(c.d.toUpperCase().indexOf(q)>=0 || c.c.indexOf(q)>=0){
+          matches.push(c);
+          if(matches.length>=25) break;
+        }
+      }
+      res.status(200).json({ ok:true, results: matches });
       return;
     }
 

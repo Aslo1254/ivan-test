@@ -11,6 +11,63 @@ const IT_HDR = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'it_
 const TT_HDR = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'tt_hdr.json'), 'utf8'));
 const N_IT = IT_HDR.length;
 const N_TT = TT_HDR.length;
+const ECH_TPL = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'echange_templates.json'), 'utf8'));
+const COMMODITIES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'commodities.json'), 'utf8'));
+const COMM_MAP = {};
+COMMODITIES.forEach(function(c){ COMM_MAP[c.c] = c; });
+
+function resolveEchCode(code, io){
+  if(code && typeof code === 'object'){ return io==='I' ? code.imp : code.exp; }
+  return code;
+}
+
+// Build échange charge lines server-side (rates hidden). Handles multiple commodities (éclatement).
+// params: {port, subtype, io, cnt, teu, weight, commodities:[{code, weight}]}
+function buildEchangeCharges(params){
+  const port = params.port || 'abidjan';
+  const sub = params.subtype || (port==='sanpedro' ? 'standard' : 'echange');
+  const io = params.io || 'I';
+  const cnt = parseInt(params.cnt) || 1;
+  const teu = parseInt(params.teu) || 1;
+  const totalWeight = parseFloat(params.weight) || 0;
+  const commodities = params.commodities || [];
+  if(!ECH_TPL[port] || !ECH_TPL[port].subtypes[sub]) return [];
+  const template = ECH_TPL[port].subtypes[sub].charges;
+  const lines = [];
+
+  template.forEach(function(ch){
+    const code = resolveEchCode(ch.code, io);
+    // Commodity-driven charges: Redevance Portuaire / Municipale / Communale (base TO with commodity rate)
+    const isPort = /portuaire|red port(?! transit)/i.test(ch.d) && ch.base==='TO';
+    const isMun = /municipale|red mun/i.test(ch.d);
+    const isCom = /communale|red com/i.test(ch.d);
+
+    if((isPort || isMun || isCom) && commodities.length > 0){
+      // One line per commodity
+      commodities.forEach(function(cm){
+        const comm = COMM_MAP[cm.code];
+        const w = parseFloat(cm.weight) || 0;
+        if(w <= 0) return;
+        let rate;
+        if(isPort) rate = comm ? comm.p : ch.rate;
+        else if(isMun) rate = comm ? comm.m : ch.rate;
+        else rate = ch.rate; // communale flat (e.g. 20)
+        const commName = comm ? comm.d.substring(0,30) : 'divers';
+        lines.push({code:code, desc:ch.d+' ('+commName+')', bit:'COFR', qty:w, rate:rate, unit:'TO', vat:ch.vat});
+      });
+    } else {
+      // Standard charge
+      let qty;
+      if(ch.base==='DOC') qty = (typeof ch.qty==='number') ? ch.qty : 1;
+      else if(ch.base==='CNT') qty = cnt;
+      else if(ch.base==='TEU') qty = teu;
+      else if(ch.base==='TO') qty = totalWeight;
+      else qty = 1;
+      lines.push({code:code, desc:ch.d, bit:'COFR', qty:qty, rate:ch.rate, unit:(ch.base==='TO'?'TO':'EA'), vat:ch.vat});
+    }
+  });
+  return lines;
+}
 
 function buildItRow(inv, line, seq){
   const row = new Array(N_IT + 1).fill("");
@@ -80,6 +137,12 @@ module.exports = async (req, res) => {
   if(!active){ res.status(403).json({error:'Licence inactive', blocked:true}); return; }
 
   try{
+    // Échange charge computation (returns editable lines for the review step)
+    if(req.body && req.body.echangeCharges){
+      const lines = buildEchangeCharges(req.body.echangeCharges);
+      res.status(200).json({ ok:true, lines: lines });
+      return;
+    }
     const body = req.body;
     const invoices = body.invoices || [body];
     // Basic validation
