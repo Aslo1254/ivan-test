@@ -3053,9 +3053,8 @@ function fneOpenSite(){
 }
 
 function fneBuildBookmarklet(){
-  // Le bookmarklet tourne sur le portail DGI (autre origine) : il NE PEUT PAS lire le localStorage
-  // du domaine IVAN. Il recupere donc le batch depuis le SERVEUR IVAN par fetch, et y renvoie l'avancement.
-  // L'origine du serveur IVAN est injectee ci-dessous (au moment ou la page IVAN construit le favori).
+  // Le bookmarklet tourne sur le portail DGI (autre origine) : il recupere le batch depuis le serveur IVAN
+  // par fetch et y renvoie l'avancement. Remplit le formulaire FNE (menus + client + articles) puis soumet.
   var API = location.origin + "/api/store";
   function IVANFNE(API){
     if(window.__ivanFne){ alert("IVAN-FNE-BATCH d\u00e9j\u00e0 actif sur cette page."); return; }
@@ -3067,6 +3066,7 @@ function fneBuildBookmarklet(){
     ovr.innerHTML = "\u26a1 IVAN-FNE-BATCH<br><span id=\"ifs\" style=\"font-size:12px;font-weight:400\">Initialisation...</span><br><button id=\"ivanFneStop\" style=\"margin-top:6px;background:rgba(255,255,255,.2);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer\">Arr\u00eater</button>";
     document.body.appendChild(ovr);
     function setStatus(t){ var e = document.getElementById("ifs"); if(e) e.innerHTML = t; }
+    function log(){ try{ console.log.apply(console, ["[IVAN-FNE]"].concat([].slice.call(arguments))); }catch(e){} }
     function getBatch(){ return fetch(API + "?action=getfnebatch", {cache:"no-store"}).then(function(r){ return r.json(); }).then(function(d){ return (d && d.fne) || {queue:[], config:{}, state:"idle"}; }); }
     function putBatch(b){ return fetch(API, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action:"setfnebatch", fne:b})}).then(function(r){ return r.json(); }); }
     document.getElementById("ivanFneStop").onclick = function(){
@@ -3075,40 +3075,116 @@ function fneBuildBookmarklet(){
       if(ovr && ovr.parentNode) ovr.parentNode.removeChild(ovr);
       window.__ivanFne = false;
     };
-    function findField(hints){ var labels = document.querySelectorAll("label,div,span"); for(var i=0;i<labels.length;i++){ var t = (labels[i].textContent||"").toLowerCase().trim(); for(var j=0;j<hints.length;j++){ if(t.indexOf(hints[j])===0 || t===hints[j]){ var p = labels[i].closest("div,fieldset") || labels[i].parentElement; if(p){ var inp = p.querySelector("input,textarea,select"); if(inp) return inp; } } } } return null; }
-    var H = {clientCompanyName:["nom de la soci","nom du client","raison sociale","client","company name"],clientNcc:["ncc","contribuable","tax id","identifiant fiscal"],clientPhone:["telephone","tel","phone"],clientEmail:["email","e-mail","mail","courriel"],footer:["autres mentions","autre mention","mention","reference","footer"]};
-    function fillForm(inv){
-      var filled = 0;
-      Object.keys(H).forEach(function(k){
-        var v = k==="clientCompanyName"?inv.company:k==="clientNcc"?inv.ncc:k==="clientPhone"?inv.phone:k==="clientEmail"?inv.email:inv.footer;
-        if(!v) return;
-        var f = findField(H[k]);
-        if(f){
-          if(f.tagName==="SELECT"){ var opt = Array.prototype.slice.call(f.options).find(function(o){ return o.text.toLowerCase().indexOf(String(v).toLowerCase())>=0; }); if(opt) f.value = opt.value; }
-          else { f.value = v; }
-          f.dispatchEvent(new Event("input",{bubbles:true}));
-          f.dispatchEvent(new Event("change",{bubbles:true}));
-          f.style.background = "rgba(0,212,255,.15)";
-          filled++;
-        }
+    // ---- helpers ----
+    function norm(s){ return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); }
+    function fire(el, t){ try{ el.dispatchEvent(new Event(t, {bubbles:true})); }catch(e){} }
+    function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+    function clickEl(el){ try{ el.dispatchEvent(new MouseEvent("mousedown",{bubbles:true})); el.dispatchEvent(new MouseEvent("mouseup",{bubbles:true})); el.click(); }catch(e){ try{ el.click(); }catch(e2){} } }
+    function isVisible(el){ try{ var r = el.getBoundingClientRect(); return r.width>0 && r.height>0; }catch(e){ return true; } }
+    function matchAny(n, targets){ for(var i=0;i<targets.length;i++){ var h=norm(targets[i]); if(h && n.indexOf(h)>=0) return true; } return false; }
+    function labelHit(txt, hints){ var n=norm(txt); for(var i=0;i<hints.length;i++){ var h=norm(hints[i]); if(h && (n===h || n.indexOf(h)===0)) return true; } return false; }
+    // Trouve les CONTENEURS (un par libelle correspondant) qui possedent un controle de saisie
+    function findContainers(hints){
+      var els = document.querySelectorAll("label,div,span,p,th,td");
+      var seen = [], out = [];
+      for(var i=0;i<els.length;i++){
+        var txt = els[i].textContent || "";
+        if(txt.length > 80) continue;
+        if(!labelHit(txt, hints)) continue;
+        var node = els[i].closest("div,fieldset,td,tr") || els[i].parentElement, tries = 0;
+        while(node && tries < 5 && !node.querySelector("input,textarea,select,[role=combobox],ng-select,.ng-select,.mat-select-trigger,mat-select,.p-dropdown,.select2-selection")){ node = node.parentElement; tries++; }
+        if(node && seen.indexOf(node) < 0){ seen.push(node); out.push(node); }
+      }
+      return out;
+    }
+    function setTextAt(hints, idx, val){
+      if(val === undefined || val === null || val === "") return false;
+      var cs = findContainers(hints); if(!cs[idx]) return false;
+      var inp = cs[idx].querySelector("input,textarea"); if(!inp) return false;
+      try{ inp.focus(); }catch(e){}
+      inp.value = String(val); fire(inp, "input"); fire(inp, "change"); fire(inp, "blur");
+      inp.style.background = "rgba(0,212,255,.15)";
+      return true;
+    }
+    function setText(hints, val){ return setTextAt(hints, 0, val); }
+    function findOption(targets){
+      var sels = ["[role=option]","ng-dropdown-panel .ng-option","li.ng-option",".ng-option","mat-option",".mat-option",".p-dropdown-item","li[role=option]",".select2-results__option",".cdk-overlay-container li",".cdk-overlay-container [class*=option]","option"];
+      for(var s=0;s<sels.length;s++){
+        var list = document.querySelectorAll(sels[s]);
+        for(var i=0;i<list.length;i++){ if(isVisible(list[i]) && matchAny(norm(list[i].textContent), targets)) return list[i]; }
+      }
+      return null;
+    }
+    function setDropdownAt(hints, idx, targets){
+      var cs = findContainers(hints);
+      if(!cs[idx]){ log("menu introuvable", hints, idx); return Promise.resolve(false); }
+      var c = cs[idx];
+      var sel = c.querySelector("select");
+      if(sel){
+        var opt = Array.prototype.slice.call(sel.options).find(function(o){ return matchAny(norm(o.textContent), targets); });
+        if(opt){ sel.value = opt.value; fire(sel, "input"); fire(sel, "change"); return Promise.resolve(true); }
+        log("select natif sans option", hints, targets); return Promise.resolve(false);
+      }
+      var trig = c.querySelector("[role=combobox],ng-select,.ng-select,.mat-select-trigger,mat-select,.p-dropdown,.select2-selection,button,input") || c;
+      clickEl(trig);
+      return sleep(450).then(function(){
+        var opt = findOption(targets);
+        if(opt){ clickEl(opt); return sleep(200).then(function(){ return true; }); }
+        var si = document.querySelector(".ng-select-opened input,.ng-dropdown-panel input,input[role=combobox],.cdk-overlay-container input");
+        if(si){ try{ si.focus(); }catch(e){} si.value = targets[0]; fire(si, "input"); return sleep(450).then(function(){ var o2 = findOption(targets); if(o2){ clickEl(o2); return sleep(200).then(function(){ return true; }); } log("option custom introuvable", hints, targets); return false; }); }
+        log("menu custom: option introuvable", hints, targets); return false;
       });
-      if(inv.items && inv.items[0]){
-        var it = inv.items[0];
-        var IH = {quantity:["quantite","qty","quantity"],reference:["reference","ref","code"],description:["description","designation","libelle"],unit:["unite de mesure","unite","unit"],price:["pu ht","prix unitaire","prix"]};
-        Object.keys(IH).forEach(function(k){
-          var val = (k==="quantity" && (it.quantity===undefined||it.quantity===null||it.quantity==="")) ? it.qty : it[k];
-          if(val===undefined || val===null || val==="") return;
-          var f = findField(IH[k]);
-          if(f){ f.value = val; f.dispatchEvent(new Event("input",{bubbles:true})); f.dispatchEvent(new Event("change",{bubbles:true})); f.style.background = "rgba(251,191,36,.15)"; filled++; }
+    }
+    function setDropdown(hints, targets){ return setDropdownAt(hints, 0, targets); }
+    function clickByText(re, tags){
+      var els = document.querySelectorAll(tags || "button,a");
+      for(var i=0;i<els.length;i++){ var t=(els[i].textContent||"").trim(); if(re.test(t) && !els[i].disabled){ clickEl(els[i]); return true; } }
+      return false;
+    }
+    function clickAddArticle(){ return clickByText(/ajouter un article/i, "button,a"); }
+    function clickGen(){ return clickByText(/G.n.rer la facture$/i, "button"); }
+    function clickPlus(){ return clickByText(/G.n.rer la facture\s*\+/i, "button,a"); }
+    function readLatestNum(){ var rows = document.querySelectorAll("table tbody tr,table tr"); for(var i=0;i<rows.length;i++){ var cells = rows[i].querySelectorAll("td"); if(cells.length>1){ var txt=(cells[0].textContent||cells[1].textContent||"").trim(); if(/^\d{10,}/.test(txt)) return txt; } } return ""; }
+    function isFormPage(){ return location.href.indexOf("/generate")>=0 || document.body.textContent.indexOf("Sauvegarder la facture")>=0 || /AJOUTER UN ARTICLE/i.test(document.body.textContent); }
+    function isListPage(){ return location.href.indexOf("type=issued")>=0 || /Mes Factures et re.us/i.test(document.body.textContent); }
+    // ---- remplissage d'une facture ----
+    function fillArticles(items){
+      var i = 0, done = 0;
+      function step(){
+        if(i >= items.length) return Promise.resolve(done);
+        var pre = (i > 0) ? (function(){ clickAddArticle(); return sleep(600); })() : Promise.resolve();
+        return pre.then(function(){
+          var it = items[i];
+          var qv = (it.quantity !== undefined && it.quantity !== null && it.quantity !== "") ? it.quantity : it.qty;
+          if(setTextAt(["quantite"], i, qv)) done++;
+          if(setTextAt(["reference"], i, it.reference)) done++;
+          if(setTextAt(["designation","description"], i, it.description)) done++;
+          if(setTextAt(["unite de mesure","unite"], i, it.unit)) done++;
+          if(setTextAt(["pu ht","prix unitaire"], i, it.price)) done++;
+          var taxTargets = (it.tax === "A") ? ["18","tva 18","tva normal","18%"] : ["0","exoner","exonere","0%","non taxable"];
+          return setDropdownAt(["taux d'imposition","taux d","taux"], i, taxTargets).then(function(ok){ if(ok) done++; i++; return step(); });
         });
       }
-      return filled;
+      return step();
     }
-    function clickGen(){ var btns = document.querySelectorAll("button"); for(var i=0;i<btns.length;i++){ var t=(btns[i].textContent||"").trim(); if(/G.n.rer la facture$/i.test(t) && !btns[i].disabled){ btns[i].click(); return true; } } return false; }
-    function clickPlus(){ var btns = document.querySelectorAll("button,a"); for(var i=0;i<btns.length;i++){ var t=(btns[i].textContent||"").trim(); if(/G.n.rer la facture\s*\+/i.test(t)){ btns[i].click(); return true; } } return false; }
-    function readLatestNum(){ var rows = document.querySelectorAll("table tbody tr,table tr"); for(var i=0;i<rows.length;i++){ var cells = rows[i].querySelectorAll("td"); if(cells.length>1){ var txt=(cells[0].textContent||cells[1].textContent||"").trim(); if(/^\d{10,}/.test(txt)) return txt; } } return ""; }
-    function isFormPage(){ return location.href.indexOf("/generate")>=0 || document.body.textContent.indexOf("Sauvegarder la facture")>=0; }
-    function isListPage(){ return location.href.indexOf("type=issued")>=0 || /Mes Factures et re.us/i.test(document.body.textContent); }
+    function fillInvoice(inv){
+      var filled = 0;
+      // 1) Les 3 menus d'abord (ils font apparaitre le reste du formulaire)
+      return setDropdown(["type de facture"], ["vente"]).then(function(ok){ if(ok) filled++;
+        return setDropdown(["mode de paiement","methode de paiement"], ["virement"]); }).then(function(ok){ if(ok) filled++;
+        return setDropdown(["type de facturation"], ["b2b","entreprise"]); }).then(function(ok){ if(ok) filled++;
+        return sleep(800); }).then(function(){
+        // 2) Informations client + Autres Mentions
+        if(setText(["nom de la societe","nom du client","raison sociale"], inv.company)) filled++;
+        if(setText(["ncc","contribuable","identifiant fiscal"], inv.ncc)) filled++;
+        if(setText(["telephone"], inv.phone)) filled++;
+        if(setText(["email","e-mail","courriel"], inv.email)) filled++;
+        if(setText(["autres mention","autre mention","mention"], inv.footer)) filled++;
+        // 3) Articles (1 bloc par ligne, dans l'ordre)
+        return fillArticles(inv.items || []);
+      }).then(function(n){ filled += n; return filled; });
+    }
+    // ---- boucle principale ----
     function tick(){
       if(stopped || busy) return;
       busy = true;
@@ -3122,13 +3198,23 @@ function fneBuildBookmarklet(){
         if(pendIdx<0 && submIdx<0){ b.state="done"; putBatch(b); setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9es)"); stopped=true; busy=false; alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); return; }
         if(isFormPage() && pendIdx>=0){
           var inv = q[pendIdx];
-          setStatus("Remplissage "+inv.idx+"/"+q.length+"<br><small>"+(inv.fileName||"").substring(0,40)+"</small>");
-          fillForm(inv);
-          setTimeout(function(){
-            if(clickGen()){ q[pendIdx].status="submitted"; setStatus("Soumis "+inv.idx+", attente liste..."); }
-            else { q[pendIdx].status="error"; q[pendIdx].errMsg="Bouton G\u00e9n\u00e9rer introuvable"; }
-            putBatch(b).then(function(){ busy=false; }).catch(function(){ busy=false; });
-          }, delay/2);
+          if(inv._filled){
+            if(clickGen()){ inv.status="submitted"; setStatus("Soumis "+inv.idx+", attente liste..."); putBatch(b).then(function(){ busy=false; }).catch(function(){ busy=false; }); }
+            else { setStatus("Champs remplis. V\u00e9rifiez puis cliquez \u00ab G\u00e9n\u00e9rer la facture \u00bb."); busy=false; }
+          } else {
+            setStatus("Remplissage "+inv.idx+"/"+q.length+"...<br><small>"+(inv.fileName||"").substring(0,40)+"</small>");
+            fillInvoice(inv).then(function(n){
+              inv._filled = true;
+              setStatus("Rempli ("+n+" champs) "+inv.idx+"/"+q.length+", soumission...");
+              putBatch(b).then(function(){
+                setTimeout(function(){
+                  if(clickGen()){ inv.status="submitted"; setStatus("Soumis "+inv.idx+", attente liste..."); putBatch(b); }
+                  else { setStatus("Rempli. V\u00e9rifiez puis cliquez \u00ab G\u00e9n\u00e9rer la facture \u00bb."); }
+                  busy = false;
+                }, delay/2);
+              }).catch(function(){ busy = false; });
+            }).catch(function(e){ log("erreur remplissage", e); setStatus("\u26a0 Erreur remplissage : "+(e && e.message ? e.message : e)); busy = false; });
+          }
         } else if(isListPage() && submIdx>=0){
           var num = readLatestNum();
           if(num){
