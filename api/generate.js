@@ -75,33 +75,40 @@ function buildEchangeCharges(params){
 const CREDIT_SUBS = {"MCMN":1,"MCVS":1,"MCVP":1,"MCCC":1,"IMCC":1,"IMEC":1,"MCCG":1};
 function isCredit(inv){ return !!CREDIT_SUBS[inv.subprocess]; }
 
-function buildItRow(inv, line, seq){
+function buildItRow(inv, line, seq, txtGroup, firstBooking){
   const row = new Array(N_IT + 1).fill("");
   const unit = line.unit || "EA";
-  row[0]="IT"; row[1]="ZSMMI"; row[3]=inv.contractAcc; row[4]="TEXT"+seq;
+  // CORRECTIF MULTI-LIGNES : TXT_GROUP doit etre CONSTANT pour toutes les lignes d'une meme
+  // facture (TEXT1, TEXT2... par facture, JAMAIS par ligne). Avec l'ancien "TEXT"+seq, les
+  // lignes recevaient TEXT1/TEXT2/TEXT3 -> SAP n'arrivait plus a les regrouper dans un seul
+  // document de facturation -> erreur "Dependency is not assigned" / BITPACK_SET.
+  row[0]="IT"; row[1]="ZSMMI"; row[3]=inv.contractAcc; row[4]=txtGroup;
   row[6]=inv.subprocess; row[7]=line.bit; row[8]=String(line.amount); row[9]=inv.currency;
   row[10]="S";
-  // Date logic: IMPORT -> arrival date (BITDATE_FROM idx14 stays empty for sailing),
-  //             EXPORT -> sailing date. We store the relevant date in idx14 + idx194.
-  var theDate = (inv.expImp==="I") ? (inv.arrivalDate||"") : (inv.sailingDate||"");
+  // Date : IMPORT -> arrival date, EXPORT -> sailing date.
+  // Override PAR LIGNE possible (line.date) pour les factures multi-BL ou chaque ligne a sa propre date.
+  var theDate = line.date || ((inv.expImp==="I") ? (inv.arrivalDate||"") : (inv.sailingDate||""));
   row[15]=theDate;   // BITDATE_TO (le fichier SAP valid\u00e9 place la date ici, pas en BITDATE_FROM)
   row[19]=unit; row[20]=String(line.qty);
   row[22]=inv.companyCode; row[28]=inv.bp; row[29]=inv.businessArea; row[43]="X";
-  row[44]=inv.profitCenter; row[46]="X"; row[63]="03"; row[64]="01"; row[71]=unit;
+  row[44]=line.profitCenter || inv.profitCenter; row[46]="X"; row[63]="03"; row[64]="01"; row[71]=unit;  // PRCTR : override par ligne (ML01, ML02...)
   row[82]=String(line.amount); row[84]=String(seq); row[85]=inv.expImp;
-  if(inv.ubli) row[94]=inv.ubli;                       // ZZBLUBLI = MAEU+BL
+  var lineUbli = line.ubli || inv.ubli;
+  if(lineUbli) row[94]=lineUbli;                       // ZZBLUBLI = MAEU+BL (override par ligne)
   row[97]=inv.bp;
   row[106]="CI";                                        // ZZCOUNTRYCODE
-  if(inv.cbu) row[101]=inv.cbu;                        // ZZCBU (Collection Business Unit)
+  var lineCbu = line.cbu || inv.cbu;
+  if(lineCbu) row[101]=lineCbu;                        // ZZCBU (Collection Business Unit) - override par ligne
   row[102]=String(line.code).substring(0,8);
   row[108]=inv.currency; row[109]=inv.currency;
   row[115]="3"; row[116]="2"; row[117]="1"; row[118]="1";
   if(inv.extFooter) row[129]=inv.extFooter;            // ZZFOOTERNOTE = external billing footer (SAP header text)
-  if(inv.bl) row[120]=inv.bl;                          // ZZEQBOOKNO = booking (requis par SAP pour la d\u00e9pendance)
+  var lineBooking = line.booking || inv.bl;
+  if(lineBooking) row[120]=lineBooking;                // ZZEQBOOKNO = booking PAR LIGNE (chaque BL a le sien)
   row[138]=inv.invGrouping;
-  if(inv.bl) row[155]=inv.bl;                          // ZZPO_NO = BL
+  if(firstBooking) row[155]=firstBooking;              // ZZPO_NO = booking d'ancrage de la facture (1ere ligne), identique sur toutes les lignes
   row[158]="X"; row[159]=String(line.rate); row[160]="1"; row[161]="X";
-  if(inv.bl) row[164]=inv.bl;                          // ZZREF = BL
+  if(firstBooking) row[164]=firstBooking;              // ZZREF  = booking d'ancrage de la facture (1ere ligne), identique sur toutes les lignes
   row[168]=inv.salesOffice; row[172]=inv.bp; row[173]="I"; row[176]="0";
   row[195]=theDate; // ZZDIS_ARR_DATFB (date c\u00f4t\u00e9 SAP valid\u00e9, pas ZZLOA_SAI_DATFB)
   return row;
@@ -125,12 +132,16 @@ function buildExtractCSV(invoices, opts){
   invoices.forEach(function(inv, invIdx){
     // BULK mode: assign Invoice Grouping 1, 2, 3... per invoice in the file
     if(opts.bulk){ inv = Object.assign({}, inv, {invGrouping: String(invIdx + 1)}); }
+    // Groupe de texte CONSTANT pour toutes les lignes de CETTE facture (TEXT1, TEXT2... par facture)
+    var txtGroup = "TEXT" + (invIdx + 1);
+    // Booking d'ancrage = booking de la 1ere ligne (sinon inv.bl). ZZPO_NO / ZZREF identiques sur toutes les lignes.
+    var firstBooking = (inv.lines[0] && inv.lines[0].booking) || inv.bl;
     const credit = isCredit(inv);
     inv.lines.forEach(function(line, li){
       const raw = line.qty * line.rate;
       // CREDIT types: amounts become negative
       line.amount = credit ? -Math.abs(raw) : raw;
-      out.push(buildItRow(inv, line, li+1).join(";"));
+      out.push(buildItRow(inv, line, li+1, txtGroup, firstBooking).join(";"));
     });
     out.push(buildTtRow("CLK", 1, "", "").join(";"));
     out.push(buildTtRow("CNT", 1, inv.clerkEmail, inv.clerkName||"").join(";"));
@@ -160,7 +171,7 @@ module.exports = async (req, res) => {
     const invoices = body.invoices || [body];
     // Basic validation
     for(const inv of invoices){
-      var hasDate = inv.sailingDate || inv.arrivalDate;
+      var hasDate = inv.sailingDate || inv.arrivalDate || ((inv.lines||[]).some(function(l){ return l && l.date; }));
       if(!inv.bp || !inv.contractAcc || !hasDate || !inv.lines || !inv.lines.length){
         res.status(400).json({error:'Données de facture incomplètes'});
         return;
