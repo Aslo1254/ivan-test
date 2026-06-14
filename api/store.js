@@ -24,6 +24,7 @@ const K_ECHT = "ivan:echange_templates";
 const K_HISTORY = "ivan:history";
 const K_CBU = "ivan:cbu_list";
 const K_CA_OVERRIDES = "ivan:ca_overrides";  // manager edits per BP: {bp: [{ca,name}]}
+const K_FNE = "ivan:fnebatch";  // batch FNE partage (queue + config + etat) - lu par le bookmarklet cross-origin
 
 // Default manager account (guaranteed to always exist)
 const DEFAULT_USER = { user:"ivan", pass:"ivan2026", role:"manager", email:"ivan.assani@maersk.com", name:"Ivan ASSANI" };
@@ -224,6 +225,23 @@ module.exports = async (req, res) => {
       const cbu = (req.body && req.body.cbu);
       if(!cbu){ res.status(200).json({ ok:false, error:"Donn\u00e9es manquantes" }); return; }
       await redis.set(K_CBU, cbu);
+      res.status(200).json({ ok:true });
+      return;
+    }
+
+    // ===== BATCH FNE (partage cross-origin avec le bookmarklet sur le portail DGI) =====
+    // Le bookmarklet tourne sur services.fne.dgi.gouv.ci (autre origine) : il NE PEUT PAS lire le
+    // localStorage du domaine IVAN. On stocke donc le batch ici (Redis) et il le recupere par fetch.
+    if(action === 'getfnebatch'){
+      let fne = await redis.get(K_FNE);
+      if(!fne) fne = { queue: [], config: {}, state: "idle" };
+      res.status(200).json({ ok:true, fne: fne });
+      return;
+    }
+    if(action === 'setfnebatch'){
+      const fne = (req.body && req.body.fne);
+      if(!fne){ res.status(200).json({ ok:false, error:"Donn\u00e9es manquantes" }); return; }
+      await redis.set(K_FNE, fne);
       res.status(200).json({ ok:true });
       return;
     }
