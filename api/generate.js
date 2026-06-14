@@ -85,10 +85,15 @@ function buildItRow(inv, line, seq, txtGroup, firstBooking){
   row[0]="IT"; row[1]="ZSMMI"; row[3]=inv.contractAcc; row[4]=txtGroup;
   row[6]=inv.subprocess; row[7]=line.bit; row[8]=String(line.amount); row[9]=inv.currency;
   row[10]="S";
-  // Date : IMPORT -> arrival date, EXPORT -> sailing date.
-  // Override PAR LIGNE possible (line.date) pour les factures multi-BL ou chaque ligne a sa propre date.
-  var theDate = line.date || ((inv.expImp==="I") ? (inv.arrivalDate||"") : (inv.sailingDate||""));
-  row[15]=theDate;   // BITDATE_TO (le fichier SAP valid\u00e9 place la date ici, pas en BITDATE_FROM)
+  // Date selon le SENS (noms de colonnes SAP sans ambiguite) :
+  //  - Import : date d'ARRIVEE -> BITDATE_TO (15) + ZZDIS_ARR_DATFB (195)
+  //  - Export : date d'EMBARQUEMENT -> BITDATE_FROM (14) + ZZLOA_SAI_DATFB (194)
+  // Override par ligne possible (line.date) pour les factures multi-BL.
+  var isImport = (inv.expImp === "I");
+  // Prend la date disponible quel que soit le champ fourni (Echange envoie arrival/sailing selon le sens ;
+  // Facturation n'a qu'un champ "sailingDate" utilise pour les deux sens). Placement par sens ci-dessous.
+  var theDate = line.date || (isImport ? (inv.arrivalDate || inv.sailingDate || "") : (inv.sailingDate || inv.arrivalDate || ""));
+  if(isImport) row[15]=theDate; else row[14]=theDate;
   row[19]=unit; row[20]=String(line.qty);
   row[22]=inv.companyCode; row[28]=inv.bp; row[29]=inv.businessArea; row[43]="X";
   row[44]=line.profitCenter || inv.profitCenter; row[46]="X"; row[63]="03"; row[64]="01"; row[71]=unit;  // PRCTR : override par ligne (ML01, ML02...)
@@ -110,7 +115,7 @@ function buildItRow(inv, line, seq, txtGroup, firstBooking){
   row[158]="X"; row[159]=String(line.rate); row[160]="1"; row[161]="X";
   if(firstBooking) row[164]=firstBooking;              // ZZREF  = booking d'ancrage de la facture (1ere ligne), identique sur toutes les lignes
   row[168]=inv.salesOffice; row[172]=inv.bp; row[173]="I"; row[176]="0";
-  row[195]=theDate; // ZZDIS_ARR_DATFB (date c\u00f4t\u00e9 SAP valid\u00e9, pas ZZLOA_SAI_DATFB)
+  if(isImport) row[195]=theDate; else row[194]=theDate; // ZZDIS_ARR_DATFB (import) / ZZLOA_SAI_DATFB (export)
   return row;
 }
 function buildTtRow(recordType, seq, email, name){
@@ -129,11 +134,13 @@ function buildExtractCSV(invoices, opts){
   out.push("400;SMMI;");
   out.push(IT_HDR.join(";"));
   out.push(TT_HDR.join(";"));
+  var seqNo = 0; // compteur de sequence CONTINU sur tout le fichier (idx84): 1,2,3,4... toutes factures confondues
   invoices.forEach(function(inv, invIdx){
     // BULK mode: assign Invoice Grouping 1, 2, 3... per invoice in the file
     if(opts.bulk){ inv = Object.assign({}, inv, {invGrouping: String(invIdx + 1)}); }
-    // Groupe de texte CONSTANT pour toutes les lignes de CETTE facture (TEXT1, TEXT2... par facture)
-    var txtGroup = "TEXT" + (invIdx + 1);
+    // Groupe de texte CONSTANT = TEXT1 sur TOUT le fichier (fichier en bloc valide: les 2 factures ont TEXT1).
+    // La separation des factures se fait par ZZINV_GROUPING (1, 2, 3...), PAS par TXT_GROUP.
+    var txtGroup = "TEXT1";
     // Booking d'ancrage = booking de la 1ere ligne (sinon inv.bl). ZZPO_NO / ZZREF identiques sur toutes les lignes.
     var firstBooking = (inv.lines[0] && inv.lines[0].booking) || inv.bl;
     const credit = isCredit(inv);
@@ -141,15 +148,15 @@ function buildExtractCSV(invoices, opts){
       const raw = line.qty * line.rate;
       // CREDIT types: amounts become negative
       line.amount = credit ? -Math.abs(raw) : raw;
-      out.push(buildItRow(inv, line, li+1, txtGroup, firstBooking).join(";"));
+      seqNo++;
+      out.push(buildItRow(inv, line, seqNo, txtGroup, firstBooking).join(";"));
     });
   });
-  // UN SEUL bloc de fin pour TOUT le fichier (1 en-tete + items groupes par ZZINV_GROUPING + 1 bloc de fin).
-  // Plusieurs blocs CLK/CNT intercales font echouer l'import SAP S/4HANA. Le compteur CNT = nombre de factures.
-  // (1 seule facture => seq=1, identique au fichier valide ; en bloc => seq=N.)
+  // UN SEUL bloc de fin pour TOUT le fichier (1 en-tete + items separes par ZZINV_GROUPING + 1 bloc de fin).
+  // CNT/ZZBIT_SEQUENCE = 1 constant (verifie: fichier mono-facture ET fichier en bloc 2 factures ont tous CNT=1).
   var firstInv = invoices[0] || {};
-  out.push(buildTtRow("CLK", invoices.length, "", "").join(";"));
-  out.push(buildTtRow("CNT", invoices.length, firstInv.clerkEmail, firstInv.clerkName||"").join(";"));
+  out.push(buildTtRow("CLK", 1, "", "").join(";"));
+  out.push(buildTtRow("CNT", 1, firstInv.clerkEmail, firstInv.clerkName||"").join(";"));
   return out.join("\r\n");
 }
 
@@ -173,10 +180,10 @@ module.exports = async (req, res) => {
     }
     const body = req.body;
     const invoices = body.invoices || [body];
-    // Basic validation
+    // Basic validation. La date n'est PAS obligatoire : le fichier en bloc valide contient
+    // une facture (HDI) sans date acceptee par SAP. Le front-end valide deja chaque facture a l'ajout.
     for(const inv of invoices){
-      var hasDate = inv.sailingDate || inv.arrivalDate || ((inv.lines||[]).some(function(l){ return l && l.date; }));
-      if(!inv.bp || !inv.contractAcc || !hasDate || !inv.lines || !inv.lines.length){
+      if(!inv.bp || !inv.contractAcc || !inv.lines || !inv.lines.length){
         res.status(400).json({error:'Données de facture incomplètes'});
         return;
       }
