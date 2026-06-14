@@ -2843,7 +2843,7 @@ async function fneLoadFiles(files){
         var content=await page.getTextContent();
         fullText+=content.items.map(function(it){return it.str;}).join(" ")+"\n";
       }
-      var parsed=fneParseTextToObj(fullText);
+      var parsed=fneParseTextToObj(fullText, f.name);
       var entry={
         idx: fneBatchQueue.length+1,
         fileName: f.name,
@@ -2876,17 +2876,69 @@ async function fneLoadFiles(files){
   $("fneStatsArea").classList.remove("hid");
 }
 
-function fneParseTextToObj(txt){
+function fneParseTextToObj(txt, fileName){
   var r={ncc:"",company:"",footer:"",phone:"",email:"",items:[]};
-  var mc=txt.match(/(?:35-ML-)?(CI\d{6,8}|DK\d{8})/);
+
+  // --- Numero de facture II... ---
+  var mInv=txt.match(/II\d{6,}/);
+  var inv=mInv?mInv[0]:"";
+
+  // --- NCC (code client CI.../DK...) : juste apres le II..., pour eviter le RIB en pied de page ---
+  var afterInv=mInv?txt.slice(txt.indexOf(inv)+inv.length):txt;
+  var mc=afterInv.match(/(CI\d{3,12}|DK\d{5,12})/)||txt.match(/(CI\d{3,12}|DK\d{5,12})/);
   if(mc)r.ncc=mc[1];
-  var inv="",mi=txt.match(/II\d{7}/);
-  if(mi)inv=mi[0];
-  var ref="",mr=txt.match(/(?:Our Reference|Reference)[\s\S]*?(\d{8,10})/i);
-  if(mr)ref=mr[1];
+
+  // --- Reference (Our Reference) = prefixe du nom de fichier (le plus fiable) ---
+  var ref="";
+  if(fileName){var mf=String(fileName).match(/(\d{6,})/);if(mf)ref=mf[1];}
+  if(!ref){var mr=txt.match(/(\d{8,12})\s+Our\s+Reference/i)||txt.match(/Our\s+Reference\D*?(\d{8,12})/i);if(mr)ref=mr[1];}
   r.footer=(inv&&ref)?(inv+" - "+ref):(inv||ref||"");
-  var mn=txt.match(/Invoice Address\s*([A-Z][A-Z &\-]+)/);
-  if(mn)r.company=mn[1].trim();
+
+  // --- Nom societe = Invoice Address ligne 1 (run majuscule, coupe a l'adresse) ---
+  var mn=txt.match(/Invoice Address\s+([A-Z][A-Z0-9 &\-'().]+)/);
+  if(mn){
+    var comp=mn[1];
+    comp=comp.split(/\s+\d{1,4}\s+BP\b/)[0];
+    comp=comp.split(/\s+BP\s+\d/)[0];
+    comp=comp.split(/\s+CC\b/i)[0];
+    var pcut=comp.split(/\s+(?:TREICHVILLE|ABIDJAN|PLATEAU|MARCORY|COCODY|YOPOUGON|ABOBO|ADJAME|PORT[\- ]BOUET|KOUMASSI|VRIDI|ZONE\s+\d|RUE\s|AVENUE\s|BOULEVARD\s)/i);
+    if(pcut[0]&&pcut[0].trim().length>=2)comp=pcut[0];
+    comp=comp.replace(/\s+[A-Z]$/,"").replace(/\s+/g," ").trim();
+    r.company=comp;
+  }
+
+  // --- Articles : section entre l'entete "...Price Amount" et "Total Exclusive Tax" ---
+  var pa=txt.match(/Price\s+Amount/i);
+  var startIdx=pa?(txt.indexOf(pa[0])+pa[0].length):0;
+  var et=txt.search(/Total\s+Exclusive\s+Tax/i);
+  var endIdx=et>=0?et:txt.length;
+  var section=txt.slice(startIdx,endIdx);
+
+  // Motif de FIN de ligne article : TAX  qte  UoM  prix  montant
+  var tailRe=/(VAT\s+\d+|N)\s+(\d+(?:\.\d+)?)\s+([A-Za-z]{2,5})\s+([\d.,]+)\s+([\d.,]+)/g;
+  var m,lastEnd=0;
+  while((m=tailRe.exec(section))!==null){
+    var pre=section.slice(lastEnd,m.index);
+    lastEnd=tailRe.lastIndex;
+    // Description : depuis "ABJ"
+    var idxDesc=pre.search(/ABJ/i);
+    var description="",objectPart=pre;
+    if(idxDesc>=0){description=pre.slice(idxDesc).replace(/\s+/g," ").trim();objectPart=pre.slice(0,idxDesc);}
+    // Code objet : depuis "0?A" (recolle les codes coupes en enlevant les espaces) ; saute un eventuel Pos
+    var objCode="";
+    var mo=objectPart.match(/0\d?\s*A[A-Z0-9 ]*/);
+    if(mo){objCode=mo[0].replace(/\s+/g,"");}
+    else{objCode=objectPart.replace(/^\s*\d{1,3}\s+/,"").replace(/\s+/g,"");}
+    var tax=/VAT/i.test(m[1])?"A":"C";
+    var qty=parseFloat(m[2])||1;
+    var unit=(m[3]||"").toUpperCase();
+    var price=parseFloat(String(m[4]).replace(/,/g,""))||0;
+    if(objCode||description){
+      r.items.push({reference:objCode,description:description,qty:qty,unit:unit,price:price,tax:tax});
+    }
+  }
+
+  // --- Telephone / Email depuis la base MDM (par code client) ---
   if(r.ncc&&typeof CL!=="undefined"){
     var match=CL.find(function(cl){return cl.c===r.ncc;});
     if(match){
@@ -2894,22 +2946,6 @@ function fneParseTextToObj(txt){
       if(match.e)r.email=match.e;
     }
   }
-  var lineRe=/(\d+)\s+(\w+)\s+(.+?)\s+(VAT \d+|N|\w+)\s+([\d.,]+)\s+(\w+)\s+([\d,.]+)\s+([\d,.]+)/g;
-  var m;
-  while((m=lineRe.exec(txt))!==null){
-    var taxCode=m[4].indexOf("VAT")>=0?"A":"C";
-    r.items.push({
-      pos:parseInt(m[1])||0,
-      qty:parseFloat(m[5].replace(/,/g,""))||1,
-      reference:m[2],
-      description:m[3].trim(),
-      unit:m[6],
-      price:parseFloat(m[7].replace(/,/g,""))||0,
-      tax:taxCode
-    });
-  }
-  // Trier par position (Pos) pour respecter l'ordre du PDF (la lecture PDF peut renvoyer les lignes dans le desordre)
-  r.items.sort(function(a,b){ return (a.pos||0)-(b.pos||0); });
   return r;
 }
 
@@ -3065,6 +3101,7 @@ function fneBuildBookmarklet(){
     if(window.__ivanFne){ alert("IVAN-FNE-BATCH d\u00e9j\u00e0 actif sur cette page."); return; }
     window.__ivanFne = true;
     var delay = 2500, pauseEvery = 0, processedSinceLastPause = 0, busy = false, stopped = false;
+    var seenNums = {};  // numeros FNE deja captures dans ce batch (evite de relire celui de la facture precedente)
     var ovr = document.createElement("div");
     ovr.id = "ivan-fne-ovr";
     ovr.style.cssText = "position:fixed;top:10px;right:10px;z-index:999999;background:linear-gradient(135deg,#fbbf24,#7c3aed);color:#fff;padding:12px 18px;border-radius:10px;font-family:sans-serif;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:320px";
@@ -3200,7 +3237,7 @@ function fneBuildBookmarklet(){
       return false;
     }
     function clickGen(){ return clickByText("button,a,[role=button]", /g.n.rer la facture$/i, 45); }
-    function clickPlus(){ return clickByText("button,a,[role=button],span,div", /g.n.rer la facture\s*\+/i, 45); }
+    function clickPlus(){ return clickByText("button,a,[role=button],span,div", /g.n.rer la facture\s*\+/i, 45) || clickByText("button,a,[role=button]", /g.n.rer la facture/i, 45) || clickByText("button,a,[role=button],span,div", /nouvelle facture|ajouter une facture/i, 45); }
     function readLatestNum(){
       // Numero FNE: long, alphanumerique (ex 2048658S260000...), >=6 chiffres, souvent une lettre.
       // On ignore notre numero interne "II..." et les montants (qui contiennent des espaces).
@@ -3361,7 +3398,9 @@ function fneBuildBookmarklet(){
           }
         } else if(isListPage() && submIdx>=0){
           var num = readLatestNum();
+          if(num && seenNums[num]) num = "";   // numero deja pris (facture precedente, liste pas encore rafraichie) -> on attend le nouveau
           if(num){
+            seenNums[num] = 1;
             q[submIdx].fneNum = num; q[submIdx].status="success"; ok++; processedSinceLastPause++;
             putBatch(b).then(function(){
               setStatus("\u2713 "+ok+" cr\u00e9\u00e9e(s) (n\u00b0 "+num.substring(0,16)+(num.length>16?"...":"")+")");
@@ -3371,10 +3410,9 @@ function fneBuildBookmarklet(){
               else { b.state="done"; putBatch(b); stopped=true; busy=false; setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9e(s))"); setDoneUI(); alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); }
             }).catch(function(){ busy=false; });
           } else {
-            // Numero pas encore lisible : on reessaie quelques fois (la liste se charge peut-etre encore),
-            // puis on marque la facture CREEE sans numero et on continue (evite de rester bloque).
+            // Numero pas encore lisible (liste en cours de rafraichissement) : on reessaie, puis on marque CREEE sans numero et on continue.
             q[submIdx]._numTries = (q[submIdx]._numTries||0) + 1;
-            if(q[submIdx]._numTries >= 6){
+            if(q[submIdx]._numTries >= 8){
               q[submIdx].fneNum = "(cr\u00e9\u00e9e \u2014 n\u00b0 \u00e0 relever sur le portail)"; q[submIdx].status="success"; ok++; processedSinceLastPause++;
               putBatch(b).then(function(){
                 var morePending = q.some(function(e){ return e.parseOk && e.status==="pending"; });
@@ -3382,7 +3420,7 @@ function fneBuildBookmarklet(){
                 else { b.state="done"; putBatch(b); stopped=true; busy=false; setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9e(s), n\u00b0 non lu auto)"); setDoneUI(); alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s). Num\u00e9ro(s) FNE \u00e0 relever sur le portail."); }
               }).catch(function(){ busy=false; });
             } else {
-              setStatus("Facture cr\u00e9\u00e9e, lecture du n\u00b0 FNE... ("+q[submIdx]._numTries+"/6)");
+              setStatus("Facture cr\u00e9\u00e9e, lecture du n\u00b0 FNE... ("+q[submIdx]._numTries+"/8)");
               putBatch(b).then(function(){ busy=false; }).catch(function(){ busy=false; });
             }
           }
