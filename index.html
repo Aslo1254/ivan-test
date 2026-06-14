@@ -568,7 +568,10 @@ textarea.ip{resize:vertical;min-height:70px}
       <div class="grid g3" style="margin-top:16px">
         <div class="fld"><label>Sales Office</label><input class="ip mono" id="salesOffice" value="CI12"></div>
         <div class="fld"><label>Currency</label><input class="ip mono" id="currency" value="XOF"></div>
-        <div class="fld"><label>Collection Business Unit</label><input class="ip mono" id="cbu" placeholder="optionnel"></div>
+        <div class="fld"><label>Collection Business Unit</label>
+          <select class="ip mono" id="cbuSelect" onchange="onCbuSelectChange('cbuSelect','cbu')"><option value="">&mdash; Choisir un CBU &mdash;</option></select>
+          <input class="ip mono" id="cbu" placeholder="Saisir le CBU" style="display:none;margin-top:8px">
+        </div>
       </div>
     </div>
 
@@ -670,7 +673,8 @@ textarea.ip{resize:vertical;min-height:70px}
           </div>
           <div>
             <label class="lb">Collection Business Unit (CBU)</label>
-            <input class="ip" id="echCbu" value="81360"><div style="font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.4">Unit&eacute; de facturation (CBU). C&ocirc;te d&rsquo;Ivoire = 81360.</div>
+            <select class="ip" id="echCbuSelect" onchange="onCbuSelectChange('echCbuSelect','echCbu')"><option value="">&mdash; Choisir un CBU &mdash;</option></select>
+            <input class="ip" id="echCbu" placeholder="Saisir le CBU" style="display:none;margin-top:8px"><div style="font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.4">Unit&eacute; de facturation (CBU), depuis la liste CBU-BA.</div>
           </div>
           <div>
             <label class="lb">Client final</label>
@@ -1401,6 +1405,61 @@ function initApp(){
   }).catch(function(){});
   if($("chargeLines").children.length===0) addChargeLine();
   $("sailingDate").value = d.getFullYear() + ("0"+(d.getMonth()+1)).slice(-2) + ("0"+d.getDate()).slice(-2);
+  loadCbuList();
+}
+
+// ============ CBU (Collection Business Unit) — liste CBU-BA ============
+var _cbuList = null;
+function loadCbuList(){
+  if(_cbuList){ renderCbuSelects(); return; }
+  apiCall("/store?action=getcbu").then(function(res){
+    _cbuList = (res && res.cbu) ? res.cbu : {};
+    renderCbuSelects();
+  }).catch(function(){ _cbuList = {}; renderCbuSelects(); });
+}
+function _cbuOptionsHtml(currentVal){
+  var html = '<option value="">\u2014 Choisir un CBU \u2014</option>';
+  var found = false;
+  var list = _cbuList || {};
+  Object.keys(list).forEach(function(k){
+    var e = list[k] || {};
+    var num = e.cbu || k;
+    var lbl = e.label ? (e.label + " \u2014 " + num) : String(num);
+    var sel = (String(num) === String(currentVal)) ? " selected" : "";
+    if(sel) found = true;
+    html += '<option value="'+num+'"'+sel+'>'+lbl+'</option>';
+  });
+  var manSel = (currentVal && !found) ? " selected" : "";
+  html += '<option value="__manual__"'+manSel+'>Autre (saisie manuelle)</option>';
+  return { html: html, manualSelected: !!manSel };
+}
+function _applyCbuSelect(selId, manId, currentVal){
+  var sel = $(selId), man = $(manId);
+  if(!sel || !man) return;
+  var r = _cbuOptionsHtml(currentVal);
+  sel.innerHTML = r.html;
+  if(r.manualSelected){ man.style.display = "block"; man.value = currentVal || ""; }
+  else { man.style.display = "none"; man.value = (sel.value && sel.value !== "__manual__") ? sel.value : ""; }
+}
+function renderCbuSelects(){
+  // Facturation : pas de defaut (CBU optionnel)
+  if($("cbuSelect")) _applyCbuSelect("cbuSelect", "cbu", $("cbu") ? $("cbu").value : "");
+  // Echange : defaut 81360 s'il est dans la liste, sinon valeur courante
+  if($("echCbuSelect")){
+    var echCur = ($("echCbu") && $("echCbu").value) ? $("echCbu").value : "81360";
+    _applyCbuSelect("echCbuSelect", "echCbu", echCur);
+  }
+}
+function onCbuSelectChange(selId, manId){
+  var sel = $(selId), man = $(manId);
+  if(!sel || !man) return;
+  if(sel.value === "__manual__"){ man.style.display = "block"; man.value = ""; man.focus(); }
+  else { man.style.display = "none"; man.value = sel.value; }
+}
+function syncCbuSelect(selId, manId, val){
+  // Appele depuis loadDraft : positionne le menu sur val (ou saisie manuelle)
+  if(!_cbuList){ if($(manId)) $(manId).value = val || ""; return; }
+  _applyCbuSelect(selId, manId, val || "");
 }
 
 var PAGE_TITLES = {
@@ -2001,6 +2060,7 @@ function loadDraft(id){
   $("salesOffice").value = d.salesOffice||"CI12";
   $("currency").value = d.currency||"XOF";
   $("cbu").value = d.cbu||"";
+  syncCbuSelect("cbuSelect", "cbu", d.cbu||"");
   // invType
   for(var i=0;i<$("invType").options.length;i++){ if($("invType").options[i].value===d.subprocess){ $("invType").selectedIndex=i; break; } }
   updSubprocess();
