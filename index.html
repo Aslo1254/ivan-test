@@ -3204,30 +3204,82 @@ function fneBuildBookmarklet(){
     function isFormPage(){ return location.href.indexOf("/generate")>=0 || document.body.textContent.indexOf("Sauvegarder la facture")>=0 || /AJOUTER UN ARTICLE/i.test(document.body.textContent); }
     function isListPage(){ return location.href.indexOf("type=issued")>=0 || /Mes Factures et re.us/i.test(document.body.textContent); }
     // ---- remplissage d'une facture ----
-    function fillArticleText(it, idx){
+    // Trouve les blocs d'article (un par titre "Article N")
+    function getArticleBlocks(){
+      var heads = document.querySelectorAll("div,span,p,h1,h2,h3,h4,h5,h6,label,strong,b,legend");
+      var blocks = [];
+      for(var i=0;i<heads.length;i++){
+        var t = (heads[i].textContent||"").trim();
+        if(t.length>20 || !/^article\s+\d+/i.test(t)) continue;
+        var node = heads[i], tries = 0, found = null;
+        while(node && tries<10){
+          var labs = node.querySelectorAll ? node.querySelectorAll("label,span,div,p") : [];
+          var hasQ=false, hasR=false;
+          for(var k=0;k<labs.length;k++){ var lt=labs[k].textContent||""; if(lt.length<=40){ if(labelHit(lt,["quantite"]))hasQ=true; if(labelHit(lt,["reference"]))hasR=true; } }
+          if(hasQ && hasR && node.querySelector("input,textarea")){ found=node; break; }
+          node = node.parentElement; tries++;
+        }
+        if(found && blocks.indexOf(found)<0) blocks.push(found);
+      }
+      return blocks;
+    }
+    // Dans un bloc precis, remplit le champ dont le label matche hints
+    function setFieldInBlock(block, hints, val){
+      if(!block || val === undefined || val === null || val === "") return false;
+      var labs = block.querySelectorAll("label,span,div,p");
+      for(var i=0;i<labs.length;i++){
+        var lab = labs[i], t = lab.textContent || "";
+        if(t.length>60 || !labelHit(t, hints)) continue;
+        var inp = null;
+        var f = lab.getAttribute && lab.getAttribute("for");
+        if(f){ try{ inp = block.querySelector("#" + (window.CSS && CSS.escape ? CSS.escape(f) : f)); }catch(e){} }
+        if(!inp){ var fc = lab.closest("div,td,fieldset"), d = 0; while(fc && d<3 && !inp){ inp = fc.querySelector("input,textarea"); if(!inp){ fc = fc.parentElement; d++; } if(fc === block.parentElement) break; } }
+        if(!inp){ var nx = lab.nextElementSibling, g = 0; while(nx && g<5 && !inp){ if(nx.matches && nx.matches("input,textarea")) inp = nx; else if(nx.querySelector) inp = nx.querySelector("input,textarea"); nx = nx.nextElementSibling; g++; } }
+        if(inp){ try{ inp.focus(); }catch(e){} fireKey(inp,"keydown"); setNativeValue(inp, String(val)); fireInput(inp); fire(inp,"change"); fireKey(inp,"keyup"); fire(inp,"blur"); inp.style.background = "rgba(0,212,255,.15)"; return true; }
+      }
+      return false;
+    }
+    function fillArticleText(it, idx, block){
       var qv = (it.quantity !== undefined && it.quantity !== null && it.quantity !== "") ? it.quantity : it.qty;
       var n = 0;
-      if(setTextAt(["quantite"], idx, qv)) n++;
-      if(setTextAt(["reference"], idx, it.reference)) n++;
-      if(setTextAt(["designation","description"], idx, it.description)) n++;
-      if(setTextAt(["unite de mesure","unite"], idx, it.unit)) n++;
-      if(setTextAt(["pu ht","prix unitaire"], idx, it.price)) n++;
+      if(block){
+        if(setFieldInBlock(block, ["quantite"], qv)) n++;
+        if(setFieldInBlock(block, ["reference"], it.reference)) n++;
+        if(setFieldInBlock(block, ["designation","description"], it.description)) n++;
+        if(setFieldInBlock(block, ["unite de mesure","unite"], it.unit)) n++;
+        if(setFieldInBlock(block, ["pu ht","prix unitaire"], it.price)) n++;
+      } else { // repli : ciblage global par index
+        if(setTextAt(["quantite"], idx, qv)) n++;
+        if(setTextAt(["reference"], idx, it.reference)) n++;
+        if(setTextAt(["designation","description"], idx, it.description)) n++;
+        if(setTextAt(["unite de mesure","unite"], idx, it.unit)) n++;
+        if(setTextAt(["pu ht","prix unitaire"], idx, it.price)) n++;
+      }
       return n;
+    }
+    function waitForBlock(idx, att){
+      var blocks = getArticleBlocks();
+      if(blocks[idx]) return Promise.resolve(blocks[idx]);
+      if(att >= 8){ log("bloc article " + idx + " introuvable (" + blocks.length + " bloc(s) detecte(s))"); return Promise.resolve(null); }
+      return sleep(400).then(function(){ return waitForBlock(idx, att+1); });
     }
     function fillArticles(items){
       var i = 0, done = 0;
       function step(){
         if(i >= items.length) return Promise.resolve(done);
-        // Pour les articles ajoutes (i>0), on clique "+ Ajouter un article" puis on attend que le bloc se cable
-        var pre = (i > 0) ? (function(){ clickAddArticle(); return sleep(1000); })() : Promise.resolve();
-        return pre.then(function(){
+        // Articles ajoutes (i>0) : clic "+ Ajouter un article" puis attente du rendu du bloc
+        var pre = (i > 0) ? (function(){ clickAddArticle(); return sleep(900); })() : Promise.resolve();
+        return pre.then(function(){ return waitForBlock(i, 0); }).then(function(block){
           var it = items[i];
-          fillArticleText(it, i);            // 1er remplissage
-          return sleep(350);
+          fillArticleText(it, i, block);                 // 1er remplissage (dans le bloc)
+          return sleep(450).then(function(){ return block; });
         }).then(function(){
           var it = items[i];
-          var n = fillArticleText(it, i);    // 2e remplissage (Angular a fini de reinitialiser le bloc)
+          var blocks = getArticleBlocks();
+          var blk = blocks[i] || null;                    // re-trouver le bloc (le DOM a pu changer)
+          var n = fillArticleText(it, i, blk);            // 2e remplissage
           done += n;
+          log("article " + (i+1) + " : " + n + " champ(s) rempli(s), bloc " + (blk ? "OK" : "NON trouve"));
           var taxTargets = (it.tax === "A") ? ["18","tva 18","tva normal","18%"] : ["0","exoner","exonere","0%","non taxable"];
           return setDropdownAt(["taux d'imposition","taux d","taux"], i, taxTargets).then(function(ok){ if(ok) done++; i++; return step(); });
         });
