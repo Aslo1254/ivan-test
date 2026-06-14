@@ -3071,6 +3071,7 @@ function fneBuildBookmarklet(){
     ovr.innerHTML = "\u26a1 IVAN-FNE-BATCH<br><span id=\"ifs\" style=\"font-size:12px;font-weight:400\">Initialisation...</span><br><button id=\"ivanFneStop\" style=\"margin-top:6px;background:rgba(255,255,255,.2);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer\">Arr\u00eater</button>";
     document.body.appendChild(ovr);
     function setStatus(t){ var e = document.getElementById("ifs"); if(e) e.innerHTML = t; }
+    function setDoneUI(){ var b = document.getElementById("ivanFneStop"); if(b){ b.textContent = "Fermer"; b.style.background = "rgba(40,200,120,.55)"; } }
     function log(){ try{ console.log.apply(console, ["[IVAN-FNE]"].concat([].slice.call(arguments))); }catch(e){} }
     function getBatch(){ return fetch(API + "?action=getfnebatch", {cache:"no-store"}).then(function(r){ return r.json(); }).then(function(d){ return (d && d.fne) || {queue:[], config:{}, state:"idle"}; }); }
     function putBatch(b){ return fetch(API, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action:"setfnebatch", fne:b})}).then(function(r){ return r.json(); }); }
@@ -3200,7 +3201,31 @@ function fneBuildBookmarklet(){
     }
     function clickGen(){ return clickByText("button,a,[role=button]", /g.n.rer la facture$/i, 45); }
     function clickPlus(){ return clickByText("button,a,[role=button],span,div", /g.n.rer la facture\s*\+/i, 45); }
-    function readLatestNum(){ var rows = document.querySelectorAll("table tbody tr,table tr"); for(var i=0;i<rows.length;i++){ var cells = rows[i].querySelectorAll("td"); if(cells.length>1){ var txt=(cells[0].textContent||cells[1].textContent||"").trim(); if(/^\d{10,}/.test(txt)) return txt; } } return ""; }
+    function readLatestNum(){
+      // Numero FNE: long, alphanumerique (ex 2048658S260000...), >=6 chiffres, souvent une lettre.
+      // On ignore notre numero interne "II..." et les montants (qui contiennent des espaces).
+      function looksLikeFne(s){
+        if(!s || s.length<10 || s.length>40) return false;
+        if(/^II\d/i.test(s)) return false;
+        if(!/^[0-9A-Za-z]+$/.test(s)) return false;
+        return (s.match(/\d/g)||[]).length >= 6;
+      }
+      function scan(t){
+        var mm = (t||"").trim().match(/[0-9A-Za-z]{10,}/g);
+        if(mm){ for(var z=0;z<mm.length;z++){ if(looksLikeFne(mm[z])) return mm[z]; } }
+        return "";
+      }
+      // 1) tableau : 1ere ligne, colonnes de gauche
+      var rows = document.querySelectorAll("table tbody tr, table tr");
+      for(var i=0;i<rows.length;i++){
+        var cells = rows[i].querySelectorAll("td,th");
+        for(var j=0;j<Math.min(cells.length,3);j++){ var r = scan(cells[j].textContent); if(r) return r; }
+      }
+      // 2) liste div (grille) : 1er element feuille qui ressemble a un numero FNE
+      var all = document.querySelectorAll("td,th,span,div,p,a,b,strong");
+      for(var k=0;k<all.length;k++){ if(all[k].children && all[k].children.length>0) continue; var r2 = scan(all[k].textContent); if(r2) return r2; }
+      return "";
+    }
     function isFormPage(){ return location.href.indexOf("/generate")>=0 || document.body.textContent.indexOf("Sauvegarder la facture")>=0 || /AJOUTER UN ARTICLE/i.test(document.body.textContent); }
     function isListPage(){ return location.href.indexOf("type=issued")>=0 || /Mes Factures et re.us/i.test(document.body.textContent); }
     // ---- remplissage d'une facture ----
@@ -3314,7 +3339,7 @@ function fneBuildBookmarklet(){
         var ok = q.filter(function(e){ return e.status==="success"; }).length;
         var pendIdx = q.findIndex(function(e){ return e.parseOk && e.status==="pending"; });
         var submIdx = q.findIndex(function(e){ return e.parseOk && e.status==="submitted"; });
-        if(pendIdx<0 && submIdx<0){ b.state="done"; putBatch(b); setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9es)"); stopped=true; busy=false; alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); return; }
+        if(pendIdx<0 && submIdx<0){ b.state="done"; putBatch(b); setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9es)"); setDoneUI(); stopped=true; busy=false; alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); return; }
         if(isFormPage() && pendIdx>=0){
           var inv = q[pendIdx];
           if(inv._filled){
@@ -3339,13 +3364,28 @@ function fneBuildBookmarklet(){
           if(num){
             q[submIdx].fneNum = num; q[submIdx].status="success"; ok++; processedSinceLastPause++;
             putBatch(b).then(function(){
-              setStatus("\u2713 "+ok+" cr\u00e9\u00e9e(s) (n "+num.substring(0,12)+"...)");
+              setStatus("\u2713 "+ok+" cr\u00e9\u00e9e(s) (n\u00b0 "+num.substring(0,16)+(num.length>16?"...":"")+")");
               if(pauseEvery>0 && processedSinceLastPause>=pauseEvery){ if(!confirm("IVAN-FNE-BATCH: pause s\u00e9curit\u00e9 apr\u00e8s "+ok+" factures. Continuer ?")){ stopped=true; b.state="paused"; putBatch(b); busy=false; return; } processedSinceLastPause=0; }
               var morePending = q.some(function(e){ return e.parseOk && e.status==="pending"; });
               if(morePending){ setTimeout(function(){ if(!clickPlus()){ setStatus("\u26a0 Cliquez \"G\u00e9n\u00e9rer la facture +\" manuellement"); } busy=false; }, delay); }
-              else { b.state="done"; putBatch(b); stopped=true; busy=false; alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); }
+              else { b.state="done"; putBatch(b); stopped=true; busy=false; setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9e(s))"); setDoneUI(); alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); }
             }).catch(function(){ busy=false; });
-          } else { setStatus("Liste charg\u00e9e, lecture du n FNE..."); busy=false; }
+          } else {
+            // Numero pas encore lisible : on reessaie quelques fois (la liste se charge peut-etre encore),
+            // puis on marque la facture CREEE sans numero et on continue (evite de rester bloque).
+            q[submIdx]._numTries = (q[submIdx]._numTries||0) + 1;
+            if(q[submIdx]._numTries >= 6){
+              q[submIdx].fneNum = "(cr\u00e9\u00e9e \u2014 n\u00b0 \u00e0 relever sur le portail)"; q[submIdx].status="success"; ok++; processedSinceLastPause++;
+              putBatch(b).then(function(){
+                var morePending = q.some(function(e){ return e.parseOk && e.status==="pending"; });
+                if(morePending){ setStatus("\u2713 "+ok+" cr\u00e9\u00e9e(s) (n\u00b0 non lu auto)"); setTimeout(function(){ if(!clickPlus()){ setStatus("\u26a0 Cliquez \"G\u00e9n\u00e9rer la facture +\" manuellement"); } busy=false; }, delay); }
+                else { b.state="done"; putBatch(b); stopped=true; busy=false; setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9e(s), n\u00b0 non lu auto)"); setDoneUI(); alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s). Num\u00e9ro(s) FNE \u00e0 relever sur le portail."); }
+              }).catch(function(){ busy=false; });
+            } else {
+              setStatus("Facture cr\u00e9\u00e9e, lecture du n\u00b0 FNE... ("+q[submIdx]._numTries+"/6)");
+              putBatch(b).then(function(){ busy=false; }).catch(function(){ busy=false; });
+            }
+          }
         } else { setStatus("Navigation en cours...<br><small>OK: "+ok+"/"+q.length+"</small>"); busy=false; }
       }).catch(function(e){ setStatus("\u26a0 Erreur r\u00e9seau : impossible de joindre le serveur IVAN (le portail bloque peut-\u00eatre l'acc\u00e8s externe). "+(e&&e.message?e.message:"")); busy=false; });
     }
