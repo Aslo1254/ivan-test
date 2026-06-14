@@ -1850,6 +1850,7 @@ function addToQueue(){
     saveQueue();
     showToast("Ajout&eacute; &agrave; la file ("+invoiceQueue.length+")","ok");
     resetInvoice();
+    if(typeof goFactStep==="function") goFactStep(0); // revenir a l'etape 1 (page de facturation initiale)
   });
 }
 function renderQueue(){
@@ -2508,7 +2509,29 @@ function echAddQueue(){
   guardDuplicateBL(payload.bl, function(){
     invoiceQueue.push(payload); saveQueue();
     showToast("Ajout\u00e9 \u00e0 la file","ok");
+    echResetForm(); // revenir a la page echange initiale (formulaire vierge)
   });
+}
+function echResetForm(){
+  // Masquer revue + S4, reafficher le formulaire de config
+  if($("echReview")) $("echReview").style.display="none";
+  if($("echS4")) $("echS4").style.display="none";
+  if($("echS4Csv")){ $("echS4Csv").style.display="none"; $("echS4Csv").innerHTML=""; }
+  if($("echConfig")) $("echConfig").style.display="block";
+  // Vider les champs propres a la facture (on garde le sens import/export et le port)
+  ["echBp","echContractAcc","echBl","echUbli","echCliFinal","echZone","echFooter","echArrival","echSailing"].forEach(function(id){ if($(id)) $(id).value=""; });
+  if($("echBpAc")) $("echBpAc").innerHTML="";
+  if($("echCaChooser")) $("echCaChooser").innerHTML="";
+  if($("echCbu")) $("echCbu").value="81360";
+  if($("echCnt")) $("echCnt").value="1";
+  if($("echTeu")) $("echTeu").value="1";
+  if(typeof echFooterEdited!=="undefined") echFooterEdited=false;
+  echReviewLines=[]; echMeta={};
+  // Reinitialiser les lignes de marchandises
+  if(typeof echCommodities!=="undefined"){ echCommodities=[]; if(typeof addEchCommodity==="function") addEchCommodity(); }
+  // Reappliquer arrival/sailing par defaut selon le sens
+  if(typeof setEchIO==="function" && typeof echIO!=="undefined" && echIO) setEchIO(echIO);
+  var top=$("tab-echange"); if(top) top.scrollIntoView({behavior:"smooth",block:"start"});
 }
 function echBackToForm(){ $("echReview").style.display="none"; $("echConfig").scrollIntoView({behavior:"smooth"}); }
 function echBackToReview(){ $("echS4").style.display="none"; $("echReview").style.display="block"; $("echReview").scrollIntoView({behavior:"smooth"}); }
