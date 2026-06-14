@@ -3083,6 +3083,20 @@ function fneBuildBookmarklet(){
     // ---- helpers ----
     function norm(s){ return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); }
     function fire(el, t){ try{ el.dispatchEvent(new Event(t, {bubbles:true})); }catch(e){} }
+    // Ecrit la valeur via le SETTER NATIF (contourne les setters patches par Angular/React) sinon le framework ne voit pas la valeur
+    function setNativeValue(el, value){
+      try{
+        var proto = (el.tagName === "TEXTAREA") ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+        var d = Object.getOwnPropertyDescriptor(proto, "value");
+        if(d && d.set){ d.set.call(el, value); } else { el.value = value; }
+      }catch(e){ try{ el.value = value; }catch(e2){} }
+      try{ if(el._valueTracker) el._valueTracker.setValue(""); }catch(e){}
+    }
+    function fireInput(el){
+      try{ el.dispatchEvent(new InputEvent("input", {bubbles:true})); }
+      catch(e){ try{ el.dispatchEvent(new Event("input", {bubbles:true})); }catch(e2){} }
+    }
+    function fireKey(el, type){ try{ el.dispatchEvent(new KeyboardEvent(type, {bubbles:true})); }catch(e){} }
     function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
     function clickEl(el){ try{ el.dispatchEvent(new MouseEvent("mousedown",{bubbles:true})); el.dispatchEvent(new MouseEvent("mouseup",{bubbles:true})); el.click(); }catch(e){ try{ el.click(); }catch(e2){} } }
     function isVisible(el){ try{ var r = el.getBoundingClientRect(); return r.width>0 && r.height>0; }catch(e){ return true; } }
@@ -3107,7 +3121,12 @@ function fneBuildBookmarklet(){
       var cs = findContainers(hints); if(!cs[idx]) return false;
       var inp = cs[idx].querySelector("input,textarea"); if(!inp) return false;
       try{ inp.focus(); }catch(e){}
-      inp.value = String(val); fire(inp, "input"); fire(inp, "change"); fire(inp, "blur");
+      fireKey(inp, "keydown");
+      setNativeValue(inp, String(val));
+      fireInput(inp);
+      fire(inp, "change");
+      fireKey(inp, "keyup");
+      fire(inp, "blur");
       inp.style.background = "rgba(0,212,255,.15)";
       return true;
     }
@@ -3136,7 +3155,7 @@ function fneBuildBookmarklet(){
         var opt = findOption(targets);
         if(opt){ clickEl(opt); return sleep(200).then(function(){ return true; }); }
         var si = document.querySelector(".ng-select-opened input,.ng-dropdown-panel input,input[role=combobox],.cdk-overlay-container input");
-        if(si){ try{ si.focus(); }catch(e){} si.value = targets[0]; fire(si, "input"); return sleep(450).then(function(){ var o2 = findOption(targets); if(o2){ clickEl(o2); return sleep(200).then(function(){ return true; }); } log("option custom introuvable", hints, targets); return false; }); }
+        if(si){ try{ si.focus(); }catch(e){} fireKey(si,"keydown"); setNativeValue(si, targets[0]); fireInput(si); fireKey(si,"keyup"); return sleep(450).then(function(){ var o2 = findOption(targets); if(o2){ clickEl(o2); return sleep(200).then(function(){ return true; }); } log("option custom introuvable", hints, targets); return false; }); }
         log("menu custom: option introuvable", hints, targets); return false;
       });
     }
@@ -3146,8 +3165,39 @@ function fneBuildBookmarklet(){
       for(var i=0;i<els.length;i++){ var el=els[i]; if(el.disabled || !isVisible(el)) continue; var t=(el.textContent||"").trim(); if(!t || t.length>(maxLen||45)) continue; if(re.test(t)){ var tgt = el.closest("button,a,[role=button]") || el; clickEl(tgt); return true; } }
       return false;
     }
-    // "+ Ajouter un article" est souvent un lien/div Angular (pas un <button>) -> recherche large
-    function clickAddArticle(){ return clickByText("button,a,[role=button],span,div,li", /ajouter un article/i, 45); }
+    // "+ Ajouter un article" est souvent un lien/div Angular ; ATTENTION il existe aussi un TITRE de section
+    // "AJOUTER UN ARTICLE" plus haut dans la page -> on score les candidats pour cliquer le vrai bouton, pas le titre.
+    function clickAddArticle(){
+      var els = document.querySelectorAll("button,a,[role=button],span,div,li,i,mat-icon");
+      var best = null, bestScore = -1;
+      for(var i=0;i<els.length;i++){
+        var el = els[i];
+        if(!isVisible(el) || el.disabled) continue;
+        var t = (el.textContent || "").trim();
+        if(!t || t.length > 45) continue;
+        if(!/ajouter un article/i.test(t)) continue;
+        var tag = el.tagName.toLowerCase();
+        var cls = (el.className || "").toString();
+        var score = 0;
+        if(tag === "button" || tag === "a" || el.getAttribute("role") === "button") score += 6;
+        if(el.closest("button,a,[role=button]")) score += 4;
+        if(/\+/.test(t)) score += 4;                 // le bouton a souvent un "+"
+        try{ if(getComputedStyle(el).cursor === "pointer") score += 2; }catch(e){}
+        if(/btn|button|add|action|link|ajout/i.test(cls)) score += 2;
+        if(/^h[1-6]$/.test(tag)) score -= 12;         // entete
+        if(/title|header|heading|label|section|titre/i.test(cls)) score -= 6;
+        score += Math.max(0, 4 - t.length / 12);       // prefere l'element le plus court/profond
+        if(score > bestScore){ bestScore = score; best = el; }
+      }
+      if(best){
+        var tgt = best.closest("button,a,[role=button]") || best;
+        clickEl(tgt);
+        log("addArticle clic (score " + bestScore.toFixed(1) + ", <" + best.tagName + ">) :", (best.textContent||"").trim());
+        return true;
+      }
+      log("addArticle: bouton introuvable");
+      return false;
+    }
     function clickGen(){ return clickByText("button,a,[role=button]", /g.n.rer la facture$/i, 45); }
     function clickPlus(){ return clickByText("button,a,[role=button],span,div", /g.n.rer la facture\s*\+/i, 45); }
     function readLatestNum(){ var rows = document.querySelectorAll("table tbody tr,table tr"); for(var i=0;i<rows.length;i++){ var cells = rows[i].querySelectorAll("td"); if(cells.length>1){ var txt=(cells[0].textContent||cells[1].textContent||"").trim(); if(/^\d{10,}/.test(txt)) return txt; } } return ""; }
@@ -3158,7 +3208,7 @@ function fneBuildBookmarklet(){
       var i = 0, done = 0;
       function step(){
         if(i >= items.length) return Promise.resolve(done);
-        var pre = (i > 0) ? (function(){ clickAddArticle(); return sleep(600); })() : Promise.resolve();
+        var pre = (i > 0) ? (function(){ clickAddArticle(); return sleep(750); })() : Promise.resolve();
         return pre.then(function(){
           var it = items[i];
           var qv = (it.quantity !== undefined && it.quantity !== null && it.quantity !== "") ? it.quantity : it.qty;
