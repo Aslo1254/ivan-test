@@ -2964,6 +2964,13 @@ function fneStartBatch(){
       pauseEvery: parseInt($("fnePauseEvery").value)||0,
       delay: parseInt($("fneDelay").value)||2500
     }));
+    // IMPORTANT : pousser le batch sur le SERVEUR. Le bookmarklet tourne sur le portail DGI
+    // (autre origine) et ne peut PAS lire ce localStorage : il recupere le batch via /store.
+    apiCall("/store", {method:"POST", body:{action:"setfnebatch", fne:{
+      queue: fneBatchQueue,
+      config: { pauseEvery: parseInt($("fnePauseEvery").value)||0, delay: parseInt($("fneDelay").value)||2500 },
+      state: "running"
+    }}}).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur: batch non synchronis\u00e9 au serveur","err"); });
     $("fneBatchStatus").innerHTML='<strong style="color:#15803d">\u2713 Batch activ\u00e9 ('+pending.length+' factures).</strong><br>1) Cliquez "Ouvrir le portail FNE" \u2192 2) Connectez-vous \u2192 3) Allez sur "G\u00e9n\u00e9rer la facture" \u2192 4) Cliquez le favori <strong>IVAN-FNE-BATCH</strong> une seule fois';
     $("fneResultsArea").classList.remove("hid");
     fneRefreshResults();
@@ -2980,6 +2987,8 @@ function fneResetBatch(){
     localStorage.removeItem(FNE_STATE_KEY);
     localStorage.removeItem(FNE_CONFIG_KEY);
   }catch(e){}
+  // Vider aussi le batch cote serveur
+  apiCall("/store", {method:"POST", body:{action:"setfnebatch", fne:{queue:[], config:{}, state:"idle"}}}).catch(function(){});
   fneRenderQueue();
   $("fneStatsArea").classList.add("hid");
   $("fneResultsArea").classList.add("hid");
@@ -2987,14 +2996,17 @@ function fneResetBatch(){
 }
 
 function fneRefreshResults(){
-  try{
-    var raw=localStorage.getItem(FNE_QUEUE_KEY);
-    if(raw){
-      var q=JSON.parse(raw);
-      fneBatchQueue=q;
+  // L'avancement est ecrit par le bookmarklet sur le SERVEUR (pas le localStorage local) :
+  // on relit donc le batch depuis /store, puis on affiche. Repli sur l'etat local si le serveur echoue.
+  apiCall("/store?action=getfnebatch").then(function(res){
+    if(res && res.fne && Array.isArray(res.fne.queue) && res.fne.queue.length){
+      fneBatchQueue = res.fne.queue;
       fneRenderQueue();
     }
-  }catch(e){}
+    _fneRenderResults();
+  }).catch(function(){ _fneRenderResults(); });
+}
+function _fneRenderResults(){
   var ok=fneBatchQueue.filter(function(e){return e.status==="success";}).length;
   var err=fneBatchQueue.filter(function(e){return e.status==="error";}).length;
   var pending=fneBatchQueue.filter(function(e){return e.parseOk&&(e.status==="pending"||e.status==="submitted");}).length;
@@ -3041,56 +3053,101 @@ function fneOpenSite(){
 }
 
 function fneBuildBookmarklet(){
-  var code='(function(){'
-+'var QK="'+FNE_QUEUE_KEY+'",SK="'+FNE_STATE_KEY+'",CK="'+FNE_CONFIG_KEY+'";'
-+'if(window.__ivanFne){alert("IVAN-FNE-BATCH d\\u00e9j\\u00e0 actif sur cette page.");return;}'
-+'window.__ivanFne=true;'
-+'function gQ(){try{return JSON.parse(localStorage.getItem(QK)||"[]");}catch(e){return[];}}'
-+'function sQ(q){localStorage.setItem(QK,JSON.stringify(q));}'
-+'function gS(){return localStorage.getItem(SK)||"idle";}'
-+'function sS(s){localStorage.setItem(SK,s);}'
-+'function gC(){try{return JSON.parse(localStorage.getItem(CK)||"{}");}catch(e){return{};}}'
-+'var cfg=gC(),delay=cfg.delay||2500,pauseEvery=cfg.pauseEvery||0;'
-+'var processedSinceLastPause=0;'
-+'var ovr=document.createElement("div");'
-+'ovr.id="ivan-fne-ovr";'
-+'ovr.style.cssText="position:fixed;top:10px;right:10px;z-index:999999;background:linear-gradient(135deg,#fbbf24,#7c3aed);color:#fff;padding:12px 18px;border-radius:10px;font-family:sans-serif;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:300px";'
-+'ovr.innerHTML="\\u26a1 IVAN-FNE-BATCH<br><span id=\\\"ifs\\\" style=\\\"font-size:12px;font-weight:400\\\">Initialisation...</span><br><button onclick=\\\"localStorage.setItem(\\\\\\\""+SK+"\\\\\\\",\\\\\\\"paused\\\\\\\");this.parentNode.remove();window.__ivanFne=false\\\" style=\\\"margin-top:6px;background:rgba(255,255,255,.2);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer\\\">Arr\\u00eater</button>";'
-+'document.body.appendChild(ovr);'
-+'function setStatus(t){var e=document.getElementById("ifs");if(e)e.innerHTML=t;}'
-+'function findField(hints){var labels=document.querySelectorAll("label,div,span");for(var i=0;i<labels.length;i++){var t=(labels[i].textContent||"").toLowerCase().trim();for(var j=0;j<hints.length;j++){if(t.indexOf(hints[j])===0||t===hints[j]){var p=labels[i].closest("div,fieldset")||labels[i].parentElement;if(p){var inp=p.querySelector("input,textarea,select");if(inp)return inp;}}}}return null;}'
-+'var H={clientCompanyName:["nom de la soci","nom du client","raison sociale","client","company name"],clientNcc:["ncc","contribuable","tax id","identifiant fiscal"],clientPhone:["telephone","tel","phone"],clientEmail:["email","e-mail","mail","courriel"],footer:["autres mentions","autre mention","mention","reference","footer"]};'
-+'function fillForm(inv){var filled=0;Object.keys(H).forEach(function(k){var v=k==="clientCompanyName"?inv.company:k==="clientNcc"?inv.ncc:k==="clientPhone"?inv.phone:k==="clientEmail"?inv.email:inv.footer;if(!v)return;var f=findField(H[k]);if(f){if(f.tagName==="SELECT"){var opt=Array.from(f.options).find(function(o){return o.text.toLowerCase().indexOf(String(v).toLowerCase())>=0;});if(opt)f.value=opt.value;}else{f.value=v;}f.dispatchEvent(new Event("input",{bubbles:true}));f.dispatchEvent(new Event("change",{bubbles:true}));f.style.background="rgba(0,212,255,.15)";filled++;}});if(inv.items&&inv.items[0]){var it=inv.items[0];var IH={quantity:["quantite","qty","quantity"],reference:["reference","ref","code"],description:["description","designation","libelle"],unit:["unite de mesure","unite","unit"],price:["pu ht","prix unitaire","prix"]};Object.keys(IH).forEach(function(k){if(it[k]===undefined||it[k]===null||it[k]==="")return;var f=findField(IH[k]);if(f){f.value=it[k];f.dispatchEvent(new Event("input",{bubbles:true}));f.dispatchEvent(new Event("change",{bubbles:true}));f.style.background="rgba(251,191,36,.15)";filled++;}});}return filled;}'
-+'function clickGen(){var btns=document.querySelectorAll("button");for(var i=0;i<btns.length;i++){var t=(btns[i].textContent||"").trim();if(/G.n.rer la facture$/i.test(t)&&!btns[i].disabled){btns[i].click();return true;}}return false;}'
-+'function clickPlus(){var btns=document.querySelectorAll("button,a");for(var i=0;i<btns.length;i++){var t=(btns[i].textContent||"").trim();if(/G.n.rer la facture\\s*\\+/i.test(t)){btns[i].click();return true;}}return false;}'
-+'function readLatestNum(){var rows=document.querySelectorAll("table tbody tr,table tr");for(var i=0;i<rows.length;i++){var cells=rows[i].querySelectorAll("td");if(cells.length>1){var txt=(cells[0].textContent||cells[1].textContent||"").trim();if(/^\\d{10,}/.test(txt))return txt;}}return"";}'
-+'function isFormPage(){return location.href.indexOf("/generate")>=0||document.body.textContent.indexOf("Sauvegarder la facture")>=0;}'
-+'function isListPage(){return location.href.indexOf("type=issued")>=0||/Mes Factures et re.us/i.test(document.body.textContent);}'
-+'var iter=setInterval(function(){'
-+'if(gS()!=="running"){clearInterval(iter);setStatus("Arr\\u00eat\\u00e9");return;}'
-+'var q=gQ();'
-+'var ok=q.filter(function(e){return e.status==="success";}).length;'
-+'var pendIdx=q.findIndex(function(e){return e.parseOk&&e.status==="pending";});'
-+'var submIdx=q.findIndex(function(e){return e.parseOk&&e.status==="submitted";});'
-+'if(pendIdx<0&&submIdx<0){sS("done");clearInterval(iter);setStatus("\\u2713 Termin\\u00e9 ("+ok+" cr\\u00e9\\u00e9es)");alert("IVAN-FNE-BATCH: Termin\\u00e9. "+ok+" facture(s) cr\\u00e9\\u00e9e(s).");return;}'
-+'if(isFormPage()&&pendIdx>=0){'
-+'var inv=q[pendIdx];'
-+'setStatus("Remplissage "+inv.idx+"/"+q.length+"<br><small>"+(inv.fileName||"").substring(0,40)+"</small>");'
-+'var filled=fillForm(inv);'
-+'setTimeout(function(){if(clickGen()){q[pendIdx].status="submitted";sQ(q);setStatus("Soumis "+inv.idx+", attente liste...");}else{q[pendIdx].status="error";q[pendIdx].errMsg="Bouton G\\u00e9n\\u00e9rer introuvable";sQ(q);}},delay/2);'
-+'}else if(isListPage()&&submIdx>=0){'
-+'var inv2=q[submIdx];'
-+'var num=readLatestNum();'
-+'if(num){q[submIdx].fneNum=num;q[submIdx].status="success";sQ(q);ok++;processedSinceLastPause++;setStatus("\\u2713 "+ok+" cr\\u00e9\\u00e9e(s) (n "+num.substring(0,12)+"...)");'
-+'if(pauseEvery>0&&processedSinceLastPause>=pauseEvery){if(!confirm("IVAN-FNE-BATCH: pause s\\u00e9curit\\u00e9 apr\\u00e8s "+ok+" factures. Continuer ?")){sS("paused");return;}processedSinceLastPause=0;}'
-+'var morePending=q.some(function(e){return e.parseOk&&e.status==="pending";});'
-+'if(morePending){setTimeout(function(){if(!clickPlus()){setStatus("\\u26a0 Cliquez \\\"G\\u00e9n\\u00e9rer la facture +\\\" manuellement");}},delay);}else{sS("done");clearInterval(iter);alert("IVAN-FNE-BATCH: Termin\\u00e9. "+ok+" facture(s) cr\\u00e9\\u00e9e(s).");}'
-+'}else{setStatus("Liste charg\\u00e9e, lecture du n FNE...");}'
-+'}else{setStatus("Navigation en cours...<br><small>OK: "+ok+"/"+q.length+"</small>");}'
-+'},delay);'
-+'setStatus("D\\u00e9marrage du batch ("+gQ().filter(function(e){return e.parseOk&&e.status==="pending";}).length+" en attente)");'
-+'})();';
-  return "javascript:"+encodeURIComponent(code);
+  // Le bookmarklet tourne sur le portail DGI (autre origine) : il NE PEUT PAS lire le localStorage
+  // du domaine IVAN. Il recupere donc le batch depuis le SERVEUR IVAN par fetch, et y renvoie l'avancement.
+  // L'origine du serveur IVAN est injectee ci-dessous (au moment ou la page IVAN construit le favori).
+  var API = location.origin + "/api/store";
+  function IVANFNE(API){
+    if(window.__ivanFne){ alert("IVAN-FNE-BATCH d\u00e9j\u00e0 actif sur cette page."); return; }
+    window.__ivanFne = true;
+    var delay = 2500, pauseEvery = 0, processedSinceLastPause = 0, busy = false, stopped = false;
+    var ovr = document.createElement("div");
+    ovr.id = "ivan-fne-ovr";
+    ovr.style.cssText = "position:fixed;top:10px;right:10px;z-index:999999;background:linear-gradient(135deg,#fbbf24,#7c3aed);color:#fff;padding:12px 18px;border-radius:10px;font-family:sans-serif;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:320px";
+    ovr.innerHTML = "\u26a1 IVAN-FNE-BATCH<br><span id=\"ifs\" style=\"font-size:12px;font-weight:400\">Initialisation...</span><br><button id=\"ivanFneStop\" style=\"margin-top:6px;background:rgba(255,255,255,.2);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer\">Arr\u00eater</button>";
+    document.body.appendChild(ovr);
+    function setStatus(t){ var e = document.getElementById("ifs"); if(e) e.innerHTML = t; }
+    function getBatch(){ return fetch(API + "?action=getfnebatch", {cache:"no-store"}).then(function(r){ return r.json(); }).then(function(d){ return (d && d.fne) || {queue:[], config:{}, state:"idle"}; }); }
+    function putBatch(b){ return fetch(API, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action:"setfnebatch", fne:b})}).then(function(r){ return r.json(); }); }
+    document.getElementById("ivanFneStop").onclick = function(){
+      stopped = true;
+      getBatch().then(function(b){ b.state = "paused"; return putBatch(b); }).catch(function(){});
+      if(ovr && ovr.parentNode) ovr.parentNode.removeChild(ovr);
+      window.__ivanFne = false;
+    };
+    function findField(hints){ var labels = document.querySelectorAll("label,div,span"); for(var i=0;i<labels.length;i++){ var t = (labels[i].textContent||"").toLowerCase().trim(); for(var j=0;j<hints.length;j++){ if(t.indexOf(hints[j])===0 || t===hints[j]){ var p = labels[i].closest("div,fieldset") || labels[i].parentElement; if(p){ var inp = p.querySelector("input,textarea,select"); if(inp) return inp; } } } } return null; }
+    var H = {clientCompanyName:["nom de la soci","nom du client","raison sociale","client","company name"],clientNcc:["ncc","contribuable","tax id","identifiant fiscal"],clientPhone:["telephone","tel","phone"],clientEmail:["email","e-mail","mail","courriel"],footer:["autres mentions","autre mention","mention","reference","footer"]};
+    function fillForm(inv){
+      var filled = 0;
+      Object.keys(H).forEach(function(k){
+        var v = k==="clientCompanyName"?inv.company:k==="clientNcc"?inv.ncc:k==="clientPhone"?inv.phone:k==="clientEmail"?inv.email:inv.footer;
+        if(!v) return;
+        var f = findField(H[k]);
+        if(f){
+          if(f.tagName==="SELECT"){ var opt = Array.prototype.slice.call(f.options).find(function(o){ return o.text.toLowerCase().indexOf(String(v).toLowerCase())>=0; }); if(opt) f.value = opt.value; }
+          else { f.value = v; }
+          f.dispatchEvent(new Event("input",{bubbles:true}));
+          f.dispatchEvent(new Event("change",{bubbles:true}));
+          f.style.background = "rgba(0,212,255,.15)";
+          filled++;
+        }
+      });
+      if(inv.items && inv.items[0]){
+        var it = inv.items[0];
+        var IH = {quantity:["quantite","qty","quantity"],reference:["reference","ref","code"],description:["description","designation","libelle"],unit:["unite de mesure","unite","unit"],price:["pu ht","prix unitaire","prix"]};
+        Object.keys(IH).forEach(function(k){
+          var val = (k==="quantity" && (it.quantity===undefined||it.quantity===null||it.quantity==="")) ? it.qty : it[k];
+          if(val===undefined || val===null || val==="") return;
+          var f = findField(IH[k]);
+          if(f){ f.value = val; f.dispatchEvent(new Event("input",{bubbles:true})); f.dispatchEvent(new Event("change",{bubbles:true})); f.style.background = "rgba(251,191,36,.15)"; filled++; }
+        });
+      }
+      return filled;
+    }
+    function clickGen(){ var btns = document.querySelectorAll("button"); for(var i=0;i<btns.length;i++){ var t=(btns[i].textContent||"").trim(); if(/G.n.rer la facture$/i.test(t) && !btns[i].disabled){ btns[i].click(); return true; } } return false; }
+    function clickPlus(){ var btns = document.querySelectorAll("button,a"); for(var i=0;i<btns.length;i++){ var t=(btns[i].textContent||"").trim(); if(/G.n.rer la facture\s*\+/i.test(t)){ btns[i].click(); return true; } } return false; }
+    function readLatestNum(){ var rows = document.querySelectorAll("table tbody tr,table tr"); for(var i=0;i<rows.length;i++){ var cells = rows[i].querySelectorAll("td"); if(cells.length>1){ var txt=(cells[0].textContent||cells[1].textContent||"").trim(); if(/^\d{10,}/.test(txt)) return txt; } } return ""; }
+    function isFormPage(){ return location.href.indexOf("/generate")>=0 || document.body.textContent.indexOf("Sauvegarder la facture")>=0; }
+    function isListPage(){ return location.href.indexOf("type=issued")>=0 || /Mes Factures et re.us/i.test(document.body.textContent); }
+    function tick(){
+      if(stopped || busy) return;
+      busy = true;
+      getBatch().then(function(b){
+        if(b.config){ delay = b.config.delay || delay; pauseEvery = b.config.pauseEvery || 0; }
+        if(b.state !== "running"){ setStatus("Arr\u00eat\u00e9 (relancez \u00ab Pr\u00e9parer le batch \u00bb dans IVAN)"); stopped = true; busy = false; return; }
+        var q = b.queue || [];
+        var ok = q.filter(function(e){ return e.status==="success"; }).length;
+        var pendIdx = q.findIndex(function(e){ return e.parseOk && e.status==="pending"; });
+        var submIdx = q.findIndex(function(e){ return e.parseOk && e.status==="submitted"; });
+        if(pendIdx<0 && submIdx<0){ b.state="done"; putBatch(b); setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9es)"); stopped=true; busy=false; alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); return; }
+        if(isFormPage() && pendIdx>=0){
+          var inv = q[pendIdx];
+          setStatus("Remplissage "+inv.idx+"/"+q.length+"<br><small>"+(inv.fileName||"").substring(0,40)+"</small>");
+          fillForm(inv);
+          setTimeout(function(){
+            if(clickGen()){ q[pendIdx].status="submitted"; setStatus("Soumis "+inv.idx+", attente liste..."); }
+            else { q[pendIdx].status="error"; q[pendIdx].errMsg="Bouton G\u00e9n\u00e9rer introuvable"; }
+            putBatch(b).then(function(){ busy=false; }).catch(function(){ busy=false; });
+          }, delay/2);
+        } else if(isListPage() && submIdx>=0){
+          var num = readLatestNum();
+          if(num){
+            q[submIdx].fneNum = num; q[submIdx].status="success"; ok++; processedSinceLastPause++;
+            putBatch(b).then(function(){
+              setStatus("\u2713 "+ok+" cr\u00e9\u00e9e(s) (n "+num.substring(0,12)+"...)");
+              if(pauseEvery>0 && processedSinceLastPause>=pauseEvery){ if(!confirm("IVAN-FNE-BATCH: pause s\u00e9curit\u00e9 apr\u00e8s "+ok+" factures. Continuer ?")){ stopped=true; b.state="paused"; putBatch(b); busy=false; return; } processedSinceLastPause=0; }
+              var morePending = q.some(function(e){ return e.parseOk && e.status==="pending"; });
+              if(morePending){ setTimeout(function(){ if(!clickPlus()){ setStatus("\u26a0 Cliquez \"G\u00e9n\u00e9rer la facture +\" manuellement"); } busy=false; }, delay); }
+              else { b.state="done"; putBatch(b); stopped=true; busy=false; alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); }
+            }).catch(function(){ busy=false; });
+          } else { setStatus("Liste charg\u00e9e, lecture du n FNE..."); busy=false; }
+        } else { setStatus("Navigation en cours...<br><small>OK: "+ok+"/"+q.length+"</small>"); busy=false; }
+      }).catch(function(e){ setStatus("\u26a0 Erreur r\u00e9seau : impossible de joindre le serveur IVAN (le portail bloque peut-\u00eatre l'acc\u00e8s externe). "+(e&&e.message?e.message:"")); busy=false; });
+    }
+    setInterval(tick, 2000);
+    setStatus("D\u00e9marrage du batch...");
+  }
+  return "javascript:"+encodeURIComponent("("+IVANFNE.toString()+")("+JSON.stringify(API)+")");
 }
 
 function fneInstallBookmarklet(){
