@@ -143,9 +143,13 @@ function buildExtractCSV(invoices, opts){
       line.amount = credit ? -Math.abs(raw) : raw;
       out.push(buildItRow(inv, line, li+1, txtGroup, firstBooking).join(";"));
     });
-    out.push(buildTtRow("CLK", 1, "", "").join(";"));
-    out.push(buildTtRow("CNT", 1, inv.clerkEmail, inv.clerkName||"").join(";"));
   });
+  // UN SEUL bloc de fin pour TOUT le fichier (1 en-tete + items groupes par ZZINV_GROUPING + 1 bloc de fin).
+  // Plusieurs blocs CLK/CNT intercales font echouer l'import SAP S/4HANA. Le compteur CNT = nombre de factures.
+  // (1 seule facture => seq=1, identique au fichier valide ; en bloc => seq=N.)
+  var firstInv = invoices[0] || {};
+  out.push(buildTtRow("CLK", invoices.length, "", "").join(";"));
+  out.push(buildTtRow("CNT", invoices.length, firstInv.clerkEmail, firstInv.clerkName||"").join(";"));
   return out.join("\r\n");
 }
 
