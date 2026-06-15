@@ -3391,7 +3391,7 @@ function fneBuildBookmarklet(){
   function IVANFNE(API){
     if(window.__ivanFne){ alert("IVAN-FNE-BATCH d\u00e9j\u00e0 actif sur cette page."); return; }
     window.__ivanFne = true;
-    var delay = 2500, pauseEvery = 0, processedSinceLastPause = 0, busy = false, stopped = false;
+    var delay = 2500, pauseEvery = 0, processedSinceLastPause = 0, busy = false, stopped = false, busySince = 0;
     var seenNums = {};   // numeros FNE deja captures (= attribues a une facture)
     var prevNums = null; // photo des numeros FNE presents sur la liste (baseline). Le nouveau numero = celui en plus.
     var ovr = document.createElement("div");
@@ -3553,8 +3553,8 @@ function fneBuildBookmarklet(){
       (arr||[]).forEach(function(n){ if(!best){ best = n; return; } var dn=digits(n), db=digits(best); if(dn.length>db.length || (dn.length===db.length && dn>db)) best=n; });
       return best;
     }
-    function isFormPage(){ return location.href.indexOf("/generate")>=0 || document.body.textContent.indexOf("Sauvegarder la facture")>=0 || /AJOUTER UN ARTICLE/i.test(document.body.textContent); }
-    function isListPage(){ return location.href.indexOf("type=issued")>=0 || /Mes Factures et re.us/i.test(document.body.textContent); }
+    function isFormPage(){ var u=location.href; if(/\/generate/i.test(u))return true; if(/type=issued/i.test(u))return false; return document.body.textContent.indexOf("Sauvegarder la facture")>=0 || /AJOUTER UN ARTICLE/i.test(document.body.textContent); }
+    function isListPage(){ var u=location.href; if(/type=issued/i.test(u))return true; if(/\/generate/i.test(u))return false; return /Mes Factures et re.us/i.test(document.body.textContent); }
     // Le formulaire est "pret" quand le 1er menu (Type de facture) est rendu. Evite de remplir un formulaire encore en chargement (cas de la 2e facture+).
     function formReady(){ return findContainers(["type de facture","type facture"]).length > 0; }
     // ---- remplissage d'une facture ----
@@ -3659,8 +3659,9 @@ function fneBuildBookmarklet(){
     }
     // ---- boucle principale ----
     function tick(){
-      if(stopped || busy) return;
-      busy = true;
+      if(stopped) return;
+      if(busy){ if(Date.now()-busySince>25000){ busy=false; log("watchdog : t\u00e2che bloqu\u00e9e >25s, d\u00e9blocage"); } else return; }
+      busy = true; busySince = Date.now();
       getBatch().then(function(b){
         if(b.config){ delay = b.config.delay || delay; pauseEvery = b.config.pauseEvery || 0; }
         if(b.state !== "running"){ setStatus("Arr\u00eat\u00e9 (relancez \u00ab Pr\u00e9parer le batch \u00bb dans IVAN)"); stopped = true; busy = false; return; }
@@ -3681,31 +3682,46 @@ function fneBuildBookmarklet(){
           return;
         }
 
-        // (A) Sur le FORMULAIRE
+        // (A) Sur le FORMULAIRE (ou page de confirmation /generate)
         if(isFormPage()){
-          // (A1) Une facture est en cours de soumission mais on est ENCORE sur le formulaire => la cr\u00e9ation n'est pas pass\u00e9e (champ requis manquant ?)
-          if(subgIdx>=0 && formReady()){
+          // (A1) Une facture vient d'etre soumise et on est encore sur /generate.
+          if(subgIdx>=0){
             var sinv = q[subgIdx];
-            sinv._subTries = (sinv._subTries||0) + 1;
-            if(sinv._subTries < 4){
-              log("facture "+sinv.idx+" : encore sur le formulaire apr\u00e8s soumission (v\u00e9rif "+sinv._subTries+"/4)");
-              setStatus("V\u00e9rification cr\u00e9ation facture "+sinv.idx+"... ("+sinv._subTries+"/4)");
-              busy=false; return;
+            // 1) Creation reussie ? Un NOUVEAU n° FNE apparait (ex. message de confirmation sur la page).
+            var curF = fneNumCandidates();
+            var newsF = curF.filter(function(n){ return !(prevNums && prevNums[n]) && !seenNums[n]; });
+            var numF = pickMaxNum(newsF);
+            if(numF){
+              seenNums[numF]=1; if(!prevNums)prevNums={}; curF.forEach(function(n){prevNums[n]=1;});
+              sinv.fneNum=numF; sinv.status="success"; ok++; processedSinceLastPause++;
+              log("facture "+sinv.idx+" : cr\u00e9\u00e9e (n\u00b0 vu sur le formulaire) = "+numF);
+              putBatch(b).then(function(){
+                setStatus("\u2713 "+ok+" cr\u00e9\u00e9e(s) (n\u00b0 "+numF.substring(0,18)+(numF.length>18?"\u2026":"")+")");
+                if(pauseEvery>0 && processedSinceLastPause>=pauseEvery){ if(!confirm("IVAN-FNE-BATCH: pause s\u00e9curit\u00e9 apr\u00e8s "+ok+" factures. Continuer ?")){ stopped=true; b.state="paused"; putBatch(b); busy=false; return; } processedSinceLastPause=0; }
+                if(morePending()){ setTimeout(function(){ if(!clickPlus()){ setStatus("\u26a0 Cliquez \u00ab G\u00e9n\u00e9rer la facture + \u00bb"); } busy=false; }, delay); }
+                else { finishIfDone(); busy=false; }
+              }).catch(function(){ busy=false; });
+              return;
             }
-            // On abandonne CETTE facture (pas de nouvelle soumission -> pas de doublon) et on passe a la suivante.
-            sinv.status="error"; sinv.errMsg="Soumission \u00e9chou\u00e9e (un champ requis n'a pas pu \u00eatre rempli, ex. description). \u00c0 cr\u00e9er manuellement.";
-            log("facture "+sinv.idx+" ("+(sinv.fileName||"")+") : ABANDON \u2014 non cr\u00e9\u00e9e (champ requis manquant). Passage \u00e0 la suivante.");
-            putBatch(b).then(function(){
-              setTimeout(function(){
-                if(!clickPlus()){
-                  b._skip = (b._skip||0)+1;
-                  if(b._skip>=3){ setStatus("\u26a0 Bloqu\u00e9 sur le formulaire de la facture "+sinv.idx+". Quittez/annulez ce formulaire \u00e0 la main : le batch reprendra tout seul sur la liste."); }
-                  else setStatus("\u26a0 Sortie du formulaire impossible, nouvel essai...");
-                } else { b._skip=0; }
-                busy=false;
-              }, delay);
-            }).catch(function(){ busy=false; });
-            return;
+            // 2) Pas encore de nouveau n° : on patiente (compteur PERSISTE sur le serveur).
+            if(formReady()){
+              sinv._subTries = (sinv._subTries||0) + 1;
+              if(sinv._subTries < 8){
+                log("facture "+sinv.idx+" : attente confirmation cr\u00e9ation ("+sinv._subTries+"/8)");
+                setStatus("V\u00e9rification cr\u00e9ation facture "+sinv.idx+"\u2026 ("+sinv._subTries+"/8)");
+                putBatch(b).then(function(){ busy=false; }).catch(function(){ busy=false; });
+                return;
+              }
+              // 3) Toujours rien apres 8 essais : on NE DEVINE PAS. Pause + message clair (anti-doublon, anti-fausse erreur).
+              b.state="paused";
+              log("facture "+sinv.idx+" : cr\u00e9ation non confirm\u00e9e apr\u00e8s 8 essais \u2192 PAUSE (pas de re-soumission)");
+              putBatch(b).then(function(){
+                setStatus("\u23f8 Facture "+sinv.idx+" soumise mais cr\u00e9ation non confirm\u00e9e. <b>V\u00e9rifiez la liste \u00ab Mes Factures et re\u00e7us \u00bb</b> : si elle y est, retirez-la de la file dans IVAN puis relancez le reste ; sinon relancez. (Aucune re-soumission auto pour \u00e9viter les doublons.)");
+                stopped=true; busy=false;
+              }).catch(function(){ busy=false; });
+              return;
+            }
+            busy=false; return;
           }
           // (A2) Remplir la prochaine facture en attente
           if(pendIdx>=0){
