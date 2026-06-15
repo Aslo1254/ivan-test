@@ -3388,29 +3388,38 @@ function fneBuildBookmarklet(){
     function clickGen(){ return clickByText("button,a,[role=button]", /g.n.rer la facture$/i, 45); }
     function clickPlus(){ return clickByText("button,a,[role=button],span,div", /g.n.rer la facture\s*\+/i, 45) || clickByText("button,a,[role=button]", /g.n.rer la facture/i, 45) || clickByText("button,a,[role=button],span,div", /nouvelle facture|ajouter une facture/i, 45); }
     function readLatestNum(){
-      // Numero FNE: long, alphanumerique (ex 2048658S260000...), >=6 chiffres, souvent une lettre.
-      // On ignore notre numero interne "II..." et les montants (qui contiennent des espaces).
+      // Numero FNE: long, alphanumerique (ex 2048658S2600000...), >=11 chiffres, souvent une lettre.
+      // On ignore notre numero interne "II...", les montants (espaces) et les NCC (<=9 chiffres).
       function looksLikeFne(s){
-        if(!s || s.length<10 || s.length>40) return false;
+        if(!s || s.length<11 || s.length>40) return false;
         if(/^II\d/i.test(s)) return false;
         if(!/^[0-9A-Za-z]+$/.test(s)) return false;
-        return (s.match(/\d/g)||[]).length >= 6;
+        return (s.match(/\d/g)||[]).length >= 11;
       }
+      var found = {};
       function scan(t){
-        var mm = (t||"").trim().match(/[0-9A-Za-z]{10,}/g);
-        if(mm){ for(var z=0;z<mm.length;z++){ if(looksLikeFne(mm[z])) return mm[z]; } }
-        return "";
+        var mm = (t||"").trim().match(/[0-9A-Za-z]{11,}/g);
+        if(mm){ for(var z=0;z<mm.length;z++){ if(looksLikeFne(mm[z])) found[mm[z]]=1; } }
       }
-      // 1) tableau : 1ere ligne, colonnes de gauche
+      // 1) tableau : colonnes de gauche
       var rows = document.querySelectorAll("table tbody tr, table tr");
       for(var i=0;i<rows.length;i++){
         var cells = rows[i].querySelectorAll("td,th");
-        for(var j=0;j<Math.min(cells.length,3);j++){ var r = scan(cells[j].textContent); if(r) return r; }
+        for(var j=0;j<Math.min(cells.length,3);j++){ scan(cells[j].textContent); }
       }
-      // 2) liste div (grille) : 1er element feuille qui ressemble a un numero FNE
+      // 2) liste div (grille) : elements feuilles
       var all = document.querySelectorAll("td,th,span,div,p,a,b,strong");
-      for(var k=0;k<all.length;k++){ if(all[k].children && all[k].children.length>0) continue; var r2 = scan(all[k].textContent); if(r2) return r2; }
-      return "";
+      for(var k=0;k<all.length;k++){ if(all[k].children && all[k].children.length>0) continue; scan(all[k].textContent); }
+      // Les n° FNE sont SEQUENTIELS : la facture qu'on vient de creer est la PLUS GRANDE.
+      // On retourne donc le maximum (insensible a l'ordre d'affichage et aux anciennes factures de test).
+      function digits(s){ return s.replace(/\D/g, ""); }
+      var best = "";
+      Object.keys(found).forEach(function(n){
+        if(!best){ best = n; return; }
+        var dn = digits(n), db = digits(best);
+        if(dn.length > db.length || (dn.length === db.length && dn > db)) best = n;
+      });
+      return best;
     }
     function isFormPage(){ return location.href.indexOf("/generate")>=0 || document.body.textContent.indexOf("Sauvegarder la facture")>=0 || /AJOUTER UN ARTICLE/i.test(document.body.textContent); }
     function isListPage(){ return location.href.indexOf("type=issued")>=0 || /Mes Factures et re.us/i.test(document.body.textContent); }
@@ -3558,10 +3567,12 @@ function fneBuildBookmarklet(){
           }
         } else if(isListPage() && submIdx>=0){
           var num = readLatestNum();
+          log("liste : n\u00b0 FNE max lu = "+(num||"(aucun)")+(num&&seenNums[num]?" (deja pris, attente du nouveau)":""));
           if(num && seenNums[num]) num = "";   // numero deja pris (facture precedente, liste pas encore rafraichie) -> on attend le nouveau
           if(num){
             seenNums[num] = 1;
             q[submIdx].fneNum = num; q[submIdx].status="success"; ok++; processedSinceLastPause++;
+            log("facture "+q[submIdx].idx+" : n\u00b0 FNE capture = "+num);
             putBatch(b).then(function(){
               setStatus("\u2713 "+ok+" cr\u00e9\u00e9e(s) (n\u00b0 "+num.substring(0,16)+(num.length>16?"...":"")+")");
               if(pauseEvery>0 && processedSinceLastPause>=pauseEvery){ if(!confirm("IVAN-FNE-BATCH: pause s\u00e9curit\u00e9 apr\u00e8s "+ok+" factures. Continuer ?")){ stopped=true; b.state="paused"; putBatch(b); busy=false; return; } processedSinceLastPause=0; }
@@ -3572,15 +3583,16 @@ function fneBuildBookmarklet(){
           } else {
             // Numero pas encore lisible (liste en cours de rafraichissement) : on reessaie, puis on marque CREEE sans numero et on continue.
             q[submIdx]._numTries = (q[submIdx]._numTries||0) + 1;
-            if(q[submIdx]._numTries >= 8){
+            if(q[submIdx]._numTries >= 12){
               q[submIdx].fneNum = "(cr\u00e9\u00e9e \u2014 n\u00b0 \u00e0 relever sur le portail)"; q[submIdx].status="success"; ok++; processedSinceLastPause++;
+              log("facture "+q[submIdx].idx+" : n\u00b0 non lu apres 12 essais, marquee creee");
               putBatch(b).then(function(){
                 var morePending = q.some(function(e){ return e.parseOk && !e.contactMissing && e.status==="pending"; });
                 if(morePending){ setStatus("\u2713 "+ok+" cr\u00e9\u00e9e(s) (n\u00b0 non lu auto)"); setTimeout(function(){ if(!clickPlus()){ setStatus("\u26a0 Cliquez \"G\u00e9n\u00e9rer la facture +\" manuellement"); } busy=false; }, delay); }
                 else { b.state="done"; putBatch(b); stopped=true; busy=false; setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9e(s), n\u00b0 non lu auto)"); setDoneUI(); alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s). Num\u00e9ro(s) FNE \u00e0 relever sur le portail."); }
               }).catch(function(){ busy=false; });
             } else {
-              setStatus("Facture cr\u00e9\u00e9e, lecture du n\u00b0 FNE... ("+q[submIdx]._numTries+"/8)");
+              setStatus("Facture cr\u00e9\u00e9e, lecture du n\u00b0 FNE... ("+q[submIdx]._numTries+"/12)");
               putBatch(b).then(function(){ busy=false; }).catch(function(){ busy=false; });
             }
           }
