@@ -1111,7 +1111,7 @@ textarea.ip{resize:vertical;min-height:70px}
         </div>
         <div style="overflow-x:auto;max-height:300px;overflow-y:auto">
           <table class="adm-table">
-            <thead style="position:sticky;top:0;background:var(--panel2)"><tr><th>Fichier</th><th>N&deg; FNE</th><th style="text-align:center">Statut</th></tr></thead>
+            <thead style="position:sticky;top:0;background:var(--panel2)"><tr><th>#</th><th>N&deg; BL</th><th>N&deg; facture (II)</th><th>N&deg; FNE</th><th style="text-align:center">Statut</th></tr></thead>
             <tbody id="fneResultsBody"></tbody>
           </table>
         </div>
@@ -2980,6 +2980,8 @@ async function fneLoadFiles(files){
         code: parsed.code||parsed.ncc,
         company: parsed.company,
         footer: parsed.footer,
+        bl: parsed.bl||"",
+        invNum: parsed.invNum||"",
         phone: parsed.phone||"",
         email: parsed.email||"",
         items: parsed.items,
@@ -3025,6 +3027,8 @@ function fneParseTextToObj(txt, fileName){
   if(fileName){var mf=String(fileName).match(/(\d{6,})/);if(mf)ref=mf[1];}
   if(!ref){var mr=txt.match(/(\d{8,12})\s+Our\s+Reference/i)||txt.match(/Our\s+Reference\D*?(\d{8,12})/i);if(mr)ref=mr[1];}
   r.footer=(inv&&ref)?(inv+" - "+ref):(inv||ref||"");
+  r.invNum=inv;   // numero de facture interne (II...)
+  r.bl=ref;       // numero de BL / Our Reference (= prefixe du nom de fichier)
 
   // --- Nom societe = Invoice Address ligne 1 (run majuscule, coupe a l'adresse) ---
   var mn=txt.match(/Invoice Address\s+([A-Z][A-Z0-9 &\-'().]+)/);
@@ -3213,8 +3217,8 @@ function _fneRenderResults(){
       else statusBadge='<span style="padding:3px 8px;background:#94a3b8;color:#fff;border-radius:4px;font-size:11px;font-weight:700">EN ATTENTE</span>';
       return '<tr style="border-bottom:1px solid var(--ice-line2)">'
         +'<td style="padding:6px 8px">'+e.idx+'</td>'
-        +'<td style="padding:6px 8px;font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e.fileName+'</td>'
-        +'<td style="padding:6px 8px;font-family:monospace">'+(e.ncc||"-")+'</td>'
+        +'<td style="padding:6px 8px;font-family:monospace">'+(e.bl||"-")+'</td>'
+        +'<td style="padding:6px 8px;font-family:monospace">'+(e.invNum||"-")+'</td>'
         +'<td style="padding:6px 8px;font-family:monospace;font-weight:700">'+(e.fneNum||"-")+'</td>'
         +'<td style="padding:6px 8px;text-align:center">'+statusBadge+'</td>'
         +'</tr>';
@@ -3224,9 +3228,9 @@ function _fneRenderResults(){
 
 function fneExportResults(){
   if(!fneBatchQueue.length){alert("Rien \u00e0 exporter");return;}
-  var lines=["Index;Fichier PDF;NCC client;Soci\u00e9t\u00e9;Articles;Total HT;N FNE;Statut"];
+  var lines=["Index;N BL;N facture (II);N FNE;NCC client;Soci\u00e9t\u00e9;Articles;Total HT;Statut;Fichier PDF"];
   fneBatchQueue.forEach(function(e){
-    lines.push([e.idx,'"'+e.fileName+'"',e.ncc,'"'+(e.company||"").replace(/"/g,'""')+'"',e.items?e.items.length:0,e.totalHt,e.fneNum||"",e.status].join(";"));
+    lines.push([e.idx,(e.bl||""),(e.invNum||""),'"'+(e.fneNum||"")+'"',(e.ncc||""),'"'+(e.company||"").replace(/"/g,'""')+'"',e.items?e.items.length:0,e.totalHt,e.status,'"'+(e.fileName||"")+'"'].join(";"));
   });
   var csv="\ufeff"+lines.join("\r\n");
   var blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
