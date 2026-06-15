@@ -3105,7 +3105,7 @@ function fneRenderQueue(){
       statusBadge='<span style="padding:3px 8px;background:#dc2626;color:#fff;border-radius:4px;font-size:11px;font-weight:700" title="'+(e.parseErr||"")+'">PARSE ERR</span>';
     }else if(e.status==="success"){
       statusBadge='<span style="padding:3px 8px;background:var(--ok);color:#fff;border-radius:4px;font-size:11px;font-weight:700">OK</span>';
-    }else if(e.status==="submitted"){
+    }else if(e.status==="submitted"||e.status==="submitting"){
       statusBadge='<span style="padding:3px 8px;background:#f59e0b;color:#fff;border-radius:4px;font-size:11px;font-weight:700">EN COURS</span>';
     }else if(e.status==="error"){
       statusBadge='<span style="padding:3px 8px;background:#dc2626;color:#fff;border-radius:4px;font-size:11px;font-weight:700">ERR</span>';
@@ -3165,7 +3165,7 @@ function fneStartBatch(){
       config: { pauseEvery: parseInt($("fnePauseEvery").value)||0, delay: parseInt($("fneDelay").value)||2500 },
       state: "running"
     }}}).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur: batch non synchronis\u00e9 au serveur","err"); });
-    $("fneBatchStatus").innerHTML='<strong style="color:#15803d">\u2713 Batch activ\u00e9 ('+pending.length+' factures).</strong><br>1) Cliquez "Ouvrir le portail FNE" \u2192 2) Connectez-vous \u2192 3) Allez sur "G\u00e9n\u00e9rer la facture" \u2192 4) Cliquez le favori <strong>IVAN-FNE-BATCH</strong> une seule fois';
+    $("fneBatchStatus").innerHTML='<strong style="color:#15803d">\u2713 Batch activ\u00e9 ('+pending.length+' factures).</strong><br>1) Cliquez "Ouvrir le portail FNE" \u2192 2) Connectez-vous \u2192 3) Restez sur la <strong>liste \u00ab Mes Factures et re\u00e7us \u00bb</strong> (PAS sur le formulaire) \u2192 4) Cliquez le favori <strong>IVAN-FNE-BATCH</strong> une seule fois. Il photographie les factures existantes, puis cr\u00e9e les nouvelles et r\u00e9cup\u00e8re leur n\u00b0 FNE.';
     $("fneResultsArea").classList.remove("hid");
     fneRefreshResults();
   }catch(e){
@@ -3203,7 +3203,7 @@ function fneRefreshResults(){
 function _fneRenderResults(){
   var ok=fneBatchQueue.filter(function(e){return e.status==="success";}).length;
   var err=fneBatchQueue.filter(function(e){return e.status==="error";}).length;
-  var pending=fneBatchQueue.filter(function(e){return e.parseOk&&(e.status==="pending"||e.status==="submitted");}).length;
+  var pending=fneBatchQueue.filter(function(e){return e.parseOk&&(e.status==="pending"||e.status==="submitted"||e.status==="submitting");}).length;
   $("fneResOk").innerHTML=ok;
   $("fneResErr").innerHTML=err;
   $("fneResPending").innerHTML=pending;
@@ -3213,7 +3213,7 @@ function _fneRenderResults(){
       var statusBadge;
       if(e.status==="success")statusBadge='<span style="padding:3px 8px;background:var(--ok);color:#fff;border-radius:4px;font-size:11px;font-weight:700">\u2713 OK</span>';
       else if(e.status==="error")statusBadge='<span style="padding:3px 8px;background:#dc2626;color:#fff;border-radius:4px;font-size:11px;font-weight:700" title="'+(e.errMsg||"")+'">ERR</span>';
-      else if(e.status==="submitted")statusBadge='<span style="padding:3px 8px;background:#f59e0b;color:#fff;border-radius:4px;font-size:11px;font-weight:700">EN COURS</span>';
+      else if(e.status==="submitted"||e.status==="submitting")statusBadge='<span style="padding:3px 8px;background:#f59e0b;color:#fff;border-radius:4px;font-size:11px;font-weight:700">EN COURS</span>';
       else statusBadge='<span style="padding:3px 8px;background:#94a3b8;color:#fff;border-radius:4px;font-size:11px;font-weight:700">EN ATTENTE</span>';
       return '<tr style="border-bottom:1px solid var(--ice-line2)">'
         +'<td style="padding:6px 8px">'+e.idx+'</td>'
@@ -3254,7 +3254,8 @@ function fneBuildBookmarklet(){
     if(window.__ivanFne){ alert("IVAN-FNE-BATCH d\u00e9j\u00e0 actif sur cette page."); return; }
     window.__ivanFne = true;
     var delay = 2500, pauseEvery = 0, processedSinceLastPause = 0, busy = false, stopped = false;
-    var seenNums = {};  // numeros FNE deja captures dans ce batch (evite de relire celui de la facture precedente)
+    var seenNums = {};   // numeros FNE deja captures (= attribues a une facture)
+    var prevNums = null; // photo des numeros FNE presents sur la liste (baseline). Le nouveau numero = celui en plus.
     var ovr = document.createElement("div");
     ovr.id = "ivan-fne-ovr";
     ovr.style.cssText = "position:fixed;top:10px;right:10px;z-index:999999;background:linear-gradient(135deg,#fbbf24,#7c3aed);color:#fff;padding:12px 18px;border-radius:10px;font-family:sans-serif;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:320px";
@@ -3391,38 +3392,27 @@ function fneBuildBookmarklet(){
     }
     function clickGen(){ return clickByText("button,a,[role=button]", /g.n.rer la facture$/i, 45); }
     function clickPlus(){ return clickByText("button,a,[role=button],span,div", /g.n.rer la facture\s*\+/i, 45) || clickByText("button,a,[role=button]", /g.n.rer la facture/i, 45) || clickByText("button,a,[role=button],span,div", /nouvelle facture|ajouter une facture/i, 45); }
-    function readLatestNum(){
-      // Numero FNE: long, alphanumerique (ex 2048658S2600000...), >=11 chiffres, souvent une lettre.
-      // On ignore notre numero interne "II...", les montants (espaces) et les NCC (<=9 chiffres).
+    // Liste TOUS les numeros FNE presents sur la page (pour la capture par difference).
+    function fneNumCandidates(){
       function looksLikeFne(s){
-        if(!s || s.length<11 || s.length>40) return false;
-        if(/^II\d/i.test(s)) return false;
+        if(!s || s.length<10 || s.length>44) return false;
+        if(/^II/i.test(s) || /^CI/i.test(s) || /^DK/i.test(s)) return false;  // pas notre n° interne, pas un NCC
         if(!/^[0-9A-Za-z]+$/.test(s)) return false;
-        return (s.match(/\d/g)||[]).length >= 11;
+        return (s.match(/\d/g)||[]).length >= 10;
       }
       var found = {};
-      function scan(t){
-        var mm = (t||"").trim().match(/[0-9A-Za-z]{11,}/g);
-        if(mm){ for(var z=0;z<mm.length;z++){ if(looksLikeFne(mm[z])) found[mm[z]]=1; } }
-      }
-      // 1) tableau : colonnes de gauche
+      function scan(t){ var mm=(t||"").trim().match(/[0-9A-Za-z]{10,}/g); if(mm){ for(var z=0;z<mm.length;z++){ if(looksLikeFne(mm[z])) found[mm[z]]=1; } } }
       var rows = document.querySelectorAll("table tbody tr, table tr");
-      for(var i=0;i<rows.length;i++){
-        var cells = rows[i].querySelectorAll("td,th");
-        for(var j=0;j<Math.min(cells.length,3);j++){ scan(cells[j].textContent); }
-      }
-      // 2) liste div (grille) : elements feuilles
+      for(var i=0;i<rows.length;i++){ var cells = rows[i].querySelectorAll("td,th"); for(var j=0;j<Math.min(cells.length,4);j++){ scan(cells[j].textContent); } }
       var all = document.querySelectorAll("td,th,span,div,p,a,b,strong");
       for(var k=0;k<all.length;k++){ if(all[k].children && all[k].children.length>0) continue; scan(all[k].textContent); }
-      // Les n° FNE sont SEQUENTIELS : la facture qu'on vient de creer est la PLUS GRANDE.
-      // On retourne donc le maximum (insensible a l'ordre d'affichage et aux anciennes factures de test).
+      return Object.keys(found);
+    }
+    // Parmi une liste de numeros, retourne le plus grand (= le plus recent, n° sequentiels).
+    function pickMaxNum(arr){
       function digits(s){ return s.replace(/\D/g, ""); }
       var best = "";
-      Object.keys(found).forEach(function(n){
-        if(!best){ best = n; return; }
-        var dn = digits(n), db = digits(best);
-        if(dn.length > db.length || (dn.length === db.length && dn > db)) best = n;
-      });
+      (arr||[]).forEach(function(n){ if(!best){ best = n; return; } var dn=digits(n), db=digits(best); if(dn.length>db.length || (dn.length===db.length && dn>db)) best=n; });
       return best;
     }
     function isFormPage(){ return location.href.indexOf("/generate")>=0 || document.body.textContent.indexOf("Sauvegarder la facture")>=0 || /AJOUTER UN ARTICLE/i.test(document.body.textContent); }
@@ -3539,69 +3529,122 @@ function fneBuildBookmarklet(){
         var q = b.queue || [];
         var ok = q.filter(function(e){ return e.status==="success"; }).length;
         var pendIdx = q.findIndex(function(e){ return e.parseOk && !e.contactMissing && e.status==="pending"; });
-        var submIdx = q.findIndex(function(e){ return e.parseOk && !e.contactMissing && e.status==="submitted"; });
-        if(pendIdx<0 && submIdx<0){ b.state="done"; putBatch(b); setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9es)"); setDoneUI(); stopped=true; busy=false; alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); return; }
-        if(isFormPage() && pendIdx>=0){
-          var inv = q[pendIdx];
-          if(inv._filled){
-            if(clickGen()){ inv.status="submitted"; log("facture "+inv.idx+" : soumise (Generer la facture)"); setStatus("Soumis "+inv.idx+", attente liste..."); putBatch(b).then(function(){ busy=false; }).catch(function(){ busy=false; }); }
-            else { setStatus("Champs remplis. V\u00e9rifiez puis cliquez \u00ab G\u00e9n\u00e9rer la facture \u00bb."); busy=false; }
-          } else if(!formReady()){
-            // Formulaire pas encore charge (typiquement apres "Generer la facture +" pour la facture suivante) : on attend.
-            inv._formWait = (inv._formWait||0) + 1;
-            log("facture "+inv.idx+" : formulaire pas encore pret (essai "+inv._formWait+")");
-            setStatus("Chargement du formulaire... "+inv.idx+"/"+q.length+" (essai "+inv._formWait+")");
-            busy = false;
-          } else {
+        var subgIdx = q.findIndex(function(e){ return e.parseOk && !e.contactMissing && e.status==="submitting"; });
+        function morePending(){ return q.some(function(e){ return e.parseOk && !e.contactMissing && e.status==="pending"; }); }
+        function finishIfDone(){ if(!morePending()){ b.state="done"; putBatch(b); stopped=true; setDoneUI(); setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9e(s))"); alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); return true; } return false; }
+        if(pendIdx<0 && subgIdx<0){ b.state="done"; putBatch(b); setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9es)"); setDoneUI(); stopped=true; busy=false; alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); return; }
+
+        // (0) DEMARRAGE sur la liste : on photographie les n\u00b0 deja presents (baseline), puis on lance la 1ere facture.
+        if(prevNums===null && isListPage() && subgIdx<0){
+          prevNums = {}; fneNumCandidates().forEach(function(n){ prevNums[n]=1; });
+          log("baseline : "+Object.keys(prevNums).length+" facture(s) deja sur la liste (ignor\u00e9es pour la capture)");
+          setStatus("Liste de d\u00e9part enregistr\u00e9e ("+Object.keys(prevNums).length+"). Lancement...");
+          setTimeout(function(){ if(!clickPlus()){ setStatus("\u26a0 Cliquez \u00ab G\u00e9n\u00e9rer la facture + \u00bb pour d\u00e9marrer"); } busy=false; }, delay);
+          return;
+        }
+
+        // (A) Sur le FORMULAIRE
+        if(isFormPage()){
+          // (A1) Une facture est en cours de soumission mais on est ENCORE sur le formulaire => la cr\u00e9ation n'est pas pass\u00e9e (champ requis manquant ?)
+          if(subgIdx>=0 && formReady()){
+            var sinv = q[subgIdx];
+            sinv._subTries = (sinv._subTries||0) + 1;
+            if(sinv._subTries < 4){
+              log("facture "+sinv.idx+" : encore sur le formulaire apr\u00e8s soumission (v\u00e9rif "+sinv._subTries+"/4)");
+              setStatus("V\u00e9rification cr\u00e9ation facture "+sinv.idx+"... ("+sinv._subTries+"/4)");
+              busy=false; return;
+            }
+            // On abandonne CETTE facture (pas de nouvelle soumission -> pas de doublon) et on passe a la suivante.
+            sinv.status="error"; sinv.errMsg="Soumission \u00e9chou\u00e9e (un champ requis n'a pas pu \u00eatre rempli, ex. description). \u00c0 cr\u00e9er manuellement.";
+            log("facture "+sinv.idx+" ("+(sinv.fileName||"")+") : ABANDON \u2014 non cr\u00e9\u00e9e (champ requis manquant). Passage \u00e0 la suivante.");
+            putBatch(b).then(function(){
+              setTimeout(function(){
+                if(!clickPlus()){
+                  b._skip = (b._skip||0)+1;
+                  if(b._skip>=3){ setStatus("\u26a0 Bloqu\u00e9 sur le formulaire de la facture "+sinv.idx+". Quittez/annulez ce formulaire \u00e0 la main : le batch reprendra tout seul sur la liste."); }
+                  else setStatus("\u26a0 Sortie du formulaire impossible, nouvel essai...");
+                } else { b._skip=0; }
+                busy=false;
+              }, delay);
+            }).catch(function(){ busy=false; });
+            return;
+          }
+          // (A2) Remplir la prochaine facture en attente
+          if(pendIdx>=0){
+            var inv = q[pendIdx];
+            if(!formReady()){
+              inv._formWait = (inv._formWait||0)+1;
+              log("facture "+inv.idx+" : formulaire pas encore pr\u00eat (essai "+inv._formWait+")");
+              setStatus("Chargement du formulaire... "+inv.idx+"/"+q.length+" (essai "+inv._formWait+")");
+              busy=false; return;
+            }
             inv._formWait = 0;
             setStatus("Remplissage "+inv.idx+"/"+q.length+"...<br><small>"+(inv.fileName||"").substring(0,40)+"</small>");
-            log("facture "+inv.idx+" : debut remplissage ("+(inv.items?inv.items.length:0)+" article(s))");
+            log("facture "+inv.idx+" : d\u00e9but remplissage ("+(inv.items?inv.items.length:0)+" article(s))");
             fillInvoice(inv).then(function(n){
-              inv._filled = true;
               log("facture "+inv.idx+" : "+n+" champ(s) remplis");
               setStatus("Rempli ("+n+" champs) "+inv.idx+"/"+q.length+", soumission...");
-              putBatch(b).then(function(){
-                setTimeout(function(){
-                  if(clickGen()){ inv.status="submitted"; log("facture "+inv.idx+" : soumise"); setStatus("Soumis "+inv.idx+", attente liste..."); putBatch(b); }
-                  else { setStatus("Rempli. V\u00e9rifiez puis cliquez \u00ab G\u00e9n\u00e9rer la facture \u00bb."); }
-                  busy = false;
-                }, delay/2);
-              }).catch(function(){ busy = false; });
-            }).catch(function(e){ log("erreur remplissage", e); setStatus("\u26a0 Erreur remplissage : "+(e && e.message ? e.message : e)); busy = false; });
+              setTimeout(function(){
+                if(clickGen()){ inv.status="submitting"; inv._subTries=0; log("facture "+inv.idx+" : \u00ab G\u00e9n\u00e9rer \u00bb cliqu\u00e9, v\u00e9rification de la cr\u00e9ation..."); }
+                else { setStatus("\u26a0 Bouton \u00ab G\u00e9n\u00e9rer la facture \u00bb introuvable"); log("facture "+inv.idx+" : bouton \u00ab G\u00e9n\u00e9rer \u00bb introuvable"); }
+                putBatch(b).then(function(){ busy=false; }).catch(function(){ busy=false; });
+              }, delay/2);
+            }).catch(function(e){ log("erreur remplissage facture "+inv.idx, e); setStatus("\u26a0 Erreur remplissage : "+(e && e.message ? e.message : e)); busy=false; });
+            return;
           }
-        } else if(isListPage() && submIdx>=0){
-          var num = readLatestNum();
-          log("liste : n\u00b0 FNE max lu = "+(num||"(aucun)")+(num&&seenNums[num]?" (deja pris, attente du nouveau)":""));
-          if(num && seenNums[num]) num = "";   // numero deja pris (facture precedente, liste pas encore rafraichie) -> on attend le nouveau
-          if(num){
-            seenNums[num] = 1;
-            q[submIdx].fneNum = num; q[submIdx].status="success"; ok++; processedSinceLastPause++;
-            log("facture "+q[submIdx].idx+" : n\u00b0 FNE capture = "+num);
-            putBatch(b).then(function(){
-              setStatus("\u2713 "+ok+" cr\u00e9\u00e9e(s) (n\u00b0 "+num.substring(0,16)+(num.length>16?"...":"")+")");
-              if(pauseEvery>0 && processedSinceLastPause>=pauseEvery){ if(!confirm("IVAN-FNE-BATCH: pause s\u00e9curit\u00e9 apr\u00e8s "+ok+" factures. Continuer ?")){ stopped=true; b.state="paused"; putBatch(b); busy=false; return; } processedSinceLastPause=0; }
-              var morePending = q.some(function(e){ return e.parseOk && !e.contactMissing && e.status==="pending"; });
-              if(morePending){ setTimeout(function(){ if(!clickPlus()){ setStatus("\u26a0 Cliquez \"G\u00e9n\u00e9rer la facture +\" manuellement"); } busy=false; }, delay); }
-              else { b.state="done"; putBatch(b); stopped=true; busy=false; setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9e(s))"); setDoneUI(); alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); }
-            }).catch(function(){ busy=false; });
-          } else {
-            // Numero pas encore lisible (liste en cours de rafraichissement) : on reessaie, puis on marque CREEE sans numero et on continue.
-            q[submIdx]._numTries = (q[submIdx]._numTries||0) + 1;
-            if(q[submIdx]._numTries >= 12){
-              q[submIdx].fneNum = "(cr\u00e9\u00e9e \u2014 n\u00b0 \u00e0 relever sur le portail)"; q[submIdx].status="success"; ok++; processedSinceLastPause++;
-              log("facture "+q[submIdx].idx+" : n\u00b0 non lu apres 12 essais, marquee creee");
+          busy=false; return;
+        }
+
+        // (B) Sur la LISTE
+        if(isListPage()){
+          if(subgIdx>=0){
+            // On a quitt\u00e9 le formulaire => la facture vient d'\u00eatre cr\u00e9\u00e9e. Le NOUVEAU n\u00b0 = celui absent de la baseline.
+            var inv = q[subgIdx];
+            var cur = fneNumCandidates();
+            var news = prevNums ? cur.filter(function(n){ return !prevNums[n] && !seenNums[n]; }) : cur.filter(function(n){ return !seenNums[n]; });
+            var num = pickMaxNum(news);
+            log("liste : "+cur.length+" n\u00b0 pr\u00e9sents, "+news.length+" nouveau(x)"+(news.length?" ["+news.slice(0,3).join(", ")+(news.length>3?"\u2026":"")+"]":"")+" \u2192 "+(num||"(aucun)"));
+            if(num){
+              seenNums[num]=1;
+              if(!prevNums) prevNums={};
+              cur.forEach(function(n){ prevNums[n]=1; });   // la baseline inclut maintenant ce nouveau n\u00b0
+              inv.fneNum = num; inv.status="success"; ok++; processedSinceLastPause++;
+              log("facture "+inv.idx+" : n\u00b0 FNE = "+num);
               putBatch(b).then(function(){
-                var morePending = q.some(function(e){ return e.parseOk && !e.contactMissing && e.status==="pending"; });
-                if(morePending){ setStatus("\u2713 "+ok+" cr\u00e9\u00e9e(s) (n\u00b0 non lu auto)"); setTimeout(function(){ if(!clickPlus()){ setStatus("\u26a0 Cliquez \"G\u00e9n\u00e9rer la facture +\" manuellement"); } busy=false; }, delay); }
-                else { b.state="done"; putBatch(b); stopped=true; busy=false; setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9e(s), n\u00b0 non lu auto)"); setDoneUI(); alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s). Num\u00e9ro(s) FNE \u00e0 relever sur le portail."); }
+                setStatus("\u2713 "+ok+" cr\u00e9\u00e9e(s) (n\u00b0 "+num.substring(0,18)+(num.length>18?"\u2026":"")+")");
+                if(pauseEvery>0 && processedSinceLastPause>=pauseEvery){ if(!confirm("IVAN-FNE-BATCH: pause s\u00e9curit\u00e9 apr\u00e8s "+ok+" factures. Continuer ?")){ stopped=true; b.state="paused"; putBatch(b); busy=false; return; } processedSinceLastPause=0; }
+                if(morePending()){ setTimeout(function(){ if(!clickPlus()){ setStatus("\u26a0 Cliquez \u00ab G\u00e9n\u00e9rer la facture + \u00bb"); } busy=false; }, delay); }
+                else { if(!finishIfDone()) busy=false; else busy=false; }
               }).catch(function(){ busy=false; });
             } else {
-              setStatus("Facture cr\u00e9\u00e9e, lecture du n\u00b0 FNE... ("+q[submIdx]._numTries+"/12)");
-              putBatch(b).then(function(){ busy=false; }).catch(function(){ busy=false; });
+              inv._numTries = (inv._numTries||0)+1;
+              if(inv._numTries>=12){
+                if(!prevNums) prevNums={}; cur.forEach(function(n){ prevNums[n]=1; });
+                inv.fneNum="(cr\u00e9\u00e9e \u2014 n\u00b0 \u00e0 relever)"; inv.status="success"; ok++; processedSinceLastPause++;
+                log("facture "+inv.idx+" : aucun nouveau n\u00b0 apr\u00e8s 12 essais, marqu\u00e9e cr\u00e9\u00e9e");
+                putBatch(b).then(function(){
+                  if(morePending()){ setStatus("\u2713 "+ok+" (n\u00b0 non lu)"); setTimeout(function(){ if(!clickPlus()){ setStatus("\u26a0 Cliquez \u00ab G\u00e9n\u00e9rer la facture + \u00bb"); } busy=false; }, delay); }
+                  else { if(!finishIfDone()) busy=false; else busy=false; }
+                }).catch(function(){ busy=false; });
+              } else {
+                setStatus("Facture cr\u00e9\u00e9e, lecture du n\u00b0 FNE... ("+inv._numTries+"/12)");
+                putBatch(b).then(function(){ busy=false; }).catch(function(){ busy=false; });
+              }
             }
+            return;
           }
-        } else { setStatus("Navigation en cours...<br><small>OK: "+ok+"/"+q.length+"</small>"); busy=false; }
-      }).catch(function(e){ setStatus("\u26a0 Erreur r\u00e9seau : impossible de joindre le serveur IVAN (le portail bloque peut-\u00eatre l'acc\u00e8s externe). "+(e&&e.message?e.message:"")); busy=false; });
+          if(prevNums===null){ prevNums={}; fneNumCandidates().forEach(function(n){ prevNums[n]=1; }); log("baseline (tardive) : "+Object.keys(prevNums).length); }
+          if(pendIdx>=0){ // sur la liste, rien en cours, mais il reste des factures -> on lance la suivante
+            setStatus("Lancement facture suivante...");
+            setTimeout(function(){ if(!clickPlus()){ setStatus("\u26a0 Cliquez \u00ab G\u00e9n\u00e9rer la facture + \u00bb"); } busy=false; }, delay);
+            return;
+          }
+          busy=false; return;
+        }
+
+        // (C) Transition (ni formulaire ni liste)
+        setStatus("Navigation en cours...<br><small>OK: "+ok+"/"+q.length+"</small>"); busy=false;
+      }).catch(function(e){ setStatus("\u26a0 Erreur r\u00e9seau : impossible de joindre le serveur IVAN. "+(e&&e.message?e.message:"")); busy=false; });
     }
     setInterval(tick, 2000);
     setStatus("D\u00e9marrage du batch...");
