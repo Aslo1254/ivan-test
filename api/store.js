@@ -11,7 +11,10 @@ const path = require('path');
 const CHB_DEFAULTS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'chb_templates.json'), 'utf8'));
 const ECH_DEFAULTS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'echange_templates.json'), 'utf8'));
 const CBU_LIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'cbu_list.json'), 'utf8'));
-const CA_MAP_DEFAULT = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'ca_map.json'), 'utf8'));
+// Contract-account defaults: PLUS UTILISES (les comptes proviennent desormais uniquement de l'import manager).
+// Chargement tolerant pour ne jamais planter si le fichier est retire.
+let CA_MAP_DEFAULT = {};
+try { CA_MAP_DEFAULT = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'ca_map.json'), 'utf8')); } catch(e) { CA_MAP_DEFAULT = {}; }
 
 const redis = Redis.fromEnv();
 
@@ -246,13 +249,13 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // ===== CONTRACT ACCOUNTS (per BP, manager-editable) =====
+    // ===== CONTRACT ACCOUNTS (par BP) — source unique = ce que le manager importe/saisit =====
     if(action === 'getca'){
       const bp = String((req.body && req.body.bp) || (req.query && req.query.bp) || "").trim();
       if(!bp){ res.status(200).json({ ok:true, accounts: [] }); return; }
       const overrides = (await redis.get(K_CA_OVERRIDES)) || {};
-      // If manager has overridden this BP, use that; else defaults
-      const list = overrides[bp] !== undefined ? overrides[bp] : (CA_MAP_DEFAULT[bp] || []);
+      // Plus de defaut code en dur : on ne renvoie que ce qui a ete importe/saisi pour ce BP.
+      const list = Array.isArray(overrides[bp]) ? overrides[bp] : [];
       res.status(200).json({ ok:true, accounts: list });
       return;
     }
@@ -267,13 +270,35 @@ module.exports = async (req, res) => {
       res.status(200).json({ ok:true, accounts: accounts });
       return;
     }
+    if(action === 'setcabulk'){
+      // Import en masse : map = { bp: [{ca,name}, ...], ... }. Par defaut FUSIONNE ; replace:true pour tout remplacer.
+      const map = (req.body && req.body.map);
+      const replace = !!(req.body && req.body.replace);
+      if(!map || typeof map !== "object"){ res.status(200).json({ ok:false, error:"map requise" }); return; }
+      let overrides = replace ? {} : ((await redis.get(K_CA_OVERRIDES)) || {});
+      let nbBp = 0, nbCa = 0;
+      Object.keys(map).forEach(function(bp){
+        const arr = Array.isArray(map[bp]) ? map[bp].filter(function(a){ return a && a.ca; }) : [];
+        if(!arr.length) return;
+        overrides[bp] = arr; nbBp++; nbCa += arr.length;
+      });
+      await redis.set(K_CA_OVERRIDES, overrides);
+      res.status(200).json({ ok:true, bp: nbBp, ca: nbCa });
+      return;
+    }
+    if(action === 'clearallca'){
+      // Supprime TOUS les contract accounts (remet la base a vide)
+      await redis.set(K_CA_OVERRIDES, {});
+      res.status(200).json({ ok:true });
+      return;
+    }
     if(action === 'resetca'){
-      // Reset a BP to factory defaults (remove override)
+      // Retire l'override d'un BP (=> plus aucun compte pour ce BP tant qu'il n'est pas re-importe)
       const bp = String((req.body && req.body.bp) || "").trim();
       const overrides = (await redis.get(K_CA_OVERRIDES)) || {};
       delete overrides[bp];
       await redis.set(K_CA_OVERRIDES, overrides);
-      res.status(200).json({ ok:true, accounts: CA_MAP_DEFAULT[bp] || [] });
+      res.status(200).json({ ok:true, accounts: [] });
       return;
     }
 
