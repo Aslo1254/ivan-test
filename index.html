@@ -834,10 +834,12 @@ textarea.ip{resize:vertical;min-height:70px}
       <div class="ct"><span class="dot"></span> Import 2 &mdash; Rattacher des Contract Accounts</div>
       <p style="font-size:13.5px;color:var(--txt2);line-height:1.7;margin-bottom:16px">
         Importez un fichier (Excel/CSV) avec colonnes <b>Business Partner</b> (ou <b>Code ECC</b>) et <b>Contract Account</b>
-        pour rattacher automatiquement les comptes contractuels. Une fois rattach&eacute;, le Contract Account se remplit tout seul en facturation.
+        pour rattacher automatiquement les comptes contractuels. Une fois rattach&eacute;, le Contract Account se remplit tout seul en facturation.<br>
+        <span style="color:var(--txt3)">L'import alimente directement la facturation (serveur). Pour repartir de z&eacute;ro, supprimez d'abord tout, puis importez votre fichier.</span>
       </p>
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">
         <button class="bt bt-ghost" onclick="caTemplate()">&#11015; Mod&egrave;le Contract Account</button>
+        <button class="bt bt-ghost" data-mgr="1" style="display:none;border-color:#dc2626;color:#fca5a5" onclick="caClearAll()">&#128465; Tout supprimer (serveur)</button>
       </div>
       <div class="drop-zone" id="caUploadDrop" onclick="document.getElementById('caUploadInput').click()">
         <div style="font-size:34px;margin-bottom:8px">&#128279;</div>
@@ -1754,25 +1756,58 @@ function caUpload(file){
     var iBp = findCol(hdr, ["business partner","bp","partner"]);
     var iEcc = findCol(hdr, ["code ecc","ecc","ancien code"]);
     var iCa = findCol(hdr, ["contract account","contract","compte","ca"]);
+    var iName = findCol(hdr, ["nom","name","client","raison"]);
     if(iCa<0 || (iBp<0 && iEcc<0)){ showToast("Colonnes Business Partner (ou ECC) + Contract Account requises","err"); return; }
     var linked=0, notfound=0;
+    var serverMap = {};   // { bp: [{ca,name}, ...] } -> envoye au serveur (utilise en facturation)
     for(var r=1;r<rows.length;r++){
       var ca = String(rows[r][iCa]||"").trim();
       if(!ca) continue;
       var bp = "";
+      var name = iName>=0 ? String(rows[r][iName]||"").trim() : "";
       if(iBp>=0) bp = String(rows[r][iBp]||"").trim();
       if(!bp && iEcc>=0){
         var ecc = String(rows[r][iEcc]||"").trim();
-        if(ecc in BP_DB) bp = BP_DB[ecc].split("|")[0];
+        if(ecc in BP_DB){ var parts = BP_DB[ecc].split("|"); bp = parts[0]; if(!name) name = parts[1]||""; }
       }
       if(!bp){ notfound++; continue; }
-      CA_MAP[bp] = ca;
+      CA_MAP[bp] = ca;                    // affichage (recherche BP)
+      if(!serverMap[bp]) serverMap[bp] = [];
+      if(!serverMap[bp].some(function(a){ return a.ca===ca; })) serverMap[bp].push({ca:ca, name:name});
       linked++;
     }
     saveCA();
-    $("caUploadResult").innerHTML = '<span class="pill pill-ok">'+linked+' rattach&eacute;(s)</span>' + (notfound? ' <span class="pill pill-err">'+notfound+' BP introuvable(s)</span>':'');
-    showToast("Contract Accounts rattach&eacute;s","ok");
+    // Pousse vers le SERVEUR (fusion) -> ces comptes seront utilises en facturation (getca)
+    var bpCount = Object.keys(serverMap).length;
+    if(bpCount){
+      apiCall("/store", {method:"POST", body:{action:"setcabulk", map:serverMap}}).then(function(res){
+        if(res && res.ok){
+          $("caUploadResult").innerHTML = '<span class="pill pill-ok">'+linked+' rattach&eacute;(s) &mdash; '+res.bp+' BP sur le serveur</span>' + (notfound? ' <span class="pill pill-err">'+notfound+' BP introuvable(s)</span>':'');
+          showToast("Contract Accounts import\u00e9s (serveur + facturation)","ok");
+        } else {
+          $("caUploadResult").innerHTML = '<span class="pill pill-ok">'+linked+' rattach&eacute;(s) localement</span> <span class="pill pill-err">serveur: '+((res&&res.error)||"erreur")+'</span>';
+          showToast("Enregistr\u00e9 localement, mais erreur serveur","err");
+        }
+      }).catch(function(e){ if(e&&e.blocked){showBlocked();return;}
+        $("caUploadResult").innerHTML = '<span class="pill pill-ok">'+linked+' rattach&eacute;(s) localement</span> <span class="pill pill-err">serveur injoignable</span>';
+        showToast("Enregistr\u00e9 localement, serveur injoignable","err");
+      });
+    } else {
+      $("caUploadResult").innerHTML = '<span class="pill pill-err">'+notfound+' BP introuvable(s) &mdash; rien import&eacute;</span>';
+    }
   });
+}
+// Supprime TOUS les contract accounts (serveur + affichage local). Le manager re-importe ensuite les bons.
+function caClearAll(){
+  if(!confirm("Supprimer TOUS les Contract Accounts (serveur + local) ?\n\nLa facturation n'aura plus de compte auto tant que vous n'aurez pas import\u00e9 les bons. Cette action est irr\u00e9versible.")) return;
+  apiCall("/store", {method:"POST", body:{action:"clearallca"}}).then(function(res){
+    if(res && res.ok){
+      CA_MAP = {}; saveCA();
+      if($("caUploadResult")) $("caUploadResult").innerHTML = '<span class="pill pill-ok">Tous les Contract Accounts supprim&eacute;s</span>';
+      showToast("Contract Accounts supprim\u00e9s. Importez maintenant les bons.","ok");
+      if(typeof renderBpResults==="function" && _factCurrentBp){ /* refresh affichage si une recherche BP est ouverte */ }
+    } else { showToast((res&&res.error)||"Erreur serveur","err"); }
+  }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Serveur injoignable","err"); });
 }
 function bpTemplate(){
   var ws = XLSX.utils.aoa_to_sheet([["Code ECC","Business Partner","Nom"],["CI00999999","13999999","EXEMPLE CLIENT SARL"]]);
@@ -1782,8 +1817,8 @@ function bpTemplate(){
   downloadBlob(new Blob([data]),"MODELE_BUSINESS_PARTNERS.xlsx");
 }
 function caTemplate(){
-  var ws = XLSX.utils.aoa_to_sheet([["Business Partner","Code ECC","Contract Account"],["13999999","CI00999999","200010999999"]]);
-  ws["!cols"]=[{wch:18},{wch:16},{wch:18}];
+  var ws = XLSX.utils.aoa_to_sheet([["Business Partner","Code ECC","Contract Account","Nom"],["13999999","CI00999999","200010999999","EXEMPLE CLIENT SARL"]]);
+  ws["!cols"]=[{wch:18},{wch:16},{wch:18},{wch:32}];
   var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"CA");
   var data=XLSX.write(wb,{bookType:"xlsx",type:"array"});
   downloadBlob(new Blob([data]),"MODELE_CONTRACT_ACCOUNTS.xlsx");
