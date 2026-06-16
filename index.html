@@ -754,13 +754,13 @@ textarea.ip{resize:vertical;min-height:70px}
       <div class="ct"><span class="dot"></span> Base Business Partners</div>
       <p style="font-size:13.5px;color:var(--txt2);margin-bottom:16px">
         <span id="bpCount" class="mono" style="color:var(--frost);font-weight:600">0</span> Business Partners enregistr&eacute;s.
-        Recherchez par ancien code client (ECC) ou par nom.
+        Les BP <b>locaux</b> (import&eacute;s ou cr&eacute;&eacute;s automatiquement) sont list&eacute;s ci-dessous et <b>supprimables</b> (avec leur compte). Recherchez par code, num&eacute;ro BP ou nom (la base int&eacute;gr&eacute;e appara&icirc;t en recherche, non supprimable).
       </p>
-      <input class="ip" id="bpTableSearch" placeholder="Rechercher un code ECC ou un nom..." oninput="bpRenderTable(this.value)" style="margin-bottom:16px">
+      <input class="ip" id="bpTableSearch" placeholder="Rechercher par code ECC, num&eacute;ro BP ou nom..." oninput="bpRenderTable(this.value)" style="margin-bottom:16px">
       <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
         <table class="adm-table" id="bpTable">
           <thead style="position:sticky;top:0;background:var(--panel2)">
-            <tr><th>Code ECC</th><th>Business Partner</th><th>Nom</th><th>Contract Account</th></tr>
+            <tr><th>Code ECC</th><th>Business Partner</th><th>Nom</th><th>Contract Account</th><th>Action</th></tr>
           </thead>
           <tbody id="bpTableBody"></tbody>
         </table>
@@ -1530,9 +1530,10 @@ function bpSearch(q){
   bpAcMatches = [];
   var qU = q.toUpperCase();
   for(var ecc in BP_EXTRA){
-    if(ecc.toUpperCase().indexOf(qU) >= 0){
-      var parts = BP_EXTRA[ecc].split("|");
-      bpAcMatches.push({ecc:ecc, bp:parts[0], name:parts[1]||""});
+    var parts = BP_EXTRA[ecc].split("|");
+    var bpv = parts[0], nm = parts[1]||"";
+    if(ecc.toUpperCase().indexOf(qU) >= 0 || bpv.toUpperCase().indexOf(qU) >= 0 || nm.toUpperCase().indexOf(qU) >= 0){
+      bpAcMatches.push({ecc:ecc, bp:bpv, name:nm});
     }
   }
   apiCall("/data?action=bp&q=" + encodeURIComponent(q)).then(function(res){
@@ -1574,29 +1575,47 @@ function bpRenderTable(q){
   q = (q||"").trim();
   var body = $("bpTableBody");
   if(!body) return;
-  if(q.length < 2){
-    body.innerHTML = '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--txt3)">Tapez au moins 2 caract&egrave;res pour rechercher</td></tr>';
-    return;
-  }
-  var rows = [];
   var qU = q.toUpperCase();
+  var rows = [];
+  var shown = 0, cap = 1000;
+  // BP locaux (importes / auto-crees) : visibles et SUPPRIMABLES
   for(var ecc in BP_EXTRA){
     var parts = BP_EXTRA[ecc].split("|");
-    if(ecc.toUpperCase().indexOf(qU)>=0 || (parts[1]||"").toUpperCase().indexOf(qU)>=0){
-      var ca = CA_MAP[parts[0]] || "";
-      rows.push('<tr><td class="mono" style="color:var(--frost)">'+ecc+'</td><td class="mono">'+parts[0]+'</td><td style="color:var(--txt2)">'+(parts[1]||"")+'</td><td class="mono" style="color:'+(ca?"var(--ok)":"var(--txt3)")+'">'+(ca||"&mdash;")+'</td></tr>');
-    }
+    var bpv = parts[0], nm = parts[1]||"";
+    if(q.length>=2 && !(ecc.toUpperCase().indexOf(qU)>=0 || bpv.toUpperCase().indexOf(qU)>=0 || nm.toUpperCase().indexOf(qU)>=0)) continue;
+    if(shown>=cap){ break; }
+    var ca = CA_MAP[bpv] || "";
+    rows.push('<tr><td class="mono" style="color:var(--frost)">'+ecc+'</td><td class="mono">'+bpv+'</td><td style="color:var(--txt2)">'+nm+'</td><td class="mono" style="color:'+(ca?"var(--ok)":"var(--txt3)")+'">'+(ca||"&mdash;")+'</td>'+
+      '<td style="text-align:center"><button class="bt-del" style="padding:4px 9px" title="Supprimer ce BP et son compte" onclick="bpDeleteOne(\''+escAttr(ecc)+'\')">&#10005;</button></td></tr>');
+    shown++;
   }
+  function finish(extra){
+    body.innerHTML = (rows.join("")+(extra||"")) || '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--txt3)">'+(q.length<2?"Aucun Business Partner local. Importez-en, ou recherchez (2+ caract\u00e8res) dans la base int\u00e9gr\u00e9e.":"Aucun r\u00e9sultat")+'</td></tr>';
+  }
+  if(q.length < 2){ finish(); return; }   // pas d'appel serveur sans terme de recherche
+  // Base integree (serveur) : visible, NON supprimable (donnee de base de l'app)
   apiCall("/data?action=bp&q=" + encodeURIComponent(q)).then(function(res){
-    (res.results||[]).forEach(function(m){
+    var extra = (res.results||[]).map(function(m){
       var ca = CA_MAP[m.bp] || "";
-      rows.push('<tr><td class="mono" style="color:var(--frost)">'+m.ecc+'</td><td class="mono">'+m.bp+'</td><td style="color:var(--txt2)">'+m.name+'</td><td class="mono" style="color:'+(ca?"var(--ok)":"var(--txt3)")+'">'+(ca||"&mdash;")+'</td></tr>');
-    });
-    body.innerHTML = rows.join("") || '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--txt3)">Aucun r&eacute;sultat</td></tr>';
-  }).catch(function(e){
-    if(e&&e.blocked){ showBlocked(); return; }
-    body.innerHTML = rows.join("") || '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--txt3)">Erreur de connexion</td></tr>';
-  });
+      return '<tr><td class="mono" style="color:var(--frost)">'+m.ecc+'</td><td class="mono">'+m.bp+'</td><td style="color:var(--txt2)">'+m.name+'</td><td class="mono" style="color:'+(ca?"var(--ok)":"var(--txt3)")+'">'+(ca||"&mdash;")+'</td>'+
+        '<td style="text-align:center;color:var(--txt3);font-size:11px">int&eacute;gr&eacute;</td></tr>';
+    }).join("");
+    finish(extra);
+  }).catch(function(e){ if(e&&e.blocked){ showBlocked(); return; } finish(); });
+}
+// Supprime un BP local (BP_EXTRA) ET son contract account (serveur + local)
+function bpDeleteOne(eccKey){
+  var entry = BP_EXTRA[eccKey]; if(!entry) return;
+  var bpv = entry.split("|")[0];
+  if(!confirm("Supprimer le Business Partner "+bpv+" et son Contract Account ?")) return;
+  delete BP_EXTRA[eccKey];
+  if(BP_DB[eccKey] && BP_DB[eccKey].split("|")[0]===bpv) delete BP_DB[eccKey];
+  delete CA_MAP[bpv];
+  saveBP(); saveCA();
+  if($("bpCount")) $("bpCount").textContent = Object.keys(BP_DB).length.toLocaleString("fr-FR");
+  apiCall("/store", {method:"POST", body:{action:"resetca", bp:bpv}}).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+  bpRenderTable($("bpTableSearch")?$("bpTableSearch").value:"");
+  showToast("Business Partner supprim\u00e9","ok");
 }
 
 // ============ CHARGE LINES ============
@@ -1758,38 +1777,49 @@ function caUpload(file){
     var iCa = findCol(hdr, ["contract account","contract","compte","ca"]);
     var iName = findCol(hdr, ["nom","name","client","raison"]);
     if(iCa<0 || (iBp<0 && iEcc<0)){ showToast("Colonnes Business Partner (ou ECC) + Contract Account requises","err"); return; }
-    var linked=0, notfound=0;
+    var linked=0, notfound=0, bpCreated=0;
     var serverMap = {};   // { bp: [{ca,name}, ...] } -> envoye au serveur (utilise en facturation)
+    // index des BP deja connus (par numero) pour ne pas recreer de doublon
+    var knownBp = {};
+    for(var k in BP_DB){ knownBp[ BP_DB[k].split("|")[0] ] = 1; }
     for(var r=1;r<rows.length;r++){
       var ca = String(rows[r][iCa]||"").trim();
       if(!ca) continue;
-      var bp = "";
+      var eccVal = iEcc>=0 ? String(rows[r][iEcc]||"").trim() : "";
+      var bp = iBp>=0 ? String(rows[r][iBp]||"").trim() : "";
       var name = iName>=0 ? String(rows[r][iName]||"").trim() : "";
-      if(iBp>=0) bp = String(rows[r][iBp]||"").trim();
-      if(!bp && iEcc>=0){
-        var ecc = String(rows[r][iEcc]||"").trim();
-        if(ecc in BP_DB){ var parts = BP_DB[ecc].split("|"); bp = parts[0]; if(!name) name = parts[1]||""; }
-      }
+      if(!bp && eccVal && (eccVal in BP_DB)){ var parts0 = BP_DB[eccVal].split("|"); bp = parts0[0]; if(!name) name = parts0[1]||""; }
       if(!bp){ notfound++; continue; }
-      CA_MAP[bp] = ca;                    // affichage (recherche BP)
+      CA_MAP[bp] = ca;                    // affichage local (recherche BP / tableau)
       if(!serverMap[bp]) serverMap[bp] = [];
       if(!serverMap[bp].some(function(a){ return a.ca===ca; })) serverMap[bp].push({ca:ca, name:name});
       linked++;
+      // AUTO-CREATION du Business Partner s'il n'existe pas encore (pour qu'il soit cherchable + lie au CA)
+      if(!knownBp[bp]){
+        var key = eccVal || bp;            // cle = Code ECC si fourni, sinon le numero BP lui-meme
+        if(BP_DB[key] && BP_DB[key].split("|")[0] !== bp) key = bp;   // evite une collision de cle
+        BP_EXTRA[key] = bp + "|" + name;
+        BP_DB[key] = bp + "|" + name;
+        knownBp[bp] = 1;
+        bpCreated++;
+      }
     }
     saveCA();
+    if(bpCreated){ saveBP(); if($("bpCount")) $("bpCount").textContent = Object.keys(BP_DB).length.toLocaleString("fr-FR"); }
+    var creaTxt = bpCreated ? ' <span class="pill pill-frost">'+bpCreated+' BP cr&eacute;&eacute;(s)</span>' : '';
     // Pousse vers le SERVEUR (fusion) -> ces comptes seront utilises en facturation (getca)
     var bpCount = Object.keys(serverMap).length;
     if(bpCount){
       apiCall("/store", {method:"POST", body:{action:"setcabulk", map:serverMap}}).then(function(res){
         if(res && res.ok){
-          $("caUploadResult").innerHTML = '<span class="pill pill-ok">'+linked+' rattach&eacute;(s) &mdash; '+res.bp+' BP sur le serveur</span>' + (notfound? ' <span class="pill pill-err">'+notfound+' BP introuvable(s)</span>':'');
+          $("caUploadResult").innerHTML = '<span class="pill pill-ok">'+linked+' rattach&eacute;(s) &mdash; '+res.bp+' BP serveur</span>'+creaTxt + (notfound? ' <span class="pill pill-err">'+notfound+' sans BP</span>':'');
           showToast("Contract Accounts import\u00e9s (serveur + facturation)","ok");
         } else {
-          $("caUploadResult").innerHTML = '<span class="pill pill-ok">'+linked+' rattach&eacute;(s) localement</span> <span class="pill pill-err">serveur: '+((res&&res.error)||"erreur")+'</span>';
+          $("caUploadResult").innerHTML = '<span class="pill pill-ok">'+linked+' rattach&eacute;(s) localement</span>'+creaTxt+' <span class="pill pill-err">serveur: '+((res&&res.error)||"erreur")+'</span>';
           showToast("Enregistr\u00e9 localement, mais erreur serveur","err");
         }
       }).catch(function(e){ if(e&&e.blocked){showBlocked();return;}
-        $("caUploadResult").innerHTML = '<span class="pill pill-ok">'+linked+' rattach&eacute;(s) localement</span> <span class="pill pill-err">serveur injoignable</span>';
+        $("caUploadResult").innerHTML = '<span class="pill pill-ok">'+linked+' rattach&eacute;(s) localement</span>'+creaTxt+' <span class="pill pill-err">serveur injoignable</span>';
         showToast("Enregistr\u00e9 localement, serveur injoignable","err");
       });
     } else {
@@ -2461,14 +2491,24 @@ function echBpSearch(q){
   echSelectedBp = {bp:q, name:"(manuel)", manual:true};
   updateEchFooter();
   if(q.length<2){ list.classList.remove("show"); return; }
-  apiCall("/data?action=bp&q="+encodeURIComponent(q)).then(function(res){
-    echBpMatches=res.results||[];
+  var qU=q.toUpperCase();
+  echBpMatches=[];
+  for(var ecc in BP_EXTRA){
+    var p=BP_EXTRA[ecc].split("|"); var bpv=p[0], nm=p[1]||"";
+    if(ecc.toUpperCase().indexOf(qU)>=0 || bpv.toUpperCase().indexOf(qU)>=0 || nm.toUpperCase().indexOf(qU)>=0) echBpMatches.push({ecc:ecc,bp:bpv,name:nm});
+  }
+  function paintEch(){
     if(!echBpMatches.length){ list.classList.remove("show"); return; }
     list.innerHTML=echBpMatches.slice(0,30).map(function(m,i){
       return '<div class="ac-item" onclick="echBpPick('+i+')"><span class="code">'+m.ecc+'</span> &rarr; <span class="code">'+m.bp+'</span><div class="nm">'+m.name+'</div></div>';
     }).join("");
     list.classList.add("show");
-  }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+  }
+  apiCall("/data?action=bp&q="+encodeURIComponent(q)).then(function(res){
+    var seen={}; echBpMatches.forEach(function(m){ seen[m.ecc]=1; });
+    (res.results||[]).forEach(function(m){ if(!seen[m.ecc]) echBpMatches.push(m); });
+    paintEch();
+  }).catch(function(e){ if(e&&e.blocked){ showBlocked(); return; } paintEch(); });
 }
 function echBpPick(i){
   var m=echBpMatches[i]; if(!m) return;
