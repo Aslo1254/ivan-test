@@ -15,11 +15,23 @@ const ECH_TPL = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'ec
 const COMMODITIES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'commodities.json'), 'utf8'));
 const COMM_MAP = {};
 COMMODITIES.forEach(function(c){ COMM_MAP[c.c] = c; });
-// Bases dédiées récupérées depuis IVAN Mark II : San Pedro (import) + Export
-const SP_COMMODITIES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'sp_commodities.json'), 'utf8'));
+// Bases dédiées récupérées depuis IVAN Mark II : San Pedro (import) + Export.
+// Chargement TOLÉRANT : on essaie plusieurs noms (underscore / espace / sans séparateur) et on
+// ne plante JAMAIS si le fichier manque -> /generate reste fonctionnel (facturation, échange Abidjan)
+// même si ces fichiers ne sont pas (encore) déployés ou sont nommés différemment.
+function loadLibJson(candidates){
+  for(var i=0;i<candidates.length;i++){
+    try{
+      var p = path.join(__dirname, '..', 'lib', candidates[i]);
+      if(fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
+    }catch(e){ /* on tente le nom suivant */ }
+  }
+  return [];
+}
+const SP_COMMODITIES = loadLibJson(['sp_commodities.json', 'sp commodities.json', 'spcommodities.json']);
 const SP_COMM_MAP = {};
 SP_COMMODITIES.forEach(function(c){ SP_COMM_MAP[c.c] = c; });
-const EXP_PRODUCTS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'exp_products.json'), 'utf8'));
+const EXP_PRODUCTS = loadLibJson(['exp_products.json', 'exp products.json', 'expproducts.json']);
 const EXP_MAP = {};
 EXP_PRODUCTS.forEach(function(p){ EXP_MAP[p.c] = p; });
 

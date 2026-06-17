@@ -9,9 +9,20 @@ const BP_DB = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'bp_d
 const CHARGES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'charges.json'), 'utf8'));
 const INV_TYPES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'inv_types.json'), 'utf8'));
 const COMMODITIES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'commodities.json'), 'utf8'));
-// Bases spécifiques San Pedro (import) et Export — récupérées depuis IVAN Mark II
-const SP_COMMODITIES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'sp_commodities.json'), 'utf8'));
-const EXP_PRODUCTS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'exp_products.json'), 'utf8'));
+// Bases dédiées récupérées depuis IVAN Mark II : San Pedro (import) + Export.
+// Chargement TOLÉRANT : plusieurs noms possibles, jamais d'exception si absent
+// -> /data reste fonctionnel (recherche BP, charges, etc.) même sans ces fichiers.
+function loadLibJson(candidates){
+  for(var i=0;i<candidates.length;i++){
+    try{
+      var p = path.join(__dirname, '..', 'lib', candidates[i]);
+      if(fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
+    }catch(e){ /* on tente le nom suivant */ }
+  }
+  return [];
+}
+const SP_COMMODITIES = loadLibJson(['sp_commodities.json', 'sp commodities.json', 'spcommodities.json']);
+const EXP_PRODUCTS = loadLibJson(['exp_products.json', 'exp products.json', 'expproducts.json']);
 const CA_MAP_DEFAULT = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'ca_map.json'), 'utf8'));
 const { isLicenseActive } = require('./license.js');
 
