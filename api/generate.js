@@ -38,7 +38,9 @@ function buildEchangeCharges(params){
   template.forEach(function(ch){
     const code = resolveEchCode(ch.code, io);
     // Commodity-driven charges: Redevance Portuaire / Municipale / Communale (base TO with commodity rate)
-    const isPort = /portuaire|red port(?! transit)/i.test(ch.d) && ch.base==='TO';
+    // NB San Pedro : "Communaute portuaire" n'est PAS une redevance portuaire marchandise -> on l'exclut
+    // pour qu'elle reste une charge standard au poids (qty = poids total, taux du template), pas au taux marchandise.
+    const isPort = /portuaire|red port(?! transit)/i.test(ch.d) && ch.base==='TO' && !/communaut/i.test(ch.d);
     const isMun = /municipale|red mun/i.test(ch.d);
     const isCom = /communale|red com/i.test(ch.d);
 
