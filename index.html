@@ -742,6 +742,7 @@ textarea.ip{resize:vertical;min-height:70px}
         <div style="margin-top:14px"><button class="bt bt-ghost" style="font-size:12px;padding:8px 14px" onclick="toggleS4Csv()">&#128196; Voir le d&eacute;tail CSV</button><div id="echS4Csv" style="display:none;margin-top:10px"></div></div>
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
           <button class="bt bt-ice" onclick="echGenCsv()">&#11015; G&eacute;n&eacute;rer le CSV</button>
+          <button class="bt bt-ghost" onclick="echCopyCsv()">&#128203; Copier le CSV</button>
           <button class="bt bt-ghost" onclick="echAddQueue()">&#9783; Ajouter &agrave; la file</button>
           <button class="bt bt-ghost" onclick="echBackToReview()">&#8592; Retour r&eacute;vision</button>
         </div>
@@ -765,6 +766,19 @@ textarea.ip{resize:vertical;min-height:70px}
           <tbody id="bpTableBody"></tbody>
         </table>
       </div>
+    </div>
+
+    <!-- Business Partners sans Contract Account -->
+    <div class="cd" data-mgr="1" style="display:none">
+      <div class="ct"><span class="dot"></span> Business Partners sans Contract Account</div>
+      <p style="font-size:13.5px;color:var(--txt2);margin-bottom:14px">
+        Liste de vos Business Partners <b>locaux</b> qui n'ont <b>aucun compte contrat</b>. Saisissez le compte directement puis enregistrez (sauvegard&eacute; sur le serveur pour toute l'&eacute;quipe).
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+        <button class="bt bt-ghost" style="font-size:12px;padding:8px 14px" onclick="bpListNoCA()">&#8635; Afficher la liste</button>
+        <button class="bt bt-ice" style="font-size:12px;padding:8px 14px" onclick="bpSaveNoCA()">&#128190; Enregistrer les comptes saisis</button>
+      </div>
+      <div id="noCaList"></div>
     </div>
 
     <!-- Contract Account management (manager) -->
@@ -965,9 +979,38 @@ textarea.ip{resize:vertical;min-height:70px}
       <div id="queueList"></div>
       <div id="queueActions" style="display:none;margin-top:16px;gap:12px;flex-wrap:wrap">
         <button class="bt bt-ice" onclick="downloadQueueBulk()">&#11015; T&eacute;l&eacute;charger en bloc (1 CSV)</button>
+        <button class="bt bt-ghost" onclick="copyQueueBulk()">&#128203; Copier en bloc</button>
         <button class="bt bt-ghost" onclick="downloadQueue()">&#11015; T&eacute;l&eacute;charger en ZIP</button>
         <button class="bt bt-ghost" onclick="downloadQueueIndividual()">&#11015; T&eacute;l&eacute;charger individuellement</button>
         <button class="bt bt-ghost" onclick="clearQueue()">Vider la file</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODALE : Edition d'une facture de la file ============ -->
+  <div id="qEditOverlay" style="display:none;position:fixed;inset:0;background:rgba(2,8,20,.72);z-index:200;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--panel);border:1px solid var(--ice-line2);border-radius:16px;max-width:860px;width:100%;max-height:88vh;overflow-y:auto;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:17px;font-weight:700;color:var(--crystal)">Modifier la facture</div>
+        <button class="bt-del" style="padding:7px 11px" onclick="qEditClose()" title="Fermer">&#10005;</button>
+      </div>
+      <div id="qEditTitle" style="font-size:13px;color:var(--frost);margin-bottom:14px"></div>
+      <div style="max-width:320px;margin-bottom:16px">
+        <label class="lb" style="font-size:12px;color:var(--txt3)">N&deg; BL / Booking / R&eacute;f&eacute;rence</label>
+        <input class="ip mono" id="qEditBl" placeholder="ex: 123456789">
+      </div>
+      <div style="font-weight:600;color:var(--frost);font-size:12px;margin-bottom:8px">LIGNES DE CHARGE</div>
+      <div style="display:grid;grid-template-columns:2fr 0.8fr 0.6fr 0.8fr 0.9fr 32px;gap:8px;font-size:10px;color:var(--txt3);text-transform:uppercase;margin-bottom:6px">
+        <div>Description</div><div>Code</div><div>Qt&eacute;</div><div>Taux</div><div style="text-align:right">HT</div><div></div>
+      </div>
+      <div id="qEditLines"></div>
+      <button class="bt bt-ghost" style="font-size:12px;padding:7px 13px;margin-top:6px" onclick="qEditAddLine()">&#43; Ajouter une ligne</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;border-top:1px solid var(--ice-line);padding-top:14px">
+        <div style="font-size:13px;color:var(--txt2)">Total HT&nbsp;: <span id="qEditTotal" class="mono" style="color:var(--frost);font-weight:700"></span></div>
+        <div style="display:flex;gap:10px">
+          <button class="bt bt-ghost" onclick="qEditClose()">Annuler</button>
+          <button class="bt bt-ice" onclick="qEditSave()">&#128190; Enregistrer</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1153,6 +1196,21 @@ function downloadCSV(content, filename){
   a.href = URL.createObjectURL(blob);
   a.download = filename;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+// Copie un texte dans le presse-papier (avec repli execCommand si clipboard API indisponible / contexte non securise)
+function copyTextToClipboard(text, okMsg){
+  function ok(){ showToast(okMsg||"Copi\u00e9 dans le presse-papier","ok"); }
+  function fallback(){
+    try{
+      var ta=document.createElement("textarea");
+      ta.value=text; ta.style.position="fixed"; ta.style.left="-9999px"; ta.style.top="0";
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      var done=document.execCommand("copy"); document.body.removeChild(ta);
+      if(done) ok(); else showToast("Copie impossible \u2014 s\u00e9lectionnez et copiez manuellement","err");
+    }catch(e){ showToast("Copie impossible","err"); }
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(ok).catch(fallback); }
+  else fallback();
 }
 </script>
 <script>
@@ -1617,6 +1675,50 @@ function bpDeleteOne(eccKey){
   bpRenderTable($("bpTableSearch")?$("bpTableSearch").value:"");
   showToast("Business Partner supprim\u00e9","ok");
 }
+// ============ BP SANS CONTRACT ACCOUNT (liste + remplissage) ============
+function bpListNoCA(){
+  var box = $("noCaList"); if(!box) return;
+  var rows = [];
+  for(var ecc in BP_EXTRA){
+    var p = BP_EXTRA[ecc].split("|"); var bpv = p[0], nm = p[1]||"";
+    if(!CA_MAP[bpv]) rows.push({ecc:ecc, bp:bpv, name:nm});
+  }
+  if(!rows.length){
+    box.innerHTML = '<div style="padding:18px;text-align:center;color:var(--ok);font-size:13px">Tous vos Business Partners locaux ont un Contract Account.</div>';
+    return;
+  }
+  var head = '<div style="display:grid;grid-template-columns:1.1fr 1fr 1.6fr 1.2fr;gap:8px;font-size:10px;color:var(--txt3);text-transform:uppercase;margin-bottom:6px"><div>Code ECC</div><div>Business Partner</div><div>Nom</div><div>Contract Account</div></div>';
+  box.innerHTML = '<div style="font-size:12px;color:var(--frost);margin-bottom:10px">'+rows.length+' BP sans compte</div>' + head + rows.map(function(r){
+    return '<div style="display:grid;grid-template-columns:1.1fr 1fr 1.6fr 1.2fr;gap:8px;align-items:center;margin-bottom:7px">'+
+      '<div class="mono" style="font-size:12px;color:var(--frost)">'+r.ecc+'</div>'+
+      '<div class="mono" style="font-size:12px">'+r.bp+'</div>'+
+      '<div style="font-size:12px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escAttr(r.name)+'">'+(r.name||"&mdash;")+'</div>'+
+      '<input class="ip mono nca-input" data-bp="'+escAttr(r.bp)+'" data-name="'+escAttr(r.name)+'" placeholder="Compte contrat" style="padding:7px 10px;font-size:12px">'+
+    '</div>';
+  }).join("");
+}
+function bpSaveNoCA(){
+  var inputs = document.querySelectorAll(".nca-input");
+  if(!inputs.length){ showToast("Affichez d'abord la liste","err"); return; }
+  var map = {}, count = 0;
+  inputs.forEach(function(inp){
+    var ca = inp.value.trim(); if(!ca) return;
+    var bp = inp.getAttribute("data-bp"); var name = inp.getAttribute("data-name")||"";
+    map[bp] = [{ca:ca, name:name}];
+    CA_MAP[bp] = ca;
+    count++;
+  });
+  if(!count){ showToast("Aucun compte saisi","err"); return; }
+  saveCA();
+  apiCall("/store", {method:"POST", body:{action:"setcabulk", map:map}}).then(function(res){
+    if(res && res.ok){ showToast(count+" compte(s) enregistr\u00e9(s) sur le serveur","ok"); }
+    else showToast(count+" enregistr\u00e9(s) localement, erreur serveur","err");
+    bpListNoCA();
+    bpRenderTable($("bpTableSearch")?$("bpTableSearch").value:"");
+  }).catch(function(e){ if(e&&e.blocked){ showBlocked(); return; }
+    showToast(count+" enregistr\u00e9(s) localement, serveur injoignable","err"); bpListNoCA();
+  });
+}
 
 // ============ CHARGE LINES ============
 var chargeLineId = 0;
@@ -1997,6 +2099,12 @@ function addToQueue(){
     if(typeof goFactStep==="function") goFactStep(0); // revenir a l'etape 1 (page de facturation initiale)
   });
 }
+function queueBL(q){
+  var lineBks = (q.lines||[]).map(function(l){return l.booking;}).filter(Boolean);
+  var uniq = lineBks.filter(function(v,ix){return lineBks.indexOf(v)===ix;});
+  if(uniq.length>1) return uniq.join(", ");
+  return q.bl || q.bookingNum || q.reference || (uniq[0]||"") || "";
+}
 function renderQueue(){
   var list = $("queueList");
   if(invoiceQueue.length===0){
@@ -2005,11 +2113,15 @@ function renderQueue(){
     return;
   }
   list.innerHTML = invoiceQueue.map(function(q,i){
-    return '<div style="background:var(--void);border:1px solid var(--ice-line);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px">'+
-      '<div style="flex:1"><div style="font-weight:600;color:var(--crystal);font-size:14px">'+(q._label||q.bp)+'</div>'+
-      '<div style="font-size:12px;color:var(--txt2);margin-top:3px">BP '+q.bp+' &middot; CA '+q.contractAcc+' &middot; '+q.lines.length+' ligne(s) &middot; '+(q._total||0).toLocaleString("fr-FR")+' XOF</div></div>'+
+    var bl = queueBL(q);
+    var blHtml = bl ? '<span style="color:var(--sky);font-weight:600">BL '+bl+'</span> &middot; ' : '';
+    return '<div style="background:var(--void);border:1px solid var(--ice-line);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
+      '<div style="flex:1;min-width:200px"><div style="font-weight:600;color:var(--crystal);font-size:14px">'+(q._label||q.bp)+'</div>'+
+      '<div style="font-size:12px;color:var(--txt2);margin-top:3px">'+blHtml+'BP '+q.bp+' &middot; CA '+q.contractAcc+' &middot; '+q.lines.length+' ligne(s) &middot; '+(q._total||0).toLocaleString("fr-FR")+' XOF</div></div>'+
       '<div class="mono" style="font-size:11px;color:var(--txt3)">'+(q._ts||"")+'</div>'+
-      '<button class="bt bt-ghost" style="padding:7px 12px;font-size:12px" onclick="downloadQueueItem('+i+')" title="T\u00e9l\u00e9charger ce CSV">&#11015;</button>'+
+      '<button class="bt bt-ghost" style="padding:7px 11px;font-size:12px" onclick="editQueueItem('+i+')" title="Modifier cette facture">&#9998;</button>'+
+      '<button class="bt bt-ghost" style="padding:7px 11px;font-size:12px" onclick="copyQueueItem('+i+')" title="Copier le CSV">&#128203;</button>'+
+      '<button class="bt bt-ghost" style="padding:7px 11px;font-size:12px" onclick="downloadQueueItem('+i+')" title="T\u00e9l\u00e9charger ce CSV">&#11015;</button>'+
       '<button class="del" onclick="rmQueue('+i+')" title="Retirer">&#10005;</button></div>';
   }).join("");
   $("queueActions").style.display = "flex";
@@ -2070,6 +2182,91 @@ function downloadQueueItem(i){
   apiCall("/generate", {method:"POST", body:{invoices:[inv]}}).then(function(res){
     if(res.ok && res.csv) downloadCSV(res.csv, "IVAN_S4_"+inv.bp+"_"+(i+1)+".csv");
   }).catch(function(e){ if(e&&e.blocked) showBlocked(); else showToast("Erreur","err"); });
+}
+// ---- Copier le CSV (presse-papier) ----
+function copyQueueItem(i){
+  var inv = invoiceQueue[i];
+  if(!inv){ showToast("Introuvable","err"); return; }
+  showToast("Pr\u00e9paration du CSV...","ok");
+  apiCall("/generate", {method:"POST", body:{invoices:[inv]}}).then(function(res){
+    if(res.ok && res.csv) copyTextToClipboard(res.csv, "CSV copi\u00e9 \u2014 collez-le dans SAP");
+    else showToast("Erreur: "+((res&&res.error)||"inconnue"),"err");
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); else showToast("Erreur serveur","err"); });
+}
+function copyQueueBulk(){
+  if(!invoiceQueue.length){ showToast("File vide","err"); return; }
+  showToast("Pr\u00e9paration du bloc...","ok");
+  apiCall("/generate", {method:"POST", body:{invoices:invoiceQueue, bulk:true}}).then(function(res){
+    if(res.ok && res.csv) copyTextToClipboard(res.csv, invoiceQueue.length+" facture(s) copi\u00e9e(s) \u2014 collez dans SAP");
+    else showToast("Erreur: "+((res&&res.error)||"inconnue"),"err");
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); else showToast("Erreur serveur","err"); });
+}
+
+// ============ EDITION D'UNE FACTURE DE LA FILE ============
+var _qEditIdx = -1, _qEditLines = [];
+function editQueueItem(i){
+  var inv = invoiceQueue[i]; if(!inv){ showToast("Introuvable","err"); return; }
+  _qEditIdx = i;
+  _qEditLines = (inv.lines||[]).map(function(l){ return Object.assign({}, l); });
+  $("qEditTitle").textContent = (inv._label||inv.bp);
+  $("qEditBl").value = queueBL(inv);
+  qEditRenderLines();
+  $("qEditOverlay").style.display = "flex";
+}
+function qEditRenderLines(){
+  var box = $("qEditLines");
+  box.innerHTML = _qEditLines.map(function(l,li){
+    var ht = (parseFloat(l.qty)||0)*(parseFloat(l.rate)||0);
+    return '<div style="display:grid;grid-template-columns:2fr 0.8fr 0.6fr 0.8fr 0.9fr 32px;gap:8px;align-items:center;margin-bottom:8px">'+
+      '<input class="ip" value="'+escAttr(l.desc||"")+'" placeholder="Description" oninput="qEditSet('+li+',\'desc\',this.value)">'+
+      '<input class="ip mono" value="'+escAttr(l.code||"")+'" placeholder="Code" oninput="qEditSet('+li+',\'code\',this.value)">'+
+      '<input class="ip mono" type="number" step="any" value="'+(l.qty!=null?l.qty:"")+'" placeholder="Qt\u00e9" oninput="qEditSet('+li+',\'qty\',this.value)">'+
+      '<input class="ip mono" type="number" step="any" value="'+(l.rate!=null?l.rate:"")+'" placeholder="Taux" oninput="qEditSet('+li+',\'rate\',this.value)">'+
+      '<div class="mono" style="font-size:12px;color:var(--frost);text-align:right" id="qEditHt-'+li+'">'+ht.toLocaleString("fr-FR")+'</div>'+
+      '<button class="bt-del" style="padding:7px" onclick="qEditDelLine('+li+')" title="Retirer">&#10005;</button>'+
+    '</div>';
+  }).join("") || '<div style="color:var(--txt3);font-size:13px;padding:10px">Aucune ligne. Ajoutez-en une.</div>';
+  var tot = _qEditLines.reduce(function(s,l){ return s+(parseFloat(l.qty)||0)*(parseFloat(l.rate)||0); },0);
+  $("qEditTotal").textContent = tot.toLocaleString("fr-FR")+" XOF";
+}
+function qEditSet(li, field, val){
+  if(!_qEditLines[li]) return;
+  if(field==="qty"||field==="rate"){
+    _qEditLines[li][field] = parseFloat(val)||0;
+    var ht=(parseFloat(_qEditLines[li].qty)||0)*(parseFloat(_qEditLines[li].rate)||0);
+    var c=$("qEditHt-"+li); if(c) c.textContent=ht.toLocaleString("fr-FR");
+    var tot=_qEditLines.reduce(function(s,l){return s+(parseFloat(l.qty)||0)*(parseFloat(l.rate)||0);},0);
+    $("qEditTotal").textContent=tot.toLocaleString("fr-FR")+" XOF";
+  } else { _qEditLines[li][field]=val; }
+}
+function qEditAddLine(){ _qEditLines.push({code:"",desc:"",bit:"COFR",qty:1,rate:0,unit:"EA"}); qEditRenderLines(); }
+function qEditDelLine(li){ _qEditLines.splice(li,1); qEditRenderLines(); }
+function qEditClose(){ $("qEditOverlay").style.display="none"; _qEditIdx=-1; _qEditLines=[]; }
+function qEditSave(){
+  if(_qEditIdx<0 || !invoiceQueue[_qEditIdx]){ qEditClose(); return; }
+  var clean = _qEditLines.filter(function(l){ return (l.code||"").trim() || (l.desc||"").trim(); })
+    .map(function(l){ return Object.assign({}, l, {qty:parseFloat(l.qty)||0, rate:parseFloat(l.rate)||0}); });
+  if(!clean.length){ showToast("Au moins une ligne avec un code","err"); return; }
+  var inv = invoiceQueue[_qEditIdx];
+  inv.lines = clean;
+  inv._total = clean.reduce(function(s,l){ return s+l.qty*l.rate; },0);
+  // BL : applique sur les champs facture (booking/ref) + lignes mono-BL
+  var newBl = $("qEditBl").value.trim();
+  if(newBl){
+    var hasMulti = clean.filter(function(l){return l.booking;}).map(function(l){return l.booking;});
+    var uniq = hasMulti.filter(function(v,ix){return hasMulti.indexOf(v)===ix;});
+    if(uniq.length<=1){            // mono-BL : on aligne tout
+      inv.bl = newBl;
+      if("bookingNum" in inv) inv.bookingNum = newBl;
+      if("reference" in inv) inv.reference = newBl;
+      if("ubli" in inv) inv.ubli = "MAEU"+newBl;
+      clean.forEach(function(l){ if(l.booking!=null) l.booking=newBl; if(l.ubli!=null) l.ubli="MAEU"+newBl; });
+    } else { inv.bl = newBl; }    // multi-BL : on ne touche pas aux bookings par ligne
+  }
+  saveQueue();
+  renderQueue();
+  qEditClose();
+  showToast("Facture mise \u00e0 jour","ok");
 }
 
 // ============ DRAFTS (BROUILLONS) ============
@@ -2658,6 +2855,14 @@ function echGenCsv(){
     else showToast("Erreur: "+(res.error||""),"err");
   }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur serveur","err"); });
   });
+}
+function echCopyCsv(){
+  var payload=buildEchPayload();
+  showToast("Pr\u00e9paration du CSV...","ok");
+  apiCall("/generate",{method:"POST",body:{invoices:[payload]}}).then(function(res){
+    if(res.ok&&res.csv) copyTextToClipboard(res.csv,"CSV copi\u00e9 \u2014 collez-le dans SAP");
+    else showToast("Erreur: "+((res&&res.error)||"inconnue"),"err");
+  }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur serveur","err"); });
 }
 function echAddQueue(){
   var payload=buildEchPayload();
