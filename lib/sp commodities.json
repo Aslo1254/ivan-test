@@ -1,0 +1,177 @@
+[
+{
+"c": "SP01",
+"d": "RIZ CONTENEURISE",
+"p": 300,
+"i": 18,
+"k": 100
+},
+{
+"c": "SP02",
+"d": "ENGRAIS",
+"p": 980,
+"i": 59,
+"k": 100
+},
+{
+"c": "SP03",
+"d": "CARBONATE DE POTASSIUM",
+"p": 980,
+"i": 58.8,
+"k": 100
+},
+{
+"c": "SP04",
+"d": "ENGRAIS / PALMIERS",
+"p": 800,
+"i": 48,
+"k": 100
+},
+{
+"c": "SP05",
+"d": "CARBONATE DE SODIUM (sel)",
+"p": 1200,
+"i": 72,
+"k": 420
+},
+{
+"c": "SP06",
+"d": "METAL BOXES (SOGB)",
+"p": 1250,
+"i": 75,
+"k": 420
+},
+{
+"c": "SP07",
+"d": "LUBRIFIANTS",
+"p": 2000,
+"i": 120,
+"k": 100
+},
+{
+"c": "SP08",
+"d": "CARREAUX",
+"p": 2900,
+"i": 174,
+"k": 100
+},
+{
+"c": "SP09",
+"d": "POISSONS CONGELES",
+"p": 3200,
+"i": 192,
+"k": 140
+},
+{
+"c": "SP10",
+"d": "VIANDE CONGELEE",
+"p": 3500,
+"i": 210,
+"k": 370
+},
+{
+"c": "SP11",
+"d": "PRODUITS PHARMACEUTIQUES",
+"p": 4000,
+"i": 240,
+"k": 420
+},
+{
+"c": "SP12",
+"d": "UREA FORMALDEHYDE",
+"p": 7000,
+"i": 420,
+"k": 420
+},
+{
+"c": "SP13",
+"d": "PRODUITS CHIMIQUES",
+"p": 7500,
+"i": 450,
+"k": 100
+},
+{
+"c": "SP14",
+"d": "QUINCAILLERIE",
+"p": 7500,
+"i": 450,
+"k": 700
+},
+{
+"c": "SP15",
+"d": "AUTRES ACIERS",
+"p": 7860,
+"i": 472,
+"k": 700
+},
+{
+"c": "SP16",
+"d": "EQUIPEMENT MINIER",
+"p": 12000,
+"i": 720,
+"k": 700
+},
+{
+"c": "SP17",
+"d": "MARCHANDISES DIVERSES",
+"p": 15000,
+"i": 900,
+"k": 700
+},
+{
+"c": "SP18",
+"d": "MACHINERY / MECHANICAL APPLIANCES",
+"p": 15000,
+"i": 900,
+"k": 700
+},
+{
+"c": "SP19",
+"d": "MATERIEL ELECTRIQUE / ELECTROMECANIQUE",
+"p": 16000,
+"i": 960,
+"k": 700
+},
+{
+"c": "SP20",
+"d": "AUTOMOBILE",
+"p": 15000,
+"i": 900,
+"k": 700
+},
+{
+"c": "SP21",
+"d": "PNEUS",
+"p": 15000,
+"i": 900,
+"k": 700
+},
+{
+"c": "SP22",
+"d": "MATIERE PLASTIQUE / PEINTURE",
+"p": 15000,
+"i": 900,
+"k": 420
+},
+{
+"c": "SP23",
+"d": "PRODUITS DGX A QUAI",
+"p": 18000,
+"i": 1080,
+"k": 100
+},
+{
+"c": "SP24",
+"d": "PRODUITS DGX DUR",
+"p": 7500,
+"i": 450,
+"k": 0
+},
+{
+"c": "SP25",
+"d": "PALETTES",
+"p": 15000,
+"i": 900,
+"k": 700
+}
+]

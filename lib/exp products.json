@@ -1,0 +1,146 @@
+[
+{
+"c": "EXP01",
+"d": "BOIS (PRODUITS FINIS)",
+"hs": "442100",
+"r": 8215,
+"u": "TO",
+"bois": 1
+},
+{
+"c": "EXP02",
+"d": "BOIS DEROULES",
+"hs": "441200",
+"r": 954,
+"u": "M3",
+"bois": 1
+},
+{
+"c": "EXP03",
+"d": "BOIS EN GRUMES",
+"hs": "004702",
+"r": 2120,
+"u": "M3",
+"bois": 1
+},
+{
+"c": "EXP04",
+"d": "BOIS FRAIS",
+"hs": "442490",
+"r": 795,
+"u": "M3",
+"bois": 1
+},
+{
+"c": "EXP05",
+"d": "BOIS SECHES",
+"hs": "440300",
+"r": 1166,
+"u": "M3",
+"bois": 1
+},
+{
+"c": "EXP06",
+"d": "BOIS A USAGES DIVERS",
+"hs": "004706",
+"r": 1829,
+"u": "TO",
+"bois": 1
+},
+{
+"c": "EXP07",
+"d": "CASHEW NUTS",
+"hs": "000716",
+"r": 530,
+"u": "TO",
+"bois": 0
+},
+{
+"c": "EXP08",
+"d": "COCOA BEANS",
+"hs": "180100",
+"r": 1590,
+"u": "TO",
+"bois": 0
+},
+{
+"c": "EXP09",
+"d": "COCOA BUTTER",
+"hs": "180500",
+"r": 2120,
+"u": "TO",
+"bois": 0
+},
+{
+"c": "EXP10",
+"d": "COCOA CAKE",
+"hs": "180500",
+"r": 2120,
+"u": "TO",
+"bois": 0
+},
+{
+"c": "EXP11",
+"d": "COCOA MASS",
+"hs": "180500",
+"r": 2120,
+"u": "TO",
+"bois": 0
+},
+{
+"c": "EXP12",
+"d": "LIQUOR MASS COCOA",
+"hs": "180500",
+"r": 2120,
+"u": "TO",
+"bois": 0
+},
+{
+"c": "EXP13",
+"d": "COFFEE",
+"hs": "090100",
+"r": 1590,
+"u": "TO",
+"bois": 0
+},
+{
+"c": "EXP14",
+"d": "CAFE DERIVES",
+"hs": "090190",
+"r": 2120,
+"u": "TO",
+"bois": 0
+},
+{
+"c": "EXP15",
+"d": "RAW COTTON",
+"hs": "520100",
+"r": 848,
+"u": "TO",
+"bois": 0
+},
+{
+"c": "EXP16",
+"d": "RUBBER",
+"hs": "400100",
+"r": 1060,
+"u": "TO",
+"bois": 0
+},
+{
+"c": "EXP17",
+"d": "PEAUX TANNEES",
+"hs": "002105",
+"r": 6360,
+"u": "TO",
+"bois": 0
+},
+{
+"c": "EXP18",
+"d": "PERSONAL EFFECTS",
+"hs": "990000",
+"r": 15000,
+"u": "TO",
+"bois": 0
+}
+]
