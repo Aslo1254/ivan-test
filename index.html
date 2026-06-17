@@ -691,26 +691,13 @@ textarea.ip{resize:vertical;min-height:70px}
           </div>
         </div>
 
-        <div style="margin-bottom:6px;font-weight:600;color:var(--frost);font-size:13px">CONTENEURS</div>
-        <div style="display:grid;grid-template-columns:0.8fr 1fr 1.2fr 1fr;gap:10px;margin-bottom:8px;align-items:end">
-          <div><label class="lb">Nombre</label><input class="ip" id="echCnt" type="number" min="1" value="1" oninput="echRecalcTeu()"></div>
-          <div><label class="lb">Taille</label>
-            <select class="ip" id="echCntSize" onchange="echRecalcTeu()">
-              <option value="20">20'</option>
-              <option value="40">40'</option>
-            </select>
-          </div>
-          <div><label class="lb">Type</label>
-            <select class="ip" id="echCntType">
-              <option value="SEC">SEC (Dry)</option>
-              <option value="FRIGO">FRIGO (Reefer)</option>
-              <option value="OT">OPEN TOP</option>
-              <option value="FR">FLAT RACK</option>
-            </select>
-          </div>
-          <div><label class="lb">TEU total</label><input class="ip" id="echTeu" type="number" min="1" value="1" readonly style="opacity:.7"></div>
+        <div style="margin-bottom:6px;font-weight:600;color:var(--frost);font-size:13px">CONTENEURS <span style="color:var(--txt3);font-weight:400">(une ou plusieurs tailles)</span></div>
+        <div id="echContainers"></div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:4px;margin-bottom:8px">
+          <button class="bt bt-ghost" style="font-size:12px;padding:8px 14px" onclick="addEchContainer()">&#43; Ajouter un conteneur</button>
+          <div style="font-size:12.5px;color:var(--txt2)">TEU total&nbsp;: <span id="echTeu" class="mono" style="color:var(--frost);font-weight:700">1</span></div>
         </div>
-        <div style="font-size:11px;color:var(--txt3);margin-bottom:16px">Le TEU est calcul&eacute; automatiquement (20'&nbsp;=&nbsp;1 TEU, 40'&nbsp;=&nbsp;2 TEU). Modifiez le nombre ou la taille.</div>
+        <div style="font-size:11px;color:var(--txt3);margin-bottom:16px">TEU calcul&eacute; automatiquement (20'&nbsp;=&nbsp;1 TEU, 40'&nbsp;=&nbsp;2 TEU). Vous pouvez m&eacute;langer les tailles (ex.&nbsp;1&times;20' + 1&times;40').</div>
 
         <!-- Commodities (éclatement) -->
         <div style="margin-bottom:8px;font-weight:600;color:var(--frost);font-size:13px">MARCHANDISES <span style="color:var(--txt3);font-weight:400">(une ou plusieurs &mdash; chacune avec son poids)</span></div>
@@ -2560,6 +2547,7 @@ var echMeta = {};
 function initEchange(){
   // nothing to preload; templates computed server-side
   if(echCommodities.length===0) addEchCommodity();
+  if(echContainers.length===0) addEchContainer(); else renderEchContainers();
 }
 
 function setEchIO(io){
@@ -2609,11 +2597,51 @@ function updateEchFooter(){
 }
 
 // ---- Commodities (éclatement) ----
+// ---- Conteneurs (une ou plusieurs tailles) ----
+var echContainers = [];
+var echContNid = 1;
+var ECH_CNT_TYPES = {SEC:"SEC (Dry)", FRIGO:"FRIGO (Reefer)", OT:"OPEN TOP", FR:"FLAT RACK"};
+function echTotals(){
+  var cnt=0, teu=0;
+  echContainers.forEach(function(c){
+    var n=parseInt(c.count)||0;
+    cnt += n;
+    teu += (String(c.size)==="40") ? n*2 : n;
+  });
+  return {cnt:cnt, teu:teu};
+}
 function echRecalcTeu(){
-  var n = parseInt($("echCnt").value)||1;
-  var size = $("echCntSize")?$("echCntSize").value:"20";
-  var teu = size==="40" ? n*2 : n;
-  if($("echTeu")) $("echTeu").value = teu;
+  var t=echTotals();
+  if($("echTeu")) $("echTeu").textContent = t.teu;
+}
+function addEchContainer(){
+  echContainers.push({id:echContNid++, count:1, size:"20", type:"SEC"});
+  renderEchContainers();
+}
+function removeEchContainer(id){
+  echContainers = echContainers.filter(function(c){return c.id!==id;});
+  if(!echContainers.length) addEchContainer(); else renderEchContainers();
+}
+function setEchCont(id, field, val){
+  var c=echContainers.find(function(x){return x.id===id;});
+  if(!c) return;
+  c[field] = (field==="count") ? (parseInt(val)||0) : val;
+  echRecalcTeu();
+}
+function renderEchContainers(){
+  var box=$("echContainers"); if(!box) return;
+  box.innerHTML = echContainers.map(function(c){
+    var typeOpts = Object.keys(ECH_CNT_TYPES).map(function(t){ return '<option value="'+t+'"'+(c.type===t?" selected":"")+'>'+ECH_CNT_TYPES[t]+'</option>'; }).join("");
+    return '<div style="display:grid;grid-template-columns:0.8fr 1fr 1.2fr 36px;gap:10px;margin-bottom:8px;align-items:end">'+
+      '<div><label class="lb">Nombre</label><input class="ip" type="number" min="1" value="'+(c.count||1)+'" oninput="setEchCont('+c.id+',\'count\',this.value)"></div>'+
+      '<div><label class="lb">Taille</label><select class="ip" onchange="setEchCont('+c.id+',\'size\',this.value)">'+
+        '<option value="20"'+(String(c.size)==="20"?" selected":"")+'>20\'</option>'+
+        '<option value="40"'+(String(c.size)==="40"?" selected":"")+'>40\'</option></select></div>'+
+      '<div><label class="lb">Type</label><select class="ip" onchange="setEchCont('+c.id+',\'type\',this.value)">'+typeOpts+'</select></div>'+
+      '<button class="bt-del" style="padding:8px" onclick="removeEchContainer('+c.id+')" title="Retirer ce conteneur">&#10005;</button>'+
+    '</div>';
+  }).join("");
+  echRecalcTeu();
 }
 function addEchCommodity(){
   var id = echCommNid++;
@@ -2753,9 +2781,11 @@ function genEchangeReview(){
   var errs=validateEchForm();
   if(errs.length){ showToast("Manquant : "+errs.join(", "),"err"); return; }
   echMeta = collectEchMeta();
+  var _ct = echTotals();
   var params = {
     port:$("echPort").value, subtype:getEchSubtype(), io:echMeta.expImp,
-    cnt:parseInt($("echCnt").value)||1, teu:parseInt($("echTeu").value)||1, cntSize:($("echCntSize")?$("echCntSize").value:"20"), cntType:($("echCntType")?$("echCntType").value:"SEC"),
+    cnt:_ct.cnt||1, teu:_ct.teu||1,
+    containers: echContainers.map(function(c){ return {count:parseInt(c.count)||0, size:c.size, type:c.type}; }),
     weight: echCommodities.reduce(function(s,c){return s+(c.weight||0);},0),
     commodities: echCommodities.filter(function(c){return c.code;}).map(function(c){return {code:c.code, weight:c.weight};})
   };
@@ -2883,8 +2913,7 @@ function echResetForm(){
   if($("echBpAc")) $("echBpAc").innerHTML="";
   if($("echCaChooser")) $("echCaChooser").innerHTML="";
   if($("echCbu")) $("echCbu").value="81360";
-  if($("echCnt")) $("echCnt").value="1";
-  if($("echTeu")) $("echTeu").value="1";
+  echContainers=[]; addEchContainer();
   if(typeof echFooterEdited!=="undefined") echFooterEdited=false;
   echReviewLines=[]; echMeta={};
   // Reinitialiser les lignes de marchandises
