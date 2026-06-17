@@ -637,6 +637,18 @@ textarea.ip{resize:vertical;min-height:70px}
           </div>
         </div>
 
+        <!-- EXPORT : catégorie (visible uniquement en sens Export) -->
+        <div id="echExpCatWrap" style="display:none;margin-bottom:16px">
+          <label class="lb">Cat&eacute;gorie export</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+            <button type="button" class="ech-opt exp-cat on" data-cat="PAS_PROPRE" onclick="setEchExpCat('PAS_PROPRE')">Pas propre</button>
+            <button type="button" class="ech-opt exp-cat" data-cat="PROPRE" onclick="setEchExpCat('PROPRE')">Propre</button>
+            <button type="button" class="ech-opt exp-cat" data-cat="PAS_PROPRE_BOIS" onclick="setEchExpCat('PAS_PROPRE_BOIS')">Pas propre (bois)</button>
+            <button type="button" class="ech-opt exp-cat" data-cat="PROPRE_BOIS" onclick="setEchExpCat('PROPRE_BOIS')">Propre (bois)</button>
+          </div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:6px;line-height:1.4">Les cat&eacute;gories <b>Propre</b> ajoutent la mise sur camion tiers + frais de BMC. Les cat&eacute;gories <b>bois</b> retirent les frais de DUT.</div>
+        </div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
             <label class="lb">Type de facture</label>
@@ -700,7 +712,7 @@ textarea.ip{resize:vertical;min-height:70px}
         <div style="font-size:11px;color:var(--txt3);margin-bottom:16px">TEU calcul&eacute; automatiquement (20'&nbsp;=&nbsp;1 TEU, 40'&nbsp;=&nbsp;2 TEU). Vous pouvez m&eacute;langer les tailles (ex.&nbsp;1&times;20' + 1&times;40').</div>
 
         <!-- Commodities (éclatement) -->
-        <div style="margin-bottom:8px;font-weight:600;color:var(--frost);font-size:13px">MARCHANDISES <span style="color:var(--txt3);font-weight:400">(une ou plusieurs &mdash; chacune avec son poids)</span></div>
+        <div style="margin-bottom:8px;font-weight:600;color:var(--frost);font-size:13px"><span id="echCommHeadTxt">MARCHANDISES</span> <span id="echCommHint" style="color:var(--txt3);font-weight:400">(une ou plusieurs &mdash; chacune avec son poids)</span></div>
         <div id="echCommodities"></div>
         <button class="bt bt-ghost" style="font-size:12px;padding:8px 14px;margin-top:8px" onclick="addEchCommodity()">&#43; Ajouter une marchandise</button>
 
@@ -2539,6 +2551,35 @@ function cleanStorage(){
 
 // ============ ÉCHANGE MODULE (v3 - commodities + 3 steps) ============
 var echIO = null, echTpl = null, echBpMatches = [], echSelectedBp = null;
+var echExpCat = "PAS_PROPRE";   // catégorie export (module récupéré de Mark II)
+var echCurMode = null;          // 'general' | 'sanpedro' | 'export' — pour ne vider les marchandises qu'au vrai changement
+
+// Mode courant du formulaire échange (dépend du sens et du port)
+function echMode(){
+  var io = ($("echParamIO") && $("echParamIO").value) || echIO;
+  if(io === "O") return "export";
+  if($("echPort") && $("echPort").value === "sanpedro") return "sanpedro";
+  return "general";
+}
+function setEchExpCat(cat){
+  echExpCat = cat;
+  document.querySelectorAll(".exp-cat").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-cat")===cat); });
+}
+function echClearCommodities(){
+  echCommodities = []; echCommNid = 1; addEchCommodity();
+}
+// Applique l'UI du mode courant ; ne réinitialise les marchandises que si le mode a réellement changé
+function echApplyMode(){
+  var m = echMode(), changed = (m !== echCurMode);
+  echCurMode = m;
+  var ec = $("echExpCatWrap"); if(ec) ec.style.display = (m==="export") ? "block" : "none";
+  var sw = $("echSubWrap");    if(sw) sw.style.display    = (m==="general") ? "block" : "none";
+  var hh = $("echCommHeadTxt"); if(hh) hh.textContent = (m==="export") ? "PRODUITS EXPORT" : "MARCHANDISES";
+  var hi = $("echCommHint");   if(hi) hi.textContent = (m==="export")
+      ? "(produits export \u2014 chacun avec sa quantit\u00e9)"
+      : "(une ou plusieurs \u2014 chacune avec son poids)";
+  if(changed) echClearCommodities();
+}
 var echCommodities = [];   // [{id, code, desc, weight, commMatches}]
 var echCommNid = 1;
 var echReviewLines = [];   // editable charge lines from server
@@ -2561,16 +2602,17 @@ function setEchIO(io){
   if(io==="I" && !$("echArrival").value) $("echArrival").value=today;
   if(io==="O" && !$("echSailing").value) $("echSailing").value=today;
   if(echCommodities.length===0) addEchCommodity();
+  echApplyMode();
 }
 
 function onEchParamIOChange(){
   var io = $("echParamIO").value;
   $("echArrivalWrap").style.display = (io==="I")?"block":"none";
   $("echSailingWrap").style.display = (io==="O")?"block":"none";
+  echApplyMode();
 }
 function onEchPortChange(){
-  var port=$("echPort").value;
-  $("echSubWrap").style.display = (port==="sanpedro")?"none":"block";
+  echApplyMode();
 }
 function getEchSubtype(){ return $("echPort").value==="sanpedro" ? "standard" : $("echSubtype").value; }
 
@@ -2653,16 +2695,24 @@ function removeEchCommodity(id){
   if(echCommodities.length===0) addEchCommodity();
   else renderEchCommodities();
 }
+function echCommRateLabel(c, mode){
+  if(mode==="export") return "SH "+(c.hs||"")+"&nbsp;: <b>"+echFmt(c.expR)+"</b> / "+(c.expU||"TO")+(c.expBois?" &middot; bois":"");
+  if(mode==="sanpedro") return "Taxes&nbsp;: Port <b>"+echFmt(c.p)+"</b> &middot; ISPS <b>"+echFmt(c.spI)+"</b> &middot; Communale <b>"+echFmt(c.spK)+"</b> (par tonne)";
+  return "Taxes&nbsp;: Port <b>"+echFmt(c.p)+"</b> &middot; Municipale <b>"+echFmt(c.m)+"</b> &middot; Transit <b>"+echFmt(c.t)+"</b> (par tonne)";
+}
 function renderEchCommodities(){
   var box=$("echCommodities");
+  var mode=echMode();
+  var ph=(mode==="export")?"Qt\u00e9 (TO/M3)":"Poids TO";
   box.innerHTML = echCommodities.map(function(c){
+    var hasRate = !!c.code;
     return '<div style="display:grid;grid-template-columns:2fr 0.8fr 36px;gap:8px;margin-bottom:8px;align-items:start">'+
       '<div style="position:relative">'+
-        '<input class="ip" id="echComm-'+c.id+'" placeholder="Rechercher marchandise (nom/code)..." value="'+escAttr(c.desc?(c.code+" - "+c.desc):"")+'" oninput="echCommSearch('+c.id+',this.value)" autocomplete="off">'+
+        '<input class="ip" id="echComm-'+c.id+'" placeholder="Rechercher '+(mode==="export"?"produit export":"marchandise")+' (nom/code)..." value="'+escAttr(c.desc?(c.code+" - "+c.desc):"")+'" oninput="echCommSearch('+c.id+',this.value)" autocomplete="off">'+
         '<div id="echCommAc-'+c.id+'" class="ac-list"></div>'+
-        '<div id="echCommRates-'+c.id+'" style="font-size:11px;color:var(--txt3);margin-top:4px;'+(c.code&&c.p!=null?'':'display:none')+'">'+(c.code&&c.p!=null?('Taxes&nbsp;: Port <b>'+echFmt(c.p)+'</b> &middot; Municipale <b>'+echFmt(c.m)+'</b> &middot; Transit <b>'+echFmt(c.t)+'</b> (par tonne)'):'')+'</div>'+
+        '<div id="echCommRates-'+c.id+'" style="font-size:11px;color:var(--txt3);margin-top:4px;'+(hasRate?'':'display:none')+'">'+(hasRate?echCommRateLabel(c,mode):'')+'</div>'+
       '</div>'+
-      '<input class="ip" type="number" min="0" placeholder="Poids TO" value="'+(c.weight||"")+'" onchange="setEchCommWeight('+c.id+',this.value)">'+
+      '<input class="ip" type="number" min="0" placeholder="'+ph+'" value="'+(c.weight||"")+'" onchange="setEchCommWeight('+c.id+',this.value)">'+
       '<button class="bt-del" style="padding:8px" onclick="removeEchCommodity('+c.id+')" title="Retirer">&#10005;</button>'+
     '</div>';
   }).join("");
@@ -2671,16 +2721,22 @@ function echCommSearch(id, q){
   q=(q||"").trim();
   var list=$("echCommAc-"+id);
   if(q.length<2){ list.classList.remove("show"); return; }
-  apiCall("/data?action=commodity&q="+encodeURIComponent(q)).then(function(res){
+  var mode=echMode();
+  var action=(mode==="export")?"expproduct":(mode==="sanpedro"?"spcommodity":"commodity");
+  apiCall("/data?action="+action+"&q="+encodeURIComponent(q)).then(function(res){
     var c = echCommodities.find(function(x){return x.id===id;});
     if(c) c.matches = res.results||[];
     if(!res.results || !res.results.length){ list.classList.remove("show"); return; }
     list.innerHTML = res.results.map(function(m,i){
-      var rates = '<div style="font-size:10.5px;color:var(--txt3);margin-top:3px">'+
-        'Port: <b style="color:var(--frost)">'+echFmt(m.p)+'</b> &middot; '+
-        'Municipale: <b style="color:var(--frost)">'+echFmt(m.m)+'</b> &middot; '+
-        'Transit: <b style="color:var(--frost)">'+echFmt(m.t)+'</b></div>';
-      return '<div class="ac-item" onclick="echCommPick('+id+','+i+')"><span class="code">'+m.c+'</span> '+m.d+rates+'</div>';
+      var info;
+      if(mode==="export"){
+        info='<div style="font-size:10.5px;color:var(--txt3);margin-top:3px">SH '+(m.hs||"")+' &middot; <b style="color:var(--frost)">'+echFmt(m.r)+'</b> / '+m.u+(m.bois?' &middot; bois':'')+'</div>';
+      } else if(mode==="sanpedro"){
+        info='<div style="font-size:10.5px;color:var(--txt3);margin-top:3px">Port: <b style="color:var(--frost)">'+echFmt(m.p)+'</b> &middot; ISPS: <b style="color:var(--frost)">'+echFmt(m.i)+'</b> &middot; Communale: <b style="color:var(--frost)">'+echFmt(m.k)+'</b></div>';
+      } else {
+        info='<div style="font-size:10.5px;color:var(--txt3);margin-top:3px">Port: <b style="color:var(--frost)">'+echFmt(m.p)+'</b> &middot; Municipale: <b style="color:var(--frost)">'+echFmt(m.m)+'</b> &middot; Transit: <b style="color:var(--frost)">'+echFmt(m.t)+'</b></div>';
+      }
+      return '<div class="ac-item" onclick="echCommPick('+id+','+i+')"><span class="code">'+m.c+'</span> '+m.d+info+'</div>';
     }).join("");
     list.classList.add("show");
   }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
@@ -2688,17 +2744,17 @@ function echCommSearch(id, q){
 function echCommPick(id, i){
   var c = echCommodities.find(function(x){return x.id===id;});
   if(!c || !c.matches[i]) return;
-  var m = c.matches[i];
+  var m = c.matches[i], mode=echMode();
   c.code = m.c; c.desc = m.d;
-  c.p = m.p; c.m = m.m; c.t = m.t;   // taux port / municipale / transit
+  // réinitialise tous les champs de taux puis renseigne selon le mode
+  c.p=c.m=c.t=c.spI=c.spK=c.expR=c.expU=c.expBois=c.hs=null;
+  if(mode==="export"){ c.expR=m.r; c.expU=m.u; c.expBois=m.bois; c.hs=m.hs; }
+  else if(mode==="sanpedro"){ c.p=m.p; c.spI=m.i; c.spK=m.k; }
+  else { c.p=m.p; c.m=m.m; c.t=m.t; }
   $("echComm-"+id).value = c.code+" - "+c.desc;
   $("echCommAc-"+id).classList.remove("show");
-  // Affiche les taux sous le champ
   var info = $("echCommRates-"+id);
-  if(info){
-    info.innerHTML = 'Taxes&nbsp;: Port <b>'+echFmt(m.p)+'</b> &middot; Municipale <b>'+echFmt(m.m)+'</b> &middot; Transit <b>'+echFmt(m.t)+'</b> (par tonne)';
-    info.style.display = "block";
-  }
+  if(info){ info.innerHTML = echCommRateLabel(c, mode); info.style.display = "block"; }
 }
 function setEchCommWeight(id, val){
   var c=echCommodities.find(function(x){return x.id===id;});
@@ -2787,7 +2843,9 @@ function genEchangeReview(){
     cnt:_ct.cnt||1, teu:_ct.teu||1,
     containers: echContainers.map(function(c){ return {count:parseInt(c.count)||0, size:c.size, type:c.type}; }),
     weight: echCommodities.reduce(function(s,c){return s+(c.weight||0);},0),
-    commodities: echCommodities.filter(function(c){return c.code;}).map(function(c){return {code:c.code, weight:c.weight};})
+    commodities: echCommodities.filter(function(c){return c.code;}).map(function(c){return {code:c.code, weight:c.weight};}),
+    expMode: (echMeta.expImp==="O"),
+    expCat: echExpCat
   };
   showToast("Calcul des charges...","ok");
   apiCall("/generate",{method:"POST",body:{echangeCharges:params}}).then(function(res){
