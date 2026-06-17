@@ -9,6 +9,9 @@ const BP_DB = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'bp_d
 const CHARGES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'charges.json'), 'utf8'));
 const INV_TYPES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'inv_types.json'), 'utf8'));
 const COMMODITIES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'commodities.json'), 'utf8'));
+// Bases spécifiques San Pedro (import) et Export — récupérées depuis IVAN Mark II
+const SP_COMMODITIES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'sp_commodities.json'), 'utf8'));
+const EXP_PRODUCTS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'exp_products.json'), 'utf8'));
 const CA_MAP_DEFAULT = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'ca_map.json'), 'utf8'));
 const { isLicenseActive } = require('./license.js');
 
@@ -97,6 +100,38 @@ module.exports = async (req, res) => {
       for(let i=0;i<COMMODITIES.length;i++){
         const c = COMMODITIES[i];
         if(c.d.toUpperCase().indexOf(q)>=0 || c.c.indexOf(q)>=0){
+          matches.push(c);
+          if(matches.length>=25) break;
+        }
+      }
+      res.status(200).json({ ok:true, results: matches });
+      return;
+    }
+
+    // Recherche marchandise San Pedro (import) — base dédiée (taxes par tonne : port / ISPS 6% / communale)
+    if(action === 'spcommodity'){
+      const q = String((req.query.q || (req.body && req.body.q) || "")).trim().toUpperCase();
+      if(q.length < 2){ res.status(200).json({ ok:true, results: [] }); return; }
+      const matches = [];
+      for(let i=0;i<SP_COMMODITIES.length;i++){
+        const c = SP_COMMODITIES[i];
+        if(c.d.toUpperCase().indexOf(q)>=0 || c.c.indexOf(q)>=0){
+          matches.push(c);
+          if(matches.length>=25) break;
+        }
+      }
+      res.status(200).json({ ok:true, results: matches });
+      return;
+    }
+
+    // Recherche produit Export — base dédiée (tarif par TO/M3, indicateur bois, code SH)
+    if(action === 'expproduct'){
+      const q = String((req.query.q || (req.body && req.body.q) || "")).trim().toUpperCase();
+      if(q.length < 2){ res.status(200).json({ ok:true, results: [] }); return; }
+      const matches = [];
+      for(let i=0;i<EXP_PRODUCTS.length;i++){
+        const c = EXP_PRODUCTS[i];
+        if(c.d.toUpperCase().indexOf(q)>=0 || (c.hs||"").indexOf(q)>=0 || c.c.indexOf(q)>=0){
           matches.push(c);
           if(matches.length>=25) break;
         }

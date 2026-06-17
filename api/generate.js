@@ -15,6 +15,13 @@ const ECH_TPL = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'ec
 const COMMODITIES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'commodities.json'), 'utf8'));
 const COMM_MAP = {};
 COMMODITIES.forEach(function(c){ COMM_MAP[c.c] = c; });
+// Bases dédiées récupérées depuis IVAN Mark II : San Pedro (import) + Export
+const SP_COMMODITIES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'sp_commodities.json'), 'utf8'));
+const SP_COMM_MAP = {};
+SP_COMMODITIES.forEach(function(c){ SP_COMM_MAP[c.c] = c; });
+const EXP_PRODUCTS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'exp_products.json'), 'utf8'));
+const EXP_MAP = {};
+EXP_PRODUCTS.forEach(function(p){ EXP_MAP[p.c] = p; });
 
 function resolveEchCode(code, io){
   if(code && typeof code === 'object'){ return io==='I' ? code.imp : code.exp; }
@@ -22,7 +29,12 @@ function resolveEchCode(code, io){
 }
 
 // Build échange charge lines server-side (rates hidden). Handles multiple commodities (éclatement).
-// params: {port, subtype, io, cnt, teu, weight, commodities:[{code, weight}]}
+// params: {port, subtype, io, cnt, teu, weight, commodities:[{code, weight}], expMode, expCat}
+//
+// Aiguillage :
+//   1. EXPORT (expMode + io='O')  -> buildExportCharges     (module Export Mark II : 4 catégories, 18 produits)
+//   2. SAN PEDRO import           -> buildSanPedroCharges   (6 charges de base + taxes par marchandise SP)
+//   3. sinon (Abidjan, etc.)      -> logique template existante (INCHANGÉE)
 function buildEchangeCharges(params){
   const port = params.port || 'abidjan';
   const sub = params.subtype || (port==='sanpedro' ? 'standard' : 'echange');
@@ -31,6 +43,16 @@ function buildEchangeCharges(params){
   const teu = parseInt(params.teu) || 1;
   const totalWeight = parseFloat(params.weight) || 0;
   const commodities = params.commodities || [];
+
+  // 1) Module EXPORT (récupéré de Mark II) — déclenché uniquement par le nouveau formulaire Export
+  if(params.expMode && io==='O'){
+    return buildExportCharges({io:io, cnt:cnt, teu:teu, commodities:commodities, expCat:params.expCat || 'PAS_PROPRE'});
+  }
+  // 2) SAN PEDRO import — base dédiée + taxes par marchandise (port / ISPS 6% / communale)
+  if(port==='sanpedro'){
+    return buildSanPedroCharges({io:io, cnt:cnt, teu:teu, totalWeight:totalWeight, commodities:commodities});
+  }
+  // 3) Logique template existante (Abidjan : échange / transit / tbl) — inchangée
   if(!ECH_TPL[port] || !ECH_TPL[port].subtypes[sub]) return [];
   const template = ECH_TPL[port].subtypes[sub].charges;
   const lines = [];
@@ -69,6 +91,88 @@ function buildEchangeCharges(params){
       lines.push({code:code, desc:ch.d, bit:'COFR', qty:qty, rate:ch.rate, unit:(ch.base==='TO'?'TO':'EA'), vat:ch.vat, redevance:isRedevance});
     }
   });
+  return lines;
+}
+
+// ===== SAN PEDRO (import) =====================================================
+// 6 charges de base (template sanpedro/standard) + taxes par marchandise SP.
+// Codes BIT S4 (= matériel, colonne 102) ; bit='COFR' comme tout le flux échange.
+// Visibles par défaut (redevance:true) : Communauté portuaire + taxes marchandise.
+// Masquées par défaut (à cocher) : les autres charges de service de base.
+function buildSanPedroCharges(ctx){
+  const io = ctx.io, cnt = ctx.cnt, teu = ctx.teu, totalWeight = ctx.totalWeight;
+  const commodities = ctx.commodities || [];
+  const lines = [];
+  const tpl = (ECH_TPL.sanpedro && ECH_TPL.sanpedro.subtypes.standard) ? ECH_TPL.sanpedro.subtypes.standard.charges : [];
+
+  // Charges de base
+  tpl.forEach(function(ch){
+    const code = resolveEchCode(ch.code, io);
+    let qty;
+    if(ch.base==='DOC') qty = (typeof ch.qty==='number') ? ch.qty : 1;
+    else if(ch.base==='CNT') qty = cnt;
+    else if(ch.base==='TEU') qty = teu;
+    else if(ch.base==='TO') qty = totalWeight;
+    else qty = 1;
+    const isCommunaute = /communaut/i.test(ch.d);
+    lines.push({code:code, desc:ch.d, bit:'COFR', qty:qty, rate:ch.rate,
+                unit:(ch.base==='TO'?'TO':'EA'), vat:ch.vat, redevance:isCommunaute});
+  });
+
+  // Taxes par marchandise San Pedro (par tonne) : Taxe de port / ISPS 6% / Taxe communale.
+  // Dans Mark II ces 3 taxes sont portées par un même matériel de redevance -> code PTX en S4
+  // (cohérent avec le mapping de la base sanpedro où 'Communauté portuaire' = PTX).
+  commodities.forEach(function(cm){
+    const sp = SP_COMM_MAP[cm.code];
+    const w = parseFloat(cm.weight) || 0;
+    if(!sp || w <= 0) return;
+    const nm = sp.d.substring(0,30);
+    lines.push({code:'PTX', desc:'Taxe de port ('+nm+')',     bit:'COFR', qty:w, rate:sp.p, unit:'TO', vat:0, redevance:true});
+    lines.push({code:'PTX', desc:'ISPS 6% ('+nm+')',          bit:'COFR', qty:w, rate:sp.i, unit:'TO', vat:0, redevance:true});
+    if(sp.k > 0)
+      lines.push({code:'PTX', desc:'Taxe communale ('+nm+')', bit:'COFR', qty:w, rate:sp.k, unit:'TO', vat:0, redevance:true});
+  });
+
+  return lines;
+}
+
+// ===== EXPORT (module Mark II) ================================================
+// 4 catégories : PAS_PROPRE / PROPRE / PAS_PROPRE_BOIS / PROPRE_BOIS.
+// Redevance portuaire = tarif produit (par TO ou M3) ; le reste par TEU/CNT/DOC.
+// Codes BIT S4 (col. 102), bit='COFR'. Toutes visibles par défaut (redevance:true).
+// NB : codes export à confirmer sur un vrai dépôt SAP export (pas de CSV de référence).
+function buildExportCharges(ctx){
+  const cnt = ctx.cnt, teu = ctx.teu;
+  const expCat = ctx.expCat || 'PAS_PROPRE';
+  const isBois = expCat.indexOf('BOIS') >= 0;
+  const products = ctx.commodities || [];
+  const lines = [];
+
+  // Redevance portuaire + Redevance communautaire portuaire — une paire par produit sélectionné
+  products.forEach(function(pr){
+    const p = EXP_MAP[pr.code];
+    const q = parseFloat(pr.weight) || 0;
+    if(!p || q <= 0) return;
+    const nm = p.d.substring(0,30);
+    const u = (p.u === 'M3') ? 'M3' : 'TO';
+    lines.push({code:'PTX', desc:'Redevance portuaire ('+nm+')',     bit:'COFR', qty:q, rate:p.r, unit:u,    vat:0, redevance:true});
+    lines.push({code:'PTX', desc:'Redevance com. portuaire ('+nm+')', bit:'COFR', qty:q, rate:20,  unit:'TO', vat:0, redevance:true});
+  });
+
+  // Charges fixes communes à tout export
+  lines.push({code:'GTE', desc:'Frais de Sydam Export', bit:'COFR', qty:1, rate:5000, unit:'EA', vat:1, redevance:true}); // TVA 18%
+  lines.push({code:'DSE', desc:'Timbre de document',    bit:'COFR', qty:1, rate:5000, unit:'EA', vat:0, redevance:true});
+  if(!isBois)
+    lines.push({code:'ODF', desc:'Frais de DUT',        bit:'COFR', qty:cnt, rate:2500, unit:'EA', vat:0, redevance:true});
+  lines.push({code:'SER', desc:'Export SER',            bit:'COFR', qty:teu, rate:4600, unit:'EA', vat:0, redevance:true});
+  lines.push({code:'PSE', desc:'Surcharge ISPS',        bit:'COFR', qty:teu, rate:9900, unit:'EA', vat:0, redevance:true});
+
+  // Catégorie PROPRE / PROPRE_BOIS : mise sur camion tiers + BMC
+  if(expCat === 'PROPRE' || expCat === 'PROPRE_BOIS'){
+    lines.push({code:'HDE', desc:'Mise sur camion tiers', bit:'COFR', qty:teu, rate:25000, unit:'EA', vat:0, redevance:true});
+    lines.push({code:'EHE', desc:'Frais de BMC',          bit:'COFR', qty:cnt, rate:10000, unit:'EA', vat:0, redevance:true});
+  }
+
   return lines;
 }
 
