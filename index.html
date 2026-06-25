@@ -376,7 +376,7 @@ textarea.ip{resize:vertical;min-height:70px}
       <div class="sb-item" data-tab="invoice" onclick="sw('invoice')"><span class="sb-ic">&#10052;</span><span class="sb-nav-label">Facturation</span></div>
       <div class="sb-item" data-tab="echange" onclick="sw('echange')"><span class="sb-ic">&#8644;</span><span class="sb-nav-label">&Eacute;change</span></div>
       <div class="sb-item" data-tab="history" onclick="sw('history')"><span class="sb-ic">&#128340;</span><span class="sb-nav-label">Historique</span></div>
-      <div class="sb-item" data-tab="fne" onclick="sw('fne')"><span class="sb-ic">&#9889;</span><span class="sb-nav-label">FNE</span></div>
+      <div class="sb-item" data-tab="fne" data-fne="1" style="display:none" onclick="sw('fne')"><span class="sb-ic">&#9889;</span><span class="sb-nav-label">FNE</span></div>
       <div class="sb-item" data-tab="queue" onclick="sw('queue')"><span class="sb-ic">&#9783;</span><span class="sb-nav-label">File</span><span id="queueBadge" class="pill pill-frost" style="margin-left:auto;display:none">0</span></div>
       <div class="sb-item" data-tab="bp" onclick="sw('bp')"><span class="sb-ic">&#9819;</span><span class="sb-nav-label">Business Partners</span></div>
       <div class="sb-item" data-tab="upload" onclick="sw('upload')"><span class="sb-ic">&#11014;</span><span class="sb-nav-label">Imports</span></div>
@@ -629,7 +629,7 @@ textarea.ip{resize:vertical;min-height:70px}
           </div>
           <div id="echSubWrap">
             <label class="lb">Sous-type</label>
-            <select class="ip" id="echSubtype">
+            <select class="ip" id="echSubtype" onchange="echApplyMode()">
               <option value="echange">&Eacute;change</option>
               <option value="transit">Transit</option>
               <option value="tbl">TBL</option>
@@ -712,9 +712,11 @@ textarea.ip{resize:vertical;min-height:70px}
         <div style="font-size:11px;color:var(--txt3);margin-bottom:16px">TEU calcul&eacute; automatiquement (20'&nbsp;=&nbsp;1 TEU, 40'&nbsp;=&nbsp;2 TEU). Vous pouvez m&eacute;langer les tailles (ex.&nbsp;1&times;20' + 1&times;40').</div>
 
         <!-- Commodities (éclatement) -->
+        <div id="echCommSection">
         <div style="margin-bottom:8px;font-weight:600;color:var(--frost);font-size:13px"><span id="echCommHeadTxt">MARCHANDISES</span> <span id="echCommHint" style="color:var(--txt3);font-weight:400">(une ou plusieurs &mdash; chacune avec son poids)</span></div>
         <div id="echCommodities"></div>
         <button class="bt bt-ghost" style="font-size:12px;padding:8px 14px;margin-top:8px" onclick="addEchCommodity()">&#43; Ajouter une marchandise</button>
+        </div>
 
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
           <button class="bt bt-ice" onclick="genEchangeReview()">&#10052; G&eacute;n&eacute;rer la facture</button>
@@ -878,6 +880,7 @@ textarea.ip{resize:vertical;min-height:70px}
         <div class="fld"><label>Email agent (clerk email)</label><input class="ip" id="newEmail" placeholder="prenom.nom@maersk.com"></div>
         <div class="fld"><label>Nom agent (clerk name)</label><input class="ip" id="newName" placeholder="NOM Pr&eacute;nom"></div>
       </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--txt2);margin-bottom:16px;cursor:pointer"><input type="checkbox" id="newFne" style="width:16px;height:16px;cursor:pointer"> Autoriser l'acc&egrave;s au module <b>FNE</b> (les managers y ont toujours acc&egrave;s)</label>
       <button class="bt bt-ice" onclick="addAccount()">&#43; Cr&eacute;er le compte</button>
       <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--ice-line)">
         <div style="font-size:12px;color:var(--txt2);margin-bottom:8px">Espace de stockage : <span id="storageInfo" class="mono" style="color:var(--frost)">&mdash;</span></div>
@@ -887,7 +890,7 @@ textarea.ip{resize:vertical;min-height:70px}
     <div class="cd">
       <div class="ct"><span class="dot"></span> Comptes existants</div>
       <table class="adm-table">
-        <thead><tr><th>Utilisateur</th><th>R&ocirc;le</th><th>Action</th></tr></thead>
+        <thead><tr><th>Utilisateur</th><th>R&ocirc;le</th><th>Acc&egrave;s FNE</th><th>Action</th></tr></thead>
         <tbody id="accountsBody"></tbody>
       </table>
     </div>
@@ -913,7 +916,7 @@ textarea.ip{resize:vertical;min-height:70px}
         <div class="home-tile-desc">&Eacute;mettez une facture pour les op&eacute;rations d'&eacute;change import/export.</div>
         <div class="home-tile-arrow">Cr&eacute;er une facture &rarr;</div>
       </div>
-      <div class="home-tile" onclick="sw('fne')">
+      <div class="home-tile" data-fne="1" style="display:none" onclick="sw('fne')">
         <div class="home-tile-ic" style="background:rgba(251,191,36,.12)">&#9889;</div>
         <div class="home-tile-title">Lancer un batch FNE</div>
         <div class="home-tile-desc">G&eacute;n&eacute;rez et soumettez vos fichiers FNE en toute simplicit&eacute;.</div>
@@ -1350,7 +1353,7 @@ function checkSession(){
 function renderAccounts(){
   var body = $("accountsBody");
   if(!body) return;
-  body.innerHTML = '<tr><td colspan="3" style="padding:16px;text-align:center;color:var(--txt3)">Chargement...</td></tr>';
+  body.innerHTML = '<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--txt3)">Chargement...</td></tr>';
   var myName = (curUser && curUser.user) ? curUser.user : "";
   apiCall("/store?action=users").then(function(res){
     var users = (res.users||[]).filter(function(x){ return x && x.user; });
@@ -1359,12 +1362,21 @@ function renderAccounts(){
       var isMe = String(u.user)===String(myName);
       var delBtn = isMe ? '<span style="color:var(--txt3);font-size:12px">(vous)</span>'
         : (String(u.user).toLowerCase()==="ivan" ? '<span style="color:var(--txt3);font-size:12px">&mdash;</span>' : '<button class="bt-del" onclick="delAccount(\''+u.user+'\')">&#128465; Supprimer</button>');
-      return '<tr><td style="font-weight:600">'+u.user+'</td><td>'+roleBadge+'</td><td>'+delBtn+'</td></tr>';
+      var fneCell = (u.role==="manager")
+        ? '<span style="color:var(--txt3);font-size:12px">&#10003; (admin)</span>'
+        : '<button class="bt bt-ghost" style="font-size:11px;padding:4px 10px;'+(u.fne?'color:var(--ok);border-color:var(--ok)':'')+'" onclick="setUserFne(\''+u.user+'\','+(u.fne?'false':'true')+')">'+(u.fne?'&#10003; Autoris\u00e9':'Refus\u00e9')+'</button>';
+      return '<tr><td style="font-weight:600">'+u.user+'</td><td>'+roleBadge+'</td><td>'+fneCell+'</td><td>'+delBtn+'</td></tr>';
     }).join("");
   }).catch(function(e){
     if(e&&e.blocked){ showBlocked(); return; }
-    body.innerHTML = '<tr><td colspan="3" style="padding:16px;text-align:center;color:var(--err)">Erreur de connexion</td></tr>';
+    body.innerHTML = '<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--err)">Erreur de connexion</td></tr>';
   });
+}
+function setUserFne(user, on){
+  apiCall("/store", {method:"POST", body:{action:"setuserfne", user:user, fne:on}}).then(function(res){
+    if(res.ok){ renderAccounts(); showToast("Acc\u00e8s FNE "+(on?"autoris\u00e9":"retir\u00e9")+" pour "+user,"ok"); }
+    else showToast(res.error||"Erreur","err");
+  }).catch(function(e){ if(e&&e.blocked){ showBlocked(); return; } showToast("Erreur de connexion","err"); });
 }
 function addAccount(){
   var uEl=$("newUser"), pEl=$("newPass"), rEl=$("newRole");
@@ -1374,10 +1386,11 @@ function addAccount(){
   var r = rEl.value || "agent";
   var email = $("newEmail") ? $("newEmail").value.trim() : "";
   var name = $("newName") ? $("newName").value.trim() : "";
+  var fne = $("newFne") ? $("newFne").checked : false;
   if(!u || !p){ showToast("Nom et mot de passe requis","err"); return; }
-  apiCall("/store", {method:"POST", body:{action:"adduser", user:u, pass:p, role:r, email:email, name:name}}).then(function(res){
+  apiCall("/store", {method:"POST", body:{action:"adduser", user:u, pass:p, role:r, email:email, name:name, fne:fne}}).then(function(res){
     if(res.ok){
-      uEl.value=""; pEl.value=""; if($("newEmail"))$("newEmail").value=""; if($("newName"))$("newName").value="";
+      uEl.value=""; pEl.value=""; if($("newEmail"))$("newEmail").value=""; if($("newName"))$("newName").value=""; if($("newFne"))$("newFne").checked=false;
       showToast("Compte cr\u00e9\u00e9 : "+u,"ok");
       renderAccounts();
     } else {
@@ -1451,6 +1464,11 @@ function startApp(){
   // Show manager-only tabs
   document.querySelectorAll('[data-mgr="1"]').forEach(function(el){
     el.style.display = (curUser.role==="manager") ? "" : "none";
+  });
+  // Accès FNE : managers toujours, agents seulement si l'administrateur l'a autorisé
+  var fneOK = (curUser.role==="manager") || !!curUser.fne;
+  document.querySelectorAll('[data-fne="1"]').forEach(function(el){
+    el.style.display = fneOK ? "" : "none";
   });
   loadData();
   loadQueue();
@@ -1555,6 +1573,10 @@ var PAGE_TITLES = {
   aide:["Aide","Mode d'emploi"]
 };
 function sw(t){
+  // Garde d'accès : FNE = managers + agents autorisés ; onglets d'admin = managers uniquement
+  var isMgr = !!(curUser && curUser.role==="manager");
+  if(t==="fne" && !(isMgr || (curUser && curUser.fne))){ t="home"; }
+  if((t==="accounts" || t==="dashboard") && !isMgr){ t="home"; }
   ["home","invoice","echange","queue","bp","upload","accounts","aide","dashboard","history","fne"].forEach(function(x){
     var el = $("tab-"+x); if(el) el.classList.toggle("hid", x!==t);
     var sb = document.querySelector('.sb-item[data-tab="'+x+'"]'); if(sb) sb.classList.toggle("on", x===t);
@@ -2569,6 +2591,13 @@ function echClearCommodities(){
   echCommodities = []; echCommNid = 1; addEchCommodity();
 }
 // Applique l'UI du mode courant ; ne réinitialise les marchandises que si le mode a réellement changé
+function echUsesCommodities(){
+  // Le poids/les marchandises ne servent qu'à : Export, San Pedro import, et Échange Abidjan classique.
+  // Transit et TBL facturent au forfait (TEU/conteneur) -> aucune marchandise nécessaire.
+  var m = echMode();
+  if(m === "export" || m === "sanpedro") return true;
+  return getEchSubtype() === "echange";
+}
 function echApplyMode(){
   var m = echMode(), changed = (m !== echCurMode);
   echCurMode = m;
@@ -2578,6 +2607,7 @@ function echApplyMode(){
   var hi = $("echCommHint");   if(hi) hi.textContent = (m==="export")
       ? "(produits export \u2014 chacun avec sa quantit\u00e9)"
       : "(une ou plusieurs \u2014 chacune avec son poids)";
+  var cs = $("echCommSection"); if(cs) cs.style.display = echUsesCommodities() ? "block" : "none";
   if(changed) echClearCommodities();
 }
 var echCommodities = [];   // [{id, code, desc, weight, commMatches}]
@@ -2843,7 +2873,7 @@ function genEchangeReview(){
     cnt:_ct.cnt||1, teu:_ct.teu||1,
     containers: echContainers.map(function(c){ return {count:parseInt(c.count)||0, size:c.size, type:c.type}; }),
     weight: echCommodities.reduce(function(s,c){return s+(c.weight||0);},0),
-    commodities: echCommodities.filter(function(c){return c.code;}).map(function(c){return {code:c.code, weight:c.weight};}),
+    commodities: echUsesCommodities() ? echCommodities.filter(function(c){return c.code;}).map(function(c){return {code:c.code, weight:c.weight};}) : [],
     expMode: (echMeta.expImp==="O"),
     expCat: echExpCat
   };
