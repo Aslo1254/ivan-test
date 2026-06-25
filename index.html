@@ -373,13 +373,13 @@ textarea.ip{resize:vertical;min-height:70px}
     <nav class="sb-nav" id="sbNav">
       <div class="sb-item" data-tab="home" onclick="sw('home')"><span class="sb-ic">&#127968;</span><span class="sb-nav-label">Accueil</span></div>
       <div class="sb-item" data-tab="dashboard" data-mgr="1" onclick="sw('dashboard')" style="display:none"><span class="sb-ic">&#9638;</span><span class="sb-nav-label">Tableau de bord</span></div>
-      <div class="sb-item" data-tab="invoice" onclick="sw('invoice')"><span class="sb-ic">&#10052;</span><span class="sb-nav-label">Facturation</span></div>
-      <div class="sb-item" data-tab="echange" onclick="sw('echange')"><span class="sb-ic">&#8644;</span><span class="sb-nav-label">&Eacute;change</span></div>
-      <div class="sb-item" data-tab="history" onclick="sw('history')"><span class="sb-ic">&#128340;</span><span class="sb-nav-label">Historique</span></div>
-      <div class="sb-item" data-tab="fne" data-fne="1" style="display:none" onclick="sw('fne')"><span class="sb-ic">&#9889;</span><span class="sb-nav-label">FNE</span></div>
-      <div class="sb-item" data-tab="queue" onclick="sw('queue')"><span class="sb-ic">&#9783;</span><span class="sb-nav-label">File</span><span id="queueBadge" class="pill pill-frost" style="margin-left:auto;display:none">0</span></div>
-      <div class="sb-item" data-tab="bp" onclick="sw('bp')"><span class="sb-ic">&#9819;</span><span class="sb-nav-label">Business Partners</span></div>
-      <div class="sb-item" data-tab="upload" onclick="sw('upload')"><span class="sb-ic">&#11014;</span><span class="sb-nav-label">Imports</span></div>
+      <div class="sb-item" data-tab="invoice" data-acc="invoice" style="display:none" onclick="sw('invoice')"><span class="sb-ic">&#10052;</span><span class="sb-nav-label">Facturation</span></div>
+      <div class="sb-item" data-tab="echange" data-acc="echange" style="display:none" onclick="sw('echange')"><span class="sb-ic">&#8644;</span><span class="sb-nav-label">&Eacute;change</span></div>
+      <div class="sb-item" data-tab="history" data-acc="history" style="display:none" onclick="sw('history')"><span class="sb-ic">&#128340;</span><span class="sb-nav-label">Historique</span></div>
+      <div class="sb-item" data-tab="fne" data-acc="fne" style="display:none" onclick="sw('fne')"><span class="sb-ic">&#9889;</span><span class="sb-nav-label">FNE</span></div>
+      <div class="sb-item" data-tab="queue" data-acc="queue" style="display:none" onclick="sw('queue')"><span class="sb-ic">&#9783;</span><span class="sb-nav-label">File</span><span id="queueBadge" class="pill pill-frost" style="margin-left:auto;display:none">0</span></div>
+      <div class="sb-item" data-tab="bp" data-acc="bp" style="display:none" onclick="sw('bp')"><span class="sb-ic">&#9819;</span><span class="sb-nav-label">Business Partners</span></div>
+      <div class="sb-item" data-tab="upload" data-acc="upload" style="display:none" onclick="sw('upload')"><span class="sb-ic">&#11014;</span><span class="sb-nav-label">Imports</span></div>
       <div class="sb-item" data-tab="accounts" data-mgr="1" onclick="sw('accounts')" style="display:none"><span class="sb-ic">&#9881;</span><span class="sb-nav-label">Comptes</span></div>
       <div class="sb-item" data-tab="aide" onclick="sw('aide')"><span class="sb-ic">&#9432;</span><span class="sb-nav-label">Aide</span></div>
     </nav>
@@ -880,7 +880,10 @@ textarea.ip{resize:vertical;min-height:70px}
         <div class="fld"><label>Email agent (clerk email)</label><input class="ip" id="newEmail" placeholder="prenom.nom@maersk.com"></div>
         <div class="fld"><label>Nom agent (clerk name)</label><input class="ip" id="newName" placeholder="NOM Pr&eacute;nom"></div>
       </div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--txt2);margin-bottom:16px;cursor:pointer"><input type="checkbox" id="newFne" style="width:16px;height:16px;cursor:pointer"> Autoriser l'acc&egrave;s au module <b>FNE</b> (les managers y ont toujours acc&egrave;s)</label>
+      <div style="margin-bottom:16px">
+        <label class="lb" style="display:block;margin-bottom:8px">Acc&egrave;s aux modules <span style="color:var(--txt3);font-weight:400">(pour un Agent &mdash; un Manager a tout)</span></label>
+        <div id="newPerms" style="display:flex;flex-wrap:wrap;gap:8px 18px"></div>
+      </div>
       <button class="bt bt-ice" onclick="addAccount()">&#43; Cr&eacute;er le compte</button>
       <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--ice-line)">
         <div style="font-size:12px;color:var(--txt2);margin-bottom:8px">Espace de stockage : <span id="storageInfo" class="mono" style="color:var(--frost)">&mdash;</span></div>
@@ -890,7 +893,7 @@ textarea.ip{resize:vertical;min-height:70px}
     <div class="cd">
       <div class="ct"><span class="dot"></span> Comptes existants</div>
       <table class="adm-table">
-        <thead><tr><th>Utilisateur</th><th>R&ocirc;le</th><th>Acc&egrave;s FNE</th><th>Action</th></tr></thead>
+        <thead><tr><th>Utilisateur</th><th>R&ocirc;le</th><th>Acc&egrave;s</th><th>Action</th></tr></thead>
         <tbody id="accountsBody"></tbody>
       </table>
     </div>
@@ -904,25 +907,25 @@ textarea.ip{resize:vertical;min-height:70px}
 
     <!-- 4 ACTION CARDS -->
     <div class="home-grid" style="margin-top:24px">
-      <div class="home-tile" onclick="sw('invoice')">
+      <div class="home-tile" data-acc="invoice" style="display:none" onclick="sw('invoice')">
         <div class="home-tile-ic" style="background:rgba(56,189,248,.12)">&#10052;</div>
         <div class="home-tile-title">Cr&eacute;er une facture S/4HANA</div>
         <div class="home-tile-desc">Cr&eacute;ez une facture dans S/4HANA en quelques &eacute;tapes guid&eacute;es.</div>
         <div class="home-tile-arrow">Cr&eacute;er une facture &rarr;</div>
       </div>
-      <div class="home-tile" onclick="sw('echange')">
+      <div class="home-tile" data-acc="echange" style="display:none" onclick="sw('echange')">
         <div class="home-tile-ic" style="background:rgba(125,211,252,.12)">&#8644;</div>
         <div class="home-tile-title">Cr&eacute;er une facture &Eacute;change</div>
         <div class="home-tile-desc">&Eacute;mettez une facture pour les op&eacute;rations d'&eacute;change import/export.</div>
         <div class="home-tile-arrow">Cr&eacute;er une facture &rarr;</div>
       </div>
-      <div class="home-tile" data-fne="1" style="display:none" onclick="sw('fne')">
+      <div class="home-tile" data-acc="fne" style="display:none" onclick="sw('fne')">
         <div class="home-tile-ic" style="background:rgba(251,191,36,.12)">&#9889;</div>
         <div class="home-tile-title">Lancer un batch FNE</div>
         <div class="home-tile-desc">G&eacute;n&eacute;rez et soumettez vos fichiers FNE en toute simplicit&eacute;.</div>
         <div class="home-tile-arrow">Lancer un batch &rarr;</div>
       </div>
-      <div class="home-tile" onclick="sw('history')">
+      <div class="home-tile" data-acc="history" style="display:none" onclick="sw('history')">
         <div class="home-tile-ic" style="background:rgba(52,211,153,.12)">&#128340;</div>
         <div class="home-tile-title">Consulter l'historique</div>
         <div class="home-tile-desc">Acc&eacute;dez &agrave; l'historique complet de vos documents.</div>
@@ -1350,6 +1353,14 @@ function checkSession(){
 }
 
 // ============ ACCOUNTS (manager) ============
+var _accUsers = [];
+function renderNewPerms(){
+  var box=$("newPerms"); if(!box) return;
+  box.innerHTML = ACCESS_SECTIONS.map(function(s){
+    var on = (s.k !== "fne"); // défaut : tout coché sauf FNE
+    return '<label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--txt2);cursor:pointer"><input type="checkbox" data-newperm="'+s.k+'" '+(on?'checked':'')+' style="width:15px;height:15px;cursor:pointer"> '+s.label+'</label>';
+  }).join("");
+}
 function renderAccounts(){
   var body = $("accountsBody");
   if(!body) return;
@@ -1357,24 +1368,59 @@ function renderAccounts(){
   var myName = (curUser && curUser.user) ? curUser.user : "";
   apiCall("/store?action=users").then(function(res){
     var users = (res.users||[]).filter(function(x){ return x && x.user; });
+    _accUsers = users;
     body.innerHTML = users.map(function(u){
       var roleBadge = u.role==="manager" ? '<span class="role-badge role-mgr">Manager</span>' : '<span class="role-badge role-agent">Agent</span>';
       var isMe = String(u.user)===String(myName);
       var delBtn = isMe ? '<span style="color:var(--txt3);font-size:12px">(vous)</span>'
         : (String(u.user).toLowerCase()==="ivan" ? '<span style="color:var(--txt3);font-size:12px">&mdash;</span>' : '<button class="bt-del" onclick="delAccount(\''+u.user+'\')">&#128465; Supprimer</button>');
-      var fneCell = (u.role==="manager")
-        ? '<span style="color:var(--txt3);font-size:12px">&#10003; (admin)</span>'
-        : '<button class="bt bt-ghost" style="font-size:11px;padding:4px 10px;'+(u.fne?'color:var(--ok);border-color:var(--ok)':'')+'" onclick="setUserFne(\''+u.user+'\','+(u.fne?'false':'true')+')">'+(u.fne?'&#10003; Autoris\u00e9':'Refus\u00e9')+'</button>';
-      return '<tr><td style="font-weight:600">'+u.user+'</td><td>'+roleBadge+'</td><td>'+fneCell+'</td><td>'+delBtn+'</td></tr>';
+      var accessCell = (u.role==="manager")
+        ? '<span style="color:var(--txt3);font-size:12px">Acc\u00e8s complet</span>'
+        : '<button class="bt bt-ghost" style="font-size:11px;padding:4px 12px" onclick="openPermsModal(\''+u.user+'\')">&#9881; G\u00e9rer l\'acc\u00e8s</button>';
+      return '<tr><td style="font-weight:600">'+u.user+'</td><td>'+roleBadge+'</td><td>'+accessCell+'</td><td>'+delBtn+'</td></tr>';
     }).join("");
   }).catch(function(e){
     if(e&&e.blocked){ showBlocked(); return; }
     body.innerHTML = '<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--err)">Erreur de connexion</td></tr>';
   });
 }
-function setUserFne(user, on){
-  apiCall("/store", {method:"POST", body:{action:"setuserfne", user:user, fne:on}}).then(function(res){
-    if(res.ok){ renderAccounts(); showToast("Acc\u00e8s FNE "+(on?"autoris\u00e9":"retir\u00e9")+" pour "+user,"ok"); }
+// accès effectif d'un agent pour pré-cocher la modale (défaut : tout sauf FNE)
+function permAllowed(u, k){
+  var p = (u && u.perms) || {};
+  if(p[k] !== undefined) return !!p[k];
+  return k !== "fne";
+}
+function openPermsModal(user){
+  var u = _accUsers.find(function(x){ return String(x.user)===String(user); });
+  if(!u) return;
+  closePermsModal();
+  var rows = ACCESS_SECTIONS.map(function(s){
+    var on = permAllowed(u, s.k);
+    return '<label style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;background:var(--void);border-radius:10px;margin-bottom:8px;cursor:pointer">'+
+      '<span style="font-size:13.5px;color:var(--crystal)">'+s.label+'</span>'+
+      '<input type="checkbox" data-perm="'+s.k+'" '+(on?'checked':'')+' style="width:18px;height:18px;cursor:pointer"></label>';
+  }).join("");
+  var ov = document.createElement("div");
+  ov.id = "permsModal";
+  ov.style.cssText = "position:fixed;inset:0;z-index:9998;background:rgba(3,7,12,.72);display:flex;align-items:center;justify-content:center;padding:20px";
+  ov.onclick = function(e){ if(e.target===ov) closePermsModal(); };
+  ov.innerHTML = '<div style="max-width:440px;width:100%;background:var(--grad-panel);border:1px solid var(--ice-line);border-radius:20px;padding:28px 26px;box-shadow:0 24px 80px rgba(0,0,0,.6)">'+
+    '<div style="font-size:17px;font-weight:800;color:var(--crystal);margin-bottom:4px">Acc\u00e8s de '+u.user+'</div>'+
+    '<div style="font-size:12.5px;color:var(--txt2);margin-bottom:18px">Cochez les parties d\'IVAN S4 auxquelles cet agent peut acc\u00e9der.</div>'+
+    rows+
+    '<div style="display:flex;gap:10px;margin-top:18px">'+
+      '<button class="bt bt-ice" style="flex:1" onclick="savePermsModal(\''+u.user+'\')">Enregistrer</button>'+
+      '<button class="bt bt-ghost" style="flex:1" onclick="closePermsModal()">Annuler</button></div>'+
+    '<div style="font-size:11px;color:var(--txt3);margin-top:12px;line-height:1.4">L\'agent doit se reconnecter pour que les changements prennent effet.</div></div>';
+  document.body.appendChild(ov);
+}
+function closePermsModal(){ var m=$("permsModal"); if(m && m.parentNode) m.parentNode.removeChild(m); }
+function savePermsModal(user){
+  var m = $("permsModal"); if(!m) return;
+  var perms = {};
+  m.querySelectorAll('input[data-perm]').forEach(function(cb){ perms[cb.getAttribute("data-perm")] = cb.checked; });
+  apiCall("/store", {method:"POST", body:{action:"setperms", user:user, perms:perms}}).then(function(res){
+    if(res.ok){ closePermsModal(); renderAccounts(); showToast("Acc\u00e8s mis \u00e0 jour pour "+user,"ok"); }
     else showToast(res.error||"Erreur","err");
   }).catch(function(e){ if(e&&e.blocked){ showBlocked(); return; } showToast("Erreur de connexion","err"); });
 }
@@ -1386,11 +1432,13 @@ function addAccount(){
   var r = rEl.value || "agent";
   var email = $("newEmail") ? $("newEmail").value.trim() : "";
   var name = $("newName") ? $("newName").value.trim() : "";
-  var fne = $("newFne") ? $("newFne").checked : false;
+  var perms = {};
+  var _pb = $("newPerms");
+  if(_pb){ _pb.querySelectorAll('input[data-newperm]').forEach(function(cb){ perms[cb.getAttribute("data-newperm")] = cb.checked; }); }
   if(!u || !p){ showToast("Nom et mot de passe requis","err"); return; }
-  apiCall("/store", {method:"POST", body:{action:"adduser", user:u, pass:p, role:r, email:email, name:name, fne:fne}}).then(function(res){
+  apiCall("/store", {method:"POST", body:{action:"adduser", user:u, pass:p, role:r, email:email, name:name, perms:perms}}).then(function(res){
     if(res.ok){
-      uEl.value=""; pEl.value=""; if($("newEmail"))$("newEmail").value=""; if($("newName"))$("newName").value=""; if($("newFne"))$("newFne").checked=false;
+      uEl.value=""; pEl.value=""; if($("newEmail"))$("newEmail").value=""; if($("newName"))$("newName").value=""; renderNewPerms();
       showToast("Compte cr\u00e9\u00e9 : "+u,"ok");
       renderAccounts();
     } else {
@@ -1465,11 +1513,8 @@ function startApp(){
   document.querySelectorAll('[data-mgr="1"]').forEach(function(el){
     el.style.display = (curUser.role==="manager") ? "" : "none";
   });
-  // Accès FNE : managers toujours, agents seulement si l'administrateur l'a autorisé
-  var fneOK = (curUser.role==="manager") || !!curUser.fne;
-  document.querySelectorAll('[data-fne="1"]').forEach(function(el){
-    el.style.display = fneOK ? "" : "none";
-  });
+  // Accès par module : managers = tout ; agents selon ce que l'administrateur a autorisé
+  applyAccess();
   loadData();
   loadQueue();
   initApp();
@@ -1572,11 +1617,32 @@ var PAGE_TITLES = {
   accounts:["Comptes","Gestion des utilisateurs"],
   aide:["Aide","Mode d'emploi"]
 };
+// ===== Contrôle d'accès par module (géré par l'administrateur) =====
+var ACCESS_SECTIONS = [
+  {k:"invoice", label:"Facturation"},
+  {k:"echange", label:"\u00c9change"},
+  {k:"fne",     label:"FNE"},
+  {k:"history", label:"Historique"},
+  {k:"queue",   label:"File"},
+  {k:"bp",      label:"Business Partners"},
+  {k:"upload",  label:"Imports"}
+];
+function canAccess(section){
+  if(!curUser) return false;
+  if(curUser.role==="manager") return true;             // admin = accès complet
+  if(section==="home" || section==="aide") return true;  // toujours accessibles
+  if(section==="accounts" || section==="dashboard") return false; // réservés à l'admin
+  var p = curUser.perms || {};
+  if(p[section] !== undefined) return !!p[section];
+  return section!=="fne";                                // défaut : tout autorisé sauf FNE
+}
+function applyAccess(){
+  document.querySelectorAll('[data-acc]').forEach(function(el){
+    el.style.display = canAccess(el.getAttribute("data-acc")) ? "" : "none";
+  });
+}
 function sw(t){
-  // Garde d'accès : FNE = managers + agents autorisés ; onglets d'admin = managers uniquement
-  var isMgr = !!(curUser && curUser.role==="manager");
-  if(t==="fne" && !(isMgr || (curUser && curUser.fne))){ t="home"; }
-  if((t==="accounts" || t==="dashboard") && !isMgr){ t="home"; }
+  if(!canAccess(t)){ t="home"; }   // garde d'accès centralisée
   ["home","invoice","echange","queue","bp","upload","accounts","aide","dashboard","history","fne"].forEach(function(x){
     var el = $("tab-"+x); if(el) el.classList.toggle("hid", x!==t);
     var sb = document.querySelector('.sb-item[data-tab="'+x+'"]'); if(sb) sb.classList.toggle("on", x===t);
@@ -1591,7 +1657,7 @@ function sw(t){
   if(t==="history") renderHistory();
   if(t==="fne") initFneTab();
   if(t==="bp") bpRenderTable("");
-  if(t==="accounts"){ renderAccounts(); updStorageInfo(); }
+  if(t==="accounts"){ renderAccounts(); renderNewPerms(); updStorageInfo(); }
   if(t==="queue") loadQueue();
 }
 function toggleSidebar(){
