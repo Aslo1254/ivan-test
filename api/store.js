@@ -41,6 +41,14 @@ const K_FNE = "ivan:fnebatch";  // batch FNE partage (queue + config + etat) - l
 // Default manager account (guaranteed to always exist)
 const DEFAULT_USER = { user:"ivan", pass:"ivan2026", role:"manager", email:"ivan.assani@maersk.com", name:"Ivan ASSANI" };
 
+// Permissions effectives d'un utilisateur (objet { section: bool }).
+// Migration : si l'ancienne option booléenne `fne` existe sans `perms`, on la reporte sur perms.fne.
+function effPerms(u){
+  const p = (u && u.perms && typeof u.perms === "object") ? Object.assign({}, u.perms) : {};
+  if(p.fne === undefined && u && u.fne !== undefined) p.fne = !!u.fne;
+  return p;
+}
+
 async function getUsers(){
   let users = await redis.get(K_USERS);
   if(!users || !Array.isArray(users) || users.length===0){
@@ -74,7 +82,7 @@ module.exports = async (req, res) => {
       const p = (req.body && req.body.pass || "");
       const users = await getUsers();
       const found = users.find(function(x){ return x.user.toLowerCase()===u.toLowerCase() && x.pass===p; });
-      if(found){ res.status(200).json({ ok:true, user:{user:found.user, role:found.role, email:found.email||"", name:found.name||"", fne: !!found.fne} }); }
+      if(found){ res.status(200).json({ ok:true, user:{user:found.user, role:found.role, email:found.email||"", name:found.name||"", fne: !!found.fne, perms: effPerms(found)} }); }
       else { res.status(200).json({ ok:false, error:"Nom d'utilisateur ou mot de passe incorrect" }); }
       return;
     }
@@ -83,7 +91,7 @@ module.exports = async (req, res) => {
     if(action === 'users'){
       const users = await getUsers();
       // never send passwords to the client
-      res.status(200).json({ ok:true, users: users.map(function(u){ return {user:u.user, role:u.role, fne: !!u.fne}; }) });
+      res.status(200).json({ ok:true, users: users.map(function(u){ return {user:u.user, role:u.role, fne: !!u.fne, perms: effPerms(u)}; }) });
       return;
     }
 
@@ -99,13 +107,13 @@ module.exports = async (req, res) => {
       if(users.some(function(x){ return x.user.toLowerCase()===u.toLowerCase(); })){
         res.status(200).json({ ok:false, error:"Ce nom d'utilisateur existe déjà" }); return;
       }
-      users.push({ user:u, pass:p, role:role, email:email, name:name, fne: !!(req.body && req.body.fne) });
+      users.push({ user:u, pass:p, role:role, email:email, name:name, fne: !!(req.body && req.body.fne), perms: (req.body && req.body.perms && typeof req.body.perms==="object") ? req.body.perms : {} });
       await redis.set(K_USERS, users);
-      res.status(200).json({ ok:true, users: users.map(function(x){ return {user:x.user, role:x.role, fne: !!x.fne}; }) });
+      res.status(200).json({ ok:true, users: users.map(function(x){ return {user:x.user, role:x.role, fne: !!x.fne, perms: effPerms(x)}; }) });
       return;
     }
 
-    // ===== SET FNE ACCESS (manager) — autorise/retire l'accès au module FNE pour un agent =====
+    // ===== SET FNE ACCESS (compat) — repointé sur perms.fne =====
     if(action === 'setuserfne'){
       const u = (req.body && req.body.user || "").trim();
       const val = !!(req.body && req.body.fne);
@@ -113,8 +121,26 @@ module.exports = async (req, res) => {
       const idx = users.findIndex(function(x){ return x.user.toLowerCase()===u.toLowerCase(); });
       if(idx < 0){ res.status(200).json({ ok:false, error:"Utilisateur introuvable" }); return; }
       users[idx].fne = val;
+      users[idx].perms = Object.assign({}, users[idx].perms, { fne: val });
       await redis.set(K_USERS, users);
-      res.status(200).json({ ok:true, users: users.map(function(x){ return {user:x.user, role:x.role, fne: !!x.fne}; }) });
+      res.status(200).json({ ok:true, users: users.map(function(x){ return {user:x.user, role:x.role, fne: !!x.fne, perms: effPerms(x)}; }) });
+      return;
+    }
+
+    // ===== SET PERMISSIONS (manager) — accès par module pour un agent =====
+    // body: { user, perms:{ invoice:bool, echange:bool, fne:bool, history:bool, queue:bool, bp:bool, upload:bool } }
+    if(action === 'setperms'){
+      const u = (req.body && req.body.user || "").trim();
+      const raw = (req.body && req.body.perms && typeof req.body.perms === "object") ? req.body.perms : {};
+      const clean = {};
+      Object.keys(raw).forEach(function(k){ clean[k] = !!raw[k]; });
+      const users = await getUsers();
+      const idx = users.findIndex(function(x){ return x.user.toLowerCase()===u.toLowerCase(); });
+      if(idx < 0){ res.status(200).json({ ok:false, error:"Utilisateur introuvable" }); return; }
+      users[idx].perms = clean;
+      if(clean.fne !== undefined) users[idx].fne = clean.fne; // garde l'ancien champ cohérent
+      await redis.set(K_USERS, users);
+      res.status(200).json({ ok:true, users: users.map(function(x){ return {user:x.user, role:x.role, fne: !!x.fne, perms: effPerms(x)}; }) });
       return;
     }
 
