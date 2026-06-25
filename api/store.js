@@ -7,14 +7,23 @@ const { isLicenseActive } = require('./license.js');
 const fs = require('fs');
 const path = require('path');
 
-// Default CHB (Échange) templates - shipped with the app
-const CHB_DEFAULTS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'chb_templates.json'), 'utf8'));
-const ECH_DEFAULTS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'echange_templates.json'), 'utf8'));
-const CBU_LIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'cbu_list.json'), 'utf8'));
+// Default CHB (Échange) templates - shipped with the app.
+// Chargement TOLÉRANT : plusieurs noms possibles, jamais d'exception au démarrage
+// (un fichier lib renommé à l'upload ne doit JAMAIS casser /store : login, comptes, BP, CA).
+function loadLibJson(candidates, fallback){
+  for(let i=0;i<candidates.length;i++){
+    try{
+      const p = path.join(__dirname, '..', 'lib', candidates[i]);
+      if(fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
+    }catch(e){ /* nom suivant */ }
+  }
+  return (fallback !== undefined) ? fallback : {};
+}
+const CHB_DEFAULTS = loadLibJson(['chb_templates.json', 'chb templates.json'], {});
+const ECH_DEFAULTS = loadLibJson(['echange_templates.json', 'echange templates.json', 'echangetemplates.json'], {});
+const CBU_LIST = loadLibJson(['cbu_list.json', 'cbu list.json'], []);
 // Contract-account defaults: PLUS UTILISES (les comptes proviennent desormais uniquement de l'import manager).
-// Chargement tolerant pour ne jamais planter si le fichier est retire.
-let CA_MAP_DEFAULT = {};
-try { CA_MAP_DEFAULT = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'ca_map.json'), 'utf8')); } catch(e) { CA_MAP_DEFAULT = {}; }
+let CA_MAP_DEFAULT = loadLibJson(['ca_map.json', 'ca map.json'], {});
 
 const redis = Redis.fromEnv();
 
@@ -65,7 +74,7 @@ module.exports = async (req, res) => {
       const p = (req.body && req.body.pass || "");
       const users = await getUsers();
       const found = users.find(function(x){ return x.user.toLowerCase()===u.toLowerCase() && x.pass===p; });
-      if(found){ res.status(200).json({ ok:true, user:{user:found.user, role:found.role, email:found.email||"", name:found.name||""} }); }
+      if(found){ res.status(200).json({ ok:true, user:{user:found.user, role:found.role, email:found.email||"", name:found.name||"", fne: !!found.fne} }); }
       else { res.status(200).json({ ok:false, error:"Nom d'utilisateur ou mot de passe incorrect" }); }
       return;
     }
@@ -74,7 +83,7 @@ module.exports = async (req, res) => {
     if(action === 'users'){
       const users = await getUsers();
       // never send passwords to the client
-      res.status(200).json({ ok:true, users: users.map(function(u){ return {user:u.user, role:u.role}; }) });
+      res.status(200).json({ ok:true, users: users.map(function(u){ return {user:u.user, role:u.role, fne: !!u.fne}; }) });
       return;
     }
 
@@ -90,9 +99,22 @@ module.exports = async (req, res) => {
       if(users.some(function(x){ return x.user.toLowerCase()===u.toLowerCase(); })){
         res.status(200).json({ ok:false, error:"Ce nom d'utilisateur existe déjà" }); return;
       }
-      users.push({ user:u, pass:p, role:role, email:email, name:name });
+      users.push({ user:u, pass:p, role:role, email:email, name:name, fne: !!(req.body && req.body.fne) });
       await redis.set(K_USERS, users);
-      res.status(200).json({ ok:true, users: users.map(function(x){ return {user:x.user, role:x.role}; }) });
+      res.status(200).json({ ok:true, users: users.map(function(x){ return {user:x.user, role:x.role, fne: !!x.fne}; }) });
+      return;
+    }
+
+    // ===== SET FNE ACCESS (manager) — autorise/retire l'accès au module FNE pour un agent =====
+    if(action === 'setuserfne'){
+      const u = (req.body && req.body.user || "").trim();
+      const val = !!(req.body && req.body.fne);
+      const users = await getUsers();
+      const idx = users.findIndex(function(x){ return x.user.toLowerCase()===u.toLowerCase(); });
+      if(idx < 0){ res.status(200).json({ ok:false, error:"Utilisateur introuvable" }); return; }
+      users[idx].fne = val;
+      await redis.set(K_USERS, users);
+      res.status(200).json({ ok:true, users: users.map(function(x){ return {user:x.user, role:x.role, fne: !!x.fne}; }) });
       return;
     }
 

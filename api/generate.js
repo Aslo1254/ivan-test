@@ -11,23 +11,22 @@ const IT_HDR = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'it_
 const TT_HDR = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'tt_hdr.json'), 'utf8'));
 const N_IT = IT_HDR.length;
 const N_TT = TT_HDR.length;
-const ECH_TPL = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'echange_templates.json'), 'utf8'));
-const COMMODITIES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'lib', 'commodities.json'), 'utf8'));
-const COMM_MAP = {};
-COMMODITIES.forEach(function(c){ COMM_MAP[c.c] = c; });
-// Bases dédiées récupérées depuis IVAN Mark II : San Pedro (import) + Export.
-// Chargement TOLÉRANT : on essaie plusieurs noms (underscore / espace / sans séparateur) et on
-// ne plante JAMAIS si le fichier manque -> /generate reste fonctionnel (facturation, échange Abidjan)
-// même si ces fichiers ne sont pas (encore) déployés ou sont nommés différemment.
-function loadLibJson(candidates){
+// Chargement TOLÉRANT des fichiers lib : plusieurs noms possibles (underscore / espace / sans
+// séparateur) et JAMAIS d'exception si le fichier manque ou a été renommé à l'upload.
+function loadLibJson(candidates, fallback){
   for(var i=0;i<candidates.length;i++){
     try{
       var p = path.join(__dirname, '..', 'lib', candidates[i]);
       if(fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
     }catch(e){ /* on tente le nom suivant */ }
   }
-  return [];
+  return (fallback !== undefined) ? fallback : [];
 }
+const ECH_TPL = loadLibJson(['echange_templates.json', 'echange templates.json', 'echangetemplates.json'], {});
+const COMMODITIES = loadLibJson(['commodities.json'], []);
+const COMM_MAP = {};
+COMMODITIES.forEach(function(c){ COMM_MAP[c.c] = c; });
+// Bases dédiées récupérées depuis IVAN Mark II : San Pedro (import) + Export.
 const SP_COMMODITIES = loadLibJson(['sp_commodities.json', 'sp commodities.json', 'spcommodities.json']);
 const SP_COMM_MAP = {};
 SP_COMMODITIES.forEach(function(c){ SP_COMM_MAP[c.c] = c; });
