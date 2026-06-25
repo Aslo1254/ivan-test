@@ -2657,12 +2657,13 @@ function echClearCommodities(){
   echCommodities = []; echCommNid = 1; addEchCommodity();
 }
 // Applique l'UI du mode courant ; ne réinitialise les marchandises que si le mode a réellement changé
-function echUsesCommodities(){
-  // Le poids/les marchandises ne servent qu'à : Export, San Pedro import, et Échange Abidjan classique.
-  // Transit et TBL facturent au forfait (TEU/conteneur) -> aucune marchandise nécessaire.
+// La marchandise est TOUJOURS proposée ; seul le POIDS est masqué pour Transit et TBL
+// (forfait TEU/conteneur : le poids ne compte pas, mais on déclare quand même la marchandise).
+function echUsesWeight(){
   var m = echMode();
-  if(m === "export" || m === "sanpedro") return true;
-  return getEchSubtype() === "echange";
+  if(m === "export" || m === "sanpedro") return true;   // poids/quantité requis
+  return getEchSubtype() === "echange";                 // Abidjan échange classique : poids requis
+  // transit / tbl -> false : marchandise visible, poids masqué
 }
 function echApplyMode(){
   var m = echMode(), changed = (m !== echCurMode);
@@ -2670,11 +2671,12 @@ function echApplyMode(){
   var ec = $("echExpCatWrap"); if(ec) ec.style.display = (m==="export") ? "block" : "none";
   var sw = $("echSubWrap");    if(sw) sw.style.display    = (m==="general") ? "block" : "none";
   var hh = $("echCommHeadTxt"); if(hh) hh.textContent = (m==="export") ? "PRODUITS EXPORT" : "MARCHANDISES";
-  var hi = $("echCommHint");   if(hi) hi.textContent = (m==="export")
-      ? "(produits export \u2014 chacun avec sa quantit\u00e9)"
-      : "(une ou plusieurs \u2014 chacune avec son poids)";
-  var cs = $("echCommSection"); if(cs) cs.style.display = echUsesCommodities() ? "block" : "none";
-  if(changed) echClearCommodities();
+  var weightOn = echUsesWeight();
+  var hi = $("echCommHint");
+  if(hi) hi.textContent = (m==="export") ? "(produits export \u2014 chacun avec sa quantit\u00e9)"
+                        : weightOn ? "(une ou plusieurs \u2014 chacune avec son poids)"
+                        : "(une ou plusieurs \u2014 le poids ne compte pas)";
+  if(changed) echClearCommodities(); else renderEchCommodities();
 }
 var echCommodities = [];   // [{id, code, desc, weight, commMatches}]
 var echCommNid = 1;
@@ -2799,16 +2801,21 @@ function echCommRateLabel(c, mode){
 function renderEchCommodities(){
   var box=$("echCommodities");
   var mode=echMode();
+  var weightOn=echUsesWeight();
   var ph=(mode==="export")?"Qt\u00e9 (TO/M3)":"Poids TO";
+  var cols=weightOn?"2fr 0.8fr 36px":"2fr 36px";
   box.innerHTML = echCommodities.map(function(c){
-    var hasRate = !!c.code;
-    return '<div style="display:grid;grid-template-columns:2fr 0.8fr 36px;gap:8px;margin-bottom:8px;align-items:start">'+
+    var hasRate = !!c.code && weightOn;   // les taux par tonne n'ont de sens que si le poids compte
+    var weightCell = weightOn
+      ? '<input class="ip" type="number" min="0" placeholder="'+ph+'" value="'+(c.weight||"")+'" onchange="setEchCommWeight('+c.id+',this.value)">'
+      : '';
+    return '<div style="display:grid;grid-template-columns:'+cols+';gap:8px;margin-bottom:8px;align-items:start">'+
       '<div style="position:relative">'+
         '<input class="ip" id="echComm-'+c.id+'" placeholder="Rechercher '+(mode==="export"?"produit export":"marchandise")+' (nom/code)..." value="'+escAttr(c.desc?(c.code+" - "+c.desc):"")+'" oninput="echCommSearch('+c.id+',this.value)" autocomplete="off">'+
         '<div id="echCommAc-'+c.id+'" class="ac-list"></div>'+
         '<div id="echCommRates-'+c.id+'" style="font-size:11px;color:var(--txt3);margin-top:4px;'+(hasRate?'':'display:none')+'">'+(hasRate?echCommRateLabel(c,mode):'')+'</div>'+
       '</div>'+
-      '<input class="ip" type="number" min="0" placeholder="'+ph+'" value="'+(c.weight||"")+'" onchange="setEchCommWeight('+c.id+',this.value)">'+
+      weightCell+
       '<button class="bt-del" style="padding:8px" onclick="removeEchCommodity('+c.id+')" title="Retirer">&#10005;</button>'+
     '</div>';
   }).join("");
@@ -2850,7 +2857,10 @@ function echCommPick(id, i){
   $("echComm-"+id).value = c.code+" - "+c.desc;
   $("echCommAc-"+id).classList.remove("show");
   var info = $("echCommRates-"+id);
-  if(info){ info.innerHTML = echCommRateLabel(c, mode); info.style.display = "block"; }
+  if(info){
+    if(echUsesWeight()){ info.innerHTML = echCommRateLabel(c, mode); info.style.display = "block"; }
+    else { info.innerHTML = ""; info.style.display = "none"; }
+  }
 }
 function setEchCommWeight(id, val){
   var c=echCommodities.find(function(x){return x.id===id;});
@@ -2939,7 +2949,7 @@ function genEchangeReview(){
     cnt:_ct.cnt||1, teu:_ct.teu||1,
     containers: echContainers.map(function(c){ return {count:parseInt(c.count)||0, size:c.size, type:c.type}; }),
     weight: echCommodities.reduce(function(s,c){return s+(c.weight||0);},0),
-    commodities: echUsesCommodities() ? echCommodities.filter(function(c){return c.code;}).map(function(c){return {code:c.code, weight:c.weight};}) : [],
+    commodities: echCommodities.filter(function(c){return c.code;}).map(function(c){return {code:c.code, weight:c.weight};}),
     expMode: (echMeta.expImp==="O"),
     expCat: echExpCat
   };
