@@ -3406,18 +3406,18 @@ function fneContactsClear(){
 function fneReapplyContacts(){
   fneBatchQueue.forEach(function(e){
     if(!e.parseOk) return;
-    var code=e.code||e.ncc;
-    var ct=fneContactLookup(code, e.company);
+    var code=e.code||"";
+    var ct=code?fneContactLookup(code, e.company):null;
     if(ct){
-      e.ncc=ct.ncc||code;
+      e.ncc=ct.ncc||"";
       e.phone=ct.phone||""; e.email=ct.email||"";
     }else{
-      e.ncc=code;
-      var m=(typeof CL!=="undefined"&&CL)?CL.find(function(cl){return cl.c===code;}):null;
+      e.ncc="";
+      var m=(typeof CL!=="undefined"&&CL&&code)?CL.find(function(cl){return cl.c===code;}):null;
       e.phone=m&&m.t?m.t:""; e.email=m&&m.e?m.e:"";
     }
-    e.contactMissing=!e.phone||!e.email;
-    e.contactErr=e.contactMissing?(((!e.phone?"t\u00e9l\u00e9phone ":"")+(!e.email?"email":"")).trim()+" manquant"):"";
+    e.contactMissing=!e.ncc||!e.phone||!e.email;
+    e.contactErr=e.contactMissing?(((!e.ncc?"NCC ":"")+(!e.phone?"t\u00e9l ":"")+(!e.email?"email":"")).trim()+" \u00e0 compl\u00e9ter"):"";
   });
   fneRenderQueue();
 }
@@ -3568,9 +3568,9 @@ async function fneLoadFiles(files){
           // NCC : en OCR l'ordre visuel place le NCC AVANT le numero II -> 1er code court (le RIB 13+ chiffres est exclu)
           var mN=ocrText.match(/CI\d{3,12}(?!\d)|DK\d{5,12}(?!\d)/);
           if(mN){
-            parsed.ncc=mN[0]; parsed.code=mN[0];
-            var ct=(typeof fneContactLookup==="function")?fneContactLookup(parsed.ncc,parsed.company):null;
-            if(ct){ if(ct.ncc)parsed.ncc=ct.ncc; parsed.phone=ct.phone||""; parsed.email=ct.email||""; }
+            parsed.code=mN[0];   // code client (pas le NCC)
+            var ct=(typeof fneContactLookup==="function")?fneContactLookup(parsed.code,parsed.company):null;
+            if(ct){ parsed.ncc=ct.ncc||""; parsed.phone=ct.phone||""; parsed.email=ct.email||""; }
           }
           ocrUsed=true;
         }catch(ocrErr){
@@ -3579,12 +3579,12 @@ async function fneLoadFiles(files){
       } else {
         parsed=fneParseTextToObj(fullText, f.name);
       }
-      var contactMissing = !!(parsed.ncc && parsed.items.length>0) && (!parsed.phone || !parsed.email);
+      var contactMissing = (parsed.items.length>0) && (!parsed.ncc || !parsed.phone || !parsed.email);
       var entry={
         idx: fneBatchQueue.length+1,
         fileName: f.name,
         ncc: parsed.ncc,
-        code: parsed.code||parsed.ncc,
+        code: parsed.code||"",
         company: parsed.company,
         footer: parsed.footer,
         bl: parsed.bl||"",
@@ -3593,14 +3593,14 @@ async function fneLoadFiles(files){
         email: parsed.email||"",
         items: parsed.items,
         totalHt: parsed.items.reduce(function(s,it){return s+(it.qty*it.price);},0),
-        parseOk: parsed.ncc&&parsed.items.length>0,
+        parseOk: parsed.items.length>0,
         ocr: ocrUsed,
         noText: noText && !ocrUsed,
         parseErr: (noText && !ocrUsed) ? "PDF sans texte (vectoris\u00e9/scann\u00e9) \u2014 illisible automatiquement. Utilisez le PDF d'origine (avec texte) ou saisie manuelle."
-                  : (ocrUsed && !(parsed.ncc&&parsed.items.length>0)) ? "OCR : lecture incompl\u00e8te \u2014 v\u00e9rifiez/saisissez manuellement."
-                  : ((!parsed.ncc?"NCC manquant ":"")+(!parsed.items.length?"Aucun article":"")),
+                  : (ocrUsed && parsed.items.length===0) ? "OCR : lecture incompl\u00e8te \u2014 v\u00e9rifiez/saisissez manuellement."
+                  : (parsed.items.length===0 ? "Aucun article" : ""),
         contactMissing: contactMissing,
-        contactErr: contactMissing ? ((!parsed.phone?"t\u00e9l\u00e9phone ":"")+(!parsed.email?"email":"")).trim()+" manquant" : "",
+        contactErr: contactMissing ? (((!parsed.ncc?"NCC ":"")+(!parsed.phone?"t\u00e9l ":"")+(!parsed.email?"email":"")).trim()+" \u00e0 compl\u00e9ter") : "",
         status: "pending",
         fneNum: ""
       };
@@ -3633,7 +3633,7 @@ function fneParseTextToObj(txt, fileName){
   // --- NCC (code client CI.../DK...) : juste apres le II..., pour eviter le RIB en pied de page ---
   var afterInv=mInv?txt.slice(txt.indexOf(inv)+inv.length):txt;
   var mc=afterInv.match(/(CI\d{3,12}|DK\d{5,12})/)||txt.match(/(CI\d{3,12}|DK\d{5,12})/);
-  if(mc)r.ncc=mc[1];
+  if(mc)r.code=mc[1];   // code client CI.../DK... (identifiant pour le rapprochement, ce n'est PAS le NCC)
 
   // --- Reference (Our Reference) = prefixe du nom de fichier (le plus fiable) ---
   var ref="";
@@ -3688,12 +3688,11 @@ function fneParseTextToObj(txt, fileName){
     }
   }
 
-  // --- Contacts : base uploadee PRIORITAIRE (NCC + tel + email), puis MDM ---
-  var parsedCode=r.ncc;   // code CI... lu sur la facture
-  r.code=parsedCode;      // conserve le code brut (pour re-appliquer les contacts sans relire le PDF)
+  // --- Contacts : le NCC + tel + email viennent de la base uploadee (colonne NCC), keyee par code client ---
+  var parsedCode=r.code;   // code client CI... lu sur la facture (sert au rapprochement)
   var ct=(typeof fneContactLookup==="function")?fneContactLookup(parsedCode,r.company):null;
   if(ct){
-    if(ct.ncc)r.ncc=ct.ncc;        // precision Ivan : on prend TOUJOURS le NCC du fichier d'abord
+    r.ncc=ct.ncc||"";             // NCC = champ "NCC" du fichier de base (jamais le code CI)
     r.phone=ct.phone||"";
     r.email=ct.email||"";
   }else if(typeof CL!=="undefined"&&CL){
@@ -3728,20 +3727,25 @@ function fneRenderQueue(){
     }else if(e.status==="error"){
       statusBadge='<span style="padding:3px 8px;background:#dc2626;color:#fff;border-radius:4px;font-size:11px;font-weight:700">ERR</span>';
     }else if(e.contactMissing){
-      statusBadge='<span style="padding:3px 8px;background:#b45309;color:#fff;border-radius:4px;font-size:11px;font-weight:700" title="'+(e.contactErr||"contact manquant")+' \u2014 mise de c\u00f4t\u00e9, \u00e0 compl\u00e9ter (base contacts) ou \u00e0 saisir manuellement">CONTACT ?</span>'+(e.ocr?' <span style="padding:3px 6px;background:#7c3aed;color:#fff;border-radius:4px;font-size:10px;font-weight:700" title="Lue par OCR \u2014 v\u00e9rifiez montants/NCC/codes">OCR \u26a0</span>':'');
+      statusBadge='<span style="padding:3px 8px;background:#b45309;color:#fff;border-radius:4px;font-size:11px;font-weight:700" title="'+(e.contactErr||"\u00e0 compl\u00e9ter")+' \u2014 compl\u00e9tez directement les cases (NCC/t\u00e9l/email) : la base est enrichie automatiquement">\u00c0 COMPL\u00c9TER</span>'+(e.ocr?' <span style="padding:3px 6px;background:#7c3aed;color:#fff;border-radius:4px;font-size:10px;font-weight:700" title="Lue par OCR \u2014 v\u00e9rifiez montants/NCC/codes">OCR \u26a0</span>':'');
     }else if(e.ocr){
       statusBadge='<span style="padding:3px 8px;background:#7c3aed;color:#fff;border-radius:4px;font-size:11px;font-weight:700" title="Facture lue par OCR (PDF sans texte) \u2014 v\u00e9rifiez les montants, le NCC et les codes avant envoi. Vous pouvez la retirer si besoin.">OCR \u26a0 V\u00c9RIFIER</span>';
     }else{
       statusBadge='<span style="padding:3px 8px;background:#94a3b8;color:#fff;border-radius:4px;font-size:11px;font-weight:700">PR\u00caT</span>';
     }
     var rowTint = e.contactMissing?';background:rgba(180,83,9,.10)':(e.ocr?';background:rgba(124,58,237,.10)':'');
-    var contactCell = e.parseOk ? ((e.phone||"-")+'<br><span style="color:var(--txt3)">'+(e.email||"-")+'</span>') : '-';
+    var nccCell = e.parseOk
+      ? '<input value="'+escAttr(e.ncc||"")+'" placeholder="NCC" onchange="fneEditEntry('+i+',\'ncc\',this.value)" style="width:108px;font-family:monospace;font-size:11px;padding:3px 5px;background:var(--void);border:1px solid '+(e.ncc?'var(--ice-line2)':'#b45309')+';border-radius:4px;color:var(--crystal)">'
+      : (e.ncc||"-");
+    var contactCell = e.parseOk
+      ? '<input value="'+escAttr(e.phone||"")+'" placeholder="t\u00e9l" onchange="fneEditEntry('+i+',\'phone\',this.value)" style="width:96px;font-size:10px;padding:2px 4px;margin-bottom:3px;background:var(--void);border:1px solid '+(e.phone?'var(--ice-line2)':'#b45309')+';border-radius:4px;color:var(--crystal)"><br><input value="'+escAttr(e.email||"")+'" placeholder="email" onchange="fneEditEntry('+i+',\'email\',this.value)" style="width:140px;font-size:10px;padding:2px 4px;background:var(--void);border:1px solid '+(e.email?'var(--ice-line2)':'#b45309')+';border-radius:4px;color:var(--crystal)">'
+      : '-';
     return '<tr style="border-bottom:1px solid var(--ice-line2)'+rowTint+'">'
       +'<td style="padding:6px 8px">'+e.idx+'</td>'
       +'<td style="padding:6px 8px;font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e.fileName+'">'+e.fileName+'</td>'
-      +'<td style="padding:6px 8px;font-family:monospace">'+(e.ncc||"-")+'</td>'
+      +'<td style="padding:6px 8px">'+nccCell+'</td>'
       +'<td style="padding:6px 8px;font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(e.company||"-")+'</td>'
-      +'<td style="padding:6px 8px;font-size:10px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+contactCell+'</td>'
+      +'<td style="padding:6px 8px;font-size:10px;max-width:160px">'+contactCell+'</td>'
       +'<td style="padding:6px 8px;text-align:center">'+(e.items?e.items.length:0)+'</td>'
       +'<td style="padding:6px 8px;text-align:right">'+fneFmtMoney(e.totalHt)+'</td>'
       +'<td style="padding:6px 8px;text-align:center">'+statusBadge+'</td>'
@@ -3750,12 +3754,36 @@ function fneRenderQueue(){
   }).join("");
   var miss=fneBatchQueue.filter(function(e){return e.contactMissing;}).length;
   var mb=$("fneContactMissingNote");
-  if(mb){ if(miss){ mb.classList.remove("hid"); mb.innerHTML='\u26a0 '+miss+' facture(s) sans t\u00e9l/email : mises de c\u00f4t\u00e9 (non envoy\u00e9es). Ajoutez ces clients dans la base contacts ci-dessus puis rechargez les PDFs, ou saisissez-les manuellement sur le portail.'; } else { mb.classList.add("hid"); } }
+  if(mb){ if(miss){ mb.classList.remove("hid"); mb.innerHTML='\u270f\ufe0f '+miss+' facture(s) \u00e0 compl\u00e9ter (NCC, t\u00e9l ou email). \u00c9ditez directement les cases en orange ci-dessus \u2014 la saisie enrichit la base contacts pour les prochaines fois. Aucune facture n\'est bloqu\u00e9e.'; } else { mb.classList.add("hid"); } }
   var nocr=fneBatchQueue.filter(function(e){return e.ocr;}).length;
   var ob=$("fneOcrNote");
   if(ob){ if(nocr){ ob.classList.remove("hid"); ob.innerHTML='\ud83d\udd0d '+nocr+' facture(s) lue(s) par <strong>OCR</strong> (PDF sans texte). L\'OCR peut se tromper sur les <strong>montants, le NCC et les codes</strong> \u2014 v\u00e9rifiez chaque ligne violette avant l\'envoi. Si possible, pr\u00e9f\u00e9rez le PDF d\'origine (avec texte). Vous pouvez retirer une facture avec \u00d7.'; } else { ob.classList.add("hid"); } }
 }
 
+function fneEditEntry(i, field, val){
+  var e=fneBatchQueue[i]; if(!e) return;
+  e[field]=(val||"").trim();
+  // enrichit la base contacts (keyee par code client) pour les prochaines factures
+  if(e.code){ fneUpsertContact(e.code, {ncc:e.ncc, phone:e.phone, email:e.email, nom:e.company}); }
+  e.contactMissing=!e.ncc||!e.phone||!e.email;
+  e.contactErr=e.contactMissing?(((!e.ncc?"NCC ":"")+(!e.phone?"t\u00e9l ":"")+(!e.email?"email":"")).trim()+" \u00e0 compl\u00e9ter"):"";
+  fneRenderQueue();
+}
+function fneUpsertContact(code, data){
+  if(!code) return;
+  var list=FNE_CONTACTS.list.slice();
+  var k=fneNormKey(code), found=null;
+  for(var j=0;j<list.length;j++){ if(fneNormKey(list[j].code||list[j].ncc)===k){ found=list[j]; break; } }
+  if(found){
+    if(data.ncc) found.ncc=data.ncc;
+    if(data.phone) found.phone=data.phone;
+    if(data.email) found.email=data.email;
+    if(data.nom && !found.nom) found.nom=data.nom;
+  }else{
+    list.push({ code:code, ncc:data.ncc||"", phone:data.phone||"", email:data.email||"", nom:data.nom||"" });
+  }
+  fneContactsSave(list);   // persiste en localStorage + reconstruit les index + rafraichit la base
+}
 function fneRemoveFromQueue(i){
   if(!confirm("Retirer ce PDF de la file ?"))return;
   fneBatchQueue.splice(i,1);
@@ -3764,16 +3792,16 @@ function fneRemoveFromQueue(i){
 }
 
 function fneStartBatch(){
-  var pending=fneBatchQueue.filter(function(e){return e.parseOk&&!e.contactMissing&&e.status==="pending";});
-  var setAside=fneBatchQueue.filter(function(e){return e.parseOk&&e.contactMissing;}).length;
+  var pending=fneBatchQueue.filter(function(e){return e.parseOk&&e.status==="pending";});
+  var incomplete=pending.filter(function(e){return e.contactMissing;}).length;
   if(!pending.length){
-    alert("Aucune facture pr\u00eate \u00e0 envoyer."+(setAside?("\n\n"+setAside+" facture(s) sont mises de c\u00f4t\u00e9 (t\u00e9l/email manquant). Ajoutez ces clients dans la base contacts puis rechargez les PDFs."):""));
+    alert("Aucune facture pr\u00eate \u00e0 envoyer.");
     return;
   }
   var msg="D\u00e9marrer le batch de "+pending.length+" facture(s) FNE ? Ces factures seront cr\u00e9\u00e9es de mani\u00e8re IRR\u00c9VERSIBLE sur le portail DGI.";
   var nOcr=pending.filter(function(e){return e.ocr;}).length;
   if(nOcr) msg+="\n\n\u26a0 "+nOcr+" facture(s) ont \u00e9t\u00e9 lue(s) par OCR (PDF sans texte). L'OCR peut se tromper sur les montants, le NCC ou les codes. V\u00c9RIFIEZ-les avant de continuer (ou retirez-les de la file avec \u00d7).";
-  if(setAside) msg+="\n\n\u26a0 "+setAside+" facture(s) sans t\u00e9l/email NE seront PAS envoy\u00e9es (\u00e0 compl\u00e9ter via la base contacts ou manuellement).";
+  if(incomplete) msg+="\n\n\u270f\ufe0f "+incomplete+" facture(s) ont encore un NCC, t\u00e9l ou email vide. Compl\u00e9tez les cases en orange si besoin \u2014 elles seront tout de m\u00eame envoy\u00e9es.";
   if(!confirm(msg)){
     return;
   }
@@ -4155,9 +4183,9 @@ function fneBuildBookmarklet(){
         if(b.state !== "running"){ setStatus("Arr\u00eat\u00e9 (relancez \u00ab Pr\u00e9parer le batch \u00bb dans IVAN)"); stopped = true; busy = false; return; }
         var q = b.queue || [];
         var ok = q.filter(function(e){ return e.status==="success"; }).length;
-        var pendIdx = q.findIndex(function(e){ return e.parseOk && !e.contactMissing && e.status==="pending"; });
-        var subgIdx = q.findIndex(function(e){ return e.parseOk && !e.contactMissing && e.status==="submitting"; });
-        function morePending(){ return q.some(function(e){ return e.parseOk && !e.contactMissing && e.status==="pending"; }); }
+        var pendIdx = q.findIndex(function(e){ return e.parseOk && e.status==="pending"; });
+        var subgIdx = q.findIndex(function(e){ return e.parseOk && e.status==="submitting"; });
+        function morePending(){ return q.some(function(e){ return e.parseOk && e.status==="pending"; }); }
         function finishIfDone(){ if(!morePending()){ b.state="done"; putBatch(b); stopped=true; setDoneUI(); setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9e(s))"); alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); return true; } return false; }
         if(pendIdx<0 && subgIdx<0){ b.state="done"; putBatch(b); setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9es)"); setDoneUI(); stopped=true; busy=false; alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); return; }
 
