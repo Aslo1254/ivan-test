@@ -1679,6 +1679,7 @@ var PAGE_TITLES = {
   queue:["File de g\u00e9n\u00e9ration","Factures en attente de t\u00e9l\u00e9chargement"],
   bp:["Business Partners","Base clients et comptes contrat"],
   upload:["Imports","Synchronisation et import de donn\u00e9es"],
+  manifest:["Facturation par manifeste","Facturez tout un manifeste \u00e0 l'avance \u2014 import comme export"],
   accounts:["Comptes","Gestion des utilisateurs"],
   aide:["Aide","Mode d'emploi"]
 };
@@ -1709,23 +1710,30 @@ function applyAccess(){
 }
 function sw(t){
   if(!canAccess(t)){ t="home"; }   // garde d'accès centralisée
+  // 1) Titre EN PREMIER (repli sur le libellé du menu si non défini) — change instantanément d'un onglet à l'autre
+  var pt = PAGE_TITLES[t];
+  if($("pageTitle")){
+    if(pt){ $("pageTitle").textContent = pt[0]; if($("pageSub")) $("pageSub").textContent = pt[1]; }
+    else { var _sbl=document.querySelector('.sb-item[data-tab="'+t+'"] .sb-nav-label'); if(_sbl) $("pageTitle").textContent = _sbl.textContent.trim(); if($("pageSub")) $("pageSub").textContent = ""; }
+  }
+  // 2) Bascule des panneaux + menu
   ["home","invoice","echange","queue","bp","upload","manifest","accounts","aide","dashboard","history","fne"].forEach(function(x){
     var el = $("tab-"+x); if(el) el.classList.toggle("hid", x!==t);
     var sb = document.querySelector('.sb-item[data-tab="'+x+'"]'); if(sb) sb.classList.toggle("on", x===t);
   });
-  // Contextual page title
-  var pt = PAGE_TITLES[t];
-  if(pt){ if($("pageTitle")) $("pageTitle").textContent = pt[0]; if($("pageSub")) $("pageSub").textContent = pt[1]; }
-  if(t==="echange") initEchange();
-  if(t==="home") renderHome();
-  if(t==="invoice"){ _factStep=0; renderFactStepper(); updateFactRecap(); }
-  if(t==="dashboard") renderDashboard();
-  if(t==="history") renderHistory();
-  if(t==="fne") initFneTab();
-  if(t==="bp") bpRenderTable("");
-  if(t==="accounts"){ renderAccounts(); renderNewPerms(); updStorageInfo(); }
-  if(t==="queue") loadQueue();
-  if(t==="manifest") initManifest();
+  // 3) Init différée d'un tick : le titre et le panneau s'affichent tout de suite, le contenu se remplit juste après
+  setTimeout(function(){
+    if(t==="echange") initEchange();
+    if(t==="home") renderHome();
+    if(t==="invoice"){ _factStep=0; renderFactStepper(); updateFactRecap(); }
+    if(t==="dashboard") renderDashboard();
+    if(t==="history") renderHistory();
+    if(t==="fne") initFneTab();
+    if(t==="bp") bpRenderTable("");
+    if(t==="accounts"){ renderAccounts(); renderNewPerms(); updStorageInfo(); }
+    if(t==="queue") loadQueue();
+    if(t==="manifest") initManifest();
+  }, 0);
 }
 function toggleSidebar(){
   var sb=$("sidebar"); if(sb) sb.classList.toggle("collapsed");
@@ -4394,15 +4402,15 @@ function fneBuildBookmarklet(){
             // 2) Pas encore de nouveau n° : on patiente (compteur PERSISTE sur le serveur).
             if(formReady()){
               sinv._subTries = (sinv._subTries||0) + 1;
-              if(sinv._subTries < 8){
-                log("facture "+sinv.idx+" : attente confirmation cr\u00e9ation ("+sinv._subTries+"/8)");
-                setStatus("V\u00e9rification cr\u00e9ation facture "+sinv.idx+"\u2026 ("+sinv._subTries+"/8)");
+              if(sinv._subTries < 30){
+                log("facture "+sinv.idx+" : attente confirmation cr\u00e9ation ("+sinv._subTries+"/30)");
+                setStatus("V\u00e9rification cr\u00e9ation facture "+sinv.idx+"\u2026 ("+sinv._subTries+"/30)");
                 putBatch(b).then(function(){ busy=false; }).catch(function(){ busy=false; });
                 return;
               }
               // 3) Toujours rien apres 8 essais : on NE DEVINE PAS. Pause + message clair (anti-doublon, anti-fausse erreur).
               b.state="paused";
-              log("facture "+sinv.idx+" : cr\u00e9ation non confirm\u00e9e apr\u00e8s 8 essais \u2192 PAUSE (pas de re-soumission)");
+              log("facture "+sinv.idx+" : cr\u00e9ation non confirm\u00e9e apr\u00e8s 30 essais \u2192 PAUSE (pas de re-soumission)");
               putBatch(b).then(function(){
                 setStatus("\u23f8 Facture "+sinv.idx+" soumise mais cr\u00e9ation non confirm\u00e9e. <b>V\u00e9rifiez la liste \u00ab Mes Factures et re\u00e7us \u00bb</b> : si elle y est, retirez-la de la file dans IVAN puis relancez le reste ; sinon relancez. (Aucune re-soumission auto pour \u00e9viter les doublons.)");
                 stopped=true; busy=false;
@@ -4460,16 +4468,16 @@ function fneBuildBookmarklet(){
               }).catch(function(){ busy=false; });
             } else {
               inv._numTries = (inv._numTries||0)+1;
-              if(inv._numTries>=12){
+              if(inv._numTries>=40){
                 if(!prevNums) prevNums={}; cur.forEach(function(n){ prevNums[n]=1; });
                 inv.fneNum="(cr\u00e9\u00e9e \u2014 n\u00b0 \u00e0 relever)"; inv.status="success"; ok++; processedSinceLastPause++;
-                log("facture "+inv.idx+" : aucun nouveau n\u00b0 apr\u00e8s 12 essais, marqu\u00e9e cr\u00e9\u00e9e");
+                log("facture "+inv.idx+" : aucun nouveau n\u00b0 apr\u00e8s 40 essais, marqu\u00e9e cr\u00e9\u00e9e");
                 putBatch(b).then(function(){
                   if(morePending()){ setStatus("\u2713 "+ok+" (n\u00b0 non lu)"); setTimeout(function(){ if(!clickPlus()){ setStatus("\u26a0 Cliquez \u00ab G\u00e9n\u00e9rer la facture + \u00bb"); } busy=false; }, delay); }
                   else { if(!finishIfDone()) busy=false; else busy=false; }
                 }).catch(function(){ busy=false; });
               } else {
-                setStatus("Facture cr\u00e9\u00e9e, lecture du n\u00b0 FNE... ("+inv._numTries+"/12)");
+                setStatus("Facture cr\u00e9\u00e9e, lecture du n\u00b0 FNE... ("+inv._numTries+"/40)");
                 putBatch(b).then(function(){ busy=false; }).catch(function(){ busy=false; });
               }
             }
@@ -4911,7 +4919,7 @@ var _manCommMatches = {};      // i -> matches marchandise
 function manNormName(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,28); }
 function manPartyKey(name){ return MAN_TARGET+":"+manNormName(name); }
 function manClean(s){ return String(s||"").replace(/_x000D_/g,"").replace(/[\r\n]+/g," ").replace(/\s+/g," ").trim(); }
-function manTonnes(kg){ return Math.round((kg/1000)*1000)/1000; }
+function manTonnes(kg){ return Math.ceil((parseFloat(kg)||0)/1000); }
 function manDetectSubtype(desc){ var d=String(desc||""); return (/transit/i.test(d) && MAN_LANDLOCK.test(d)) ? "transit" : "echange"; }
 function manFmt(n){ return (parseFloat(n)||0).toLocaleString("fr-FR"); }
 
@@ -5150,7 +5158,7 @@ function manGenerate(){
       weight:r.tonnes, commodities:[{code:r.commodityCode, weight:r.tonnes}],
       expMode:(MAN_IO==="O"), expCat:"PAS_PROPRE" };
     apiCall("/generate",{method:"POST",body:{echangeCharges:params}}).then(function(res){
-      var lines=(res.lines||[]).map(function(l){ return {code:l.code,desc:l.desc,bit:l.bit||"COFR",qty:l.qty,rate:l.rate,unit:l.unit||"EA"}; });
+      var lines=(res.lines||[]).filter(function(l){ return l.redevance; }).map(function(l){ return {code:l.code,desc:l.desc,bit:l.bit||"COFR",qty:l.qty,rate:l.rate,unit:l.unit||"EA"}; });
       payloads.push(manBuildPayload(r,lines,theDate));
       idx++; next();
     }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} info.textContent="Erreur charges BL "+r.bl+" : "+((e&&e.error)||"serveur"); });
