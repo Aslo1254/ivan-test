@@ -84,6 +84,7 @@ textarea.ip{resize:vertical;min-height:70px}
 .bt-ice{background:var(--grad-ice);color:var(--void);font-weight:700;box-shadow:0 4px 20px rgba(56,189,248,.3)}
 .bt-ice:hover{box-shadow:0 6px 28px rgba(56,189,248,.5);transform:translateY(-1px)}
 .bt-ghost{background:transparent;color:var(--frost);border:1px solid var(--steel2)}
+.bt-ghost.on{background:var(--grad-ice);color:var(--void);border-color:transparent;font-weight:700;box-shadow:0 0 18px rgba(56,189,248,.3)}
 .bt-ghost:hover{background:rgba(56,189,248,.08);border-color:var(--glow)}
 .bt:disabled{opacity:.4;cursor:not-allowed;transform:none}
 
@@ -380,6 +381,7 @@ textarea.ip{resize:vertical;min-height:70px}
       <div class="sb-item" data-tab="queue" data-acc="queue" style="display:none" onclick="sw('queue')"><span class="sb-ic">&#9783;</span><span class="sb-nav-label">File</span><span id="queueBadge" class="pill pill-frost" style="margin-left:auto;display:none">0</span></div>
       <div class="sb-item" data-tab="bp" data-acc="bp" style="display:none" onclick="sw('bp')"><span class="sb-ic">&#9819;</span><span class="sb-nav-label">Business Partners</span></div>
       <div class="sb-item" data-tab="upload" data-acc="upload" style="display:none" onclick="sw('upload')"><span class="sb-ic">&#11014;</span><span class="sb-nav-label">Imports</span></div>
+      <div class="sb-item" data-tab="manifest" data-acc="manifest" style="display:none" onclick="sw('manifest')"><span class="sb-ic">&#128203;</span><span class="sb-nav-label">Manifeste</span></div>
       <div class="sb-item" data-tab="accounts" data-mgr="1" onclick="sw('accounts')" style="display:none"><span class="sb-ic">&#9881;</span><span class="sb-nav-label">Comptes</span></div>
       <div class="sb-item" data-tab="aide" onclick="sw('aide')"><span class="sb-ic">&#9432;</span><span class="sb-nav-label">Aide</span></div>
     </nav>
@@ -866,6 +868,53 @@ textarea.ip{resize:vertical;min-height:70px}
     </div>
   </div>
 
+  <!-- ============ MANIFESTE TAB ============ -->
+  <div id="tab-manifest" class="hid">
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> Facturation par manifeste</div>
+      <p style="color:var(--txt2);font-size:13px;margin:-6px 0 16px;line-height:1.5">Facturez tout un manifeste à l'avance : IVAN S4 regroupe par BL (conteneurs 20'/40', tonnage, marchandise), détecte le sous-type, et génère un <strong>CSV combiné</strong> via le moteur Échange (sortie identique au flux validé). Import comme export.</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+        <div>
+          <label class="lb">Sens</label>
+          <div style="display:flex;gap:6px"><button id="manIO-I" class="bt bt-ghost on" onclick="manSetIO('I')">Import</button><button id="manIO-O" class="bt bt-ghost" onclick="manSetIO('O')">Export</button></div>
+        </div>
+        <div>
+          <label class="lb">Facturer</label>
+          <div style="display:flex;gap:6px"><button id="manTg-final" class="bt bt-ghost on" onclick="manSetTarget('final')">Client final</button><button id="manTg-transit" class="bt bt-ghost" onclick="manSetTarget('transit')">Transitaire</button></div>
+        </div>
+        <div style="width:200px">
+          <label class="lb">Date prévue (arrivée / départ)</label>
+          <input class="ip" id="manDate" type="date" onchange="manSaveDraft()">
+        </div>
+      </div>
+      <div id="manTargetNote" style="font-size:12px;color:var(--txt2);background:var(--void);border:1px solid var(--ice-line);border-radius:8px;padding:10px;margin-bottom:16px"></div>
+      <input type="file" id="manFileInput" accept=".xlsx,.xls" style="display:none" onchange="manUpload(this.files[0])">
+      <button class="bt bt-ice" onclick="document.getElementById('manFileInput').click()">&#11014; Charger le rapport de manifeste (.xlsx)</button>
+      <div id="manParseInfo" class="hid" style="font-size:12px;color:var(--txt2);margin-top:12px"></div>
+    </div>
+
+    <div id="manResultArea" class="hid">
+      <div class="cd">
+        <div id="manStats" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px"></div>
+      </div>
+      <div class="cd">
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="border-bottom:2px solid var(--ice-line2);text-align:left;color:var(--frost)">
+              <th style="padding:6px 8px">BL</th><th style="padding:6px 8px;text-align:center">Conteneurs</th><th style="padding:6px 8px;text-align:right">Tonnes</th><th style="padding:6px 8px">Client final</th><th style="padding:6px 8px">Marchandise &rarr; code</th><th style="padding:6px 8px">Sous-type</th><th style="padding:6px 8px">Partie à facturer</th><th style="padding:6px 8px;text-align:center">&#10003;</th>
+            </tr></thead>
+            <tbody id="manTableBody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap">
+          <button class="bt bt-ice" onclick="manGenerate()">Générer le lot (CSV combiné)</button>
+          <button class="bt bt-ghost" onclick="manClearDraft()">Vider</button>
+          <span id="manGenInfo" style="font-size:12px;color:var(--txt2)"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ============ ACCOUNTS TAB (manager only) ============ -->
   <div id="tab-accounts" class="hid">
     <div class="cd">
@@ -1084,6 +1133,22 @@ textarea.ip{resize:vertical;min-height:70px}
         <button class="bt" onclick="fneContactsClear()" style="font-size:13px;background:var(--panel2);border:1px solid var(--ice-line2);color:#dc2626">&#128465; Vider</button>
         <span id="fneContactsCount" style="font-size:12px;color:var(--frost);font-weight:600;margin-left:4px"></span>
       </div>
+      <div style="margin-top:14px;padding:14px;background:var(--void);border:1px solid var(--ice-line2);border-radius:10px">
+        <div style="font-size:13px;font-weight:700;color:var(--frost);margin-bottom:10px">&#10133; Ajouter / mettre &agrave; jour un client</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+          <input class="ip mono" id="fneCcCode" placeholder="Code client (CI...)" autocomplete="off" style="font-size:13px">
+          <input class="ip" id="fneCcNom" placeholder="Entreprise / nom" autocomplete="off" style="font-size:13px">
+          <input class="ip mono" id="fneCcNcc" placeholder="NCC" autocomplete="off" style="font-size:13px">
+          <input class="ip" id="fneCcTel" placeholder="T&eacute;l&eacute;phone" autocomplete="off" style="font-size:13px">
+          <input class="ip" id="fneCcMail" placeholder="Email" autocomplete="off" style="font-size:13px">
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+          <button class="bt bt-ice" onclick="fneContactAddManual()" style="font-size:13px">&#128190; Enregistrer le client</button>
+          <button class="bt" onclick="fneContactFormClear()" style="font-size:13px;background:var(--panel2);border:1px solid var(--ice-line2)">Effacer</button>
+          <span style="font-size:11px;color:var(--txt3)">Le <strong>code client (CI...)</strong> est la cl&eacute; de rapprochement avec les factures.</span>
+        </div>
+      </div>
+      <input class="ip" id="fneContactsSearch" placeholder="Rechercher un client (code, NCC, nom, email...)" oninput="fneContactsRender()" autocomplete="off" style="margin-top:12px;font-size:13px">
       <div id="fneContactsList" style="margin-top:12px"></div>
     </div>
 
@@ -1625,7 +1690,8 @@ var ACCESS_SECTIONS = [
   {k:"history", label:"Historique"},
   {k:"queue",   label:"File"},
   {k:"bp",      label:"Business Partners"},
-  {k:"upload",  label:"Imports"}
+  {k:"upload",  label:"Imports"},
+  {k:"manifest",label:"Manifeste"}
 ];
 function canAccess(section){
   if(!curUser) return false;
@@ -1643,7 +1709,7 @@ function applyAccess(){
 }
 function sw(t){
   if(!canAccess(t)){ t="home"; }   // garde d'accès centralisée
-  ["home","invoice","echange","queue","bp","upload","accounts","aide","dashboard","history","fne"].forEach(function(x){
+  ["home","invoice","echange","queue","bp","upload","manifest","accounts","aide","dashboard","history","fne"].forEach(function(x){
     var el = $("tab-"+x); if(el) el.classList.toggle("hid", x!==t);
     var sb = document.querySelector('.sb-item[data-tab="'+x+'"]'); if(sb) sb.classList.toggle("on", x===t);
   });
@@ -1659,6 +1725,7 @@ function sw(t){
   if(t==="bp") bpRenderTable("");
   if(t==="accounts"){ renderAccounts(); renderNewPerms(); updStorageInfo(); }
   if(t==="queue") loadQueue();
+  if(t==="manifest") initManifest();
 }
 function toggleSidebar(){
   var sb=$("sidebar"); if(sb) sb.classList.toggle("collapsed");
@@ -3313,6 +3380,9 @@ var CL = [{"c":"CI00193587","t":"2721516798","e":"scttsarl9@gmail.com"},{"c":"CI
 const FNE_QUEUE_KEY="ivan_fne_batch_queue";
 
 // ===== Base contacts clients (uploadee) : NCC / tel / email, persistee en localStorage, prioritaire sur le MDM =====
+// ===== Base FNE embarquee (entreprises -> NCC/tel/email, fournie par Ivan). Fusionnee dans la base locale au 1er chargement (par version), sans ecraser les saisies. =====
+var FNE_CONTACT_SEED=[{n:"RAW RESOURCES",t:"0707683357"},{n:"ETABLISSEMENT GNELE",c:"1926580M",t:"0709590990",e:"etsgnele@gmail.com"},{n:"MAERSK A/S",t:"0566770997",e:"naveen.t@maersk.com"},{n:"MAERSK LOGISTICS & SERVICES MALI SA",e:"toure.aminata@damco.com"},{n:"MAERSK MALI",e:"amara.diakite@lns.maersk.com"},{n:"SOCIETE DIAKITE ET FRERES COTE D'IV",t:"0505933367",e:"sodif.ci@yahoo.com"},{n:"S.A.T.D SOCIETE AFRICAINE DE TOLES",t:"0709000057",e:"zvenn2013@yahoo.fr"},{n:"ZAENAB TRANSIT TRANSPORT",e:"z2t.zainab@gmail.com\nbekantikonan01@gmail.com"},{n:"SOCOCIB",e:"magasin312@gmail.com"},{n:"SITRADEX",t:"0757665511",e:"adjoumani.aga@gmail.com"},{n:"MAERSK LOGISTICS & SERVICES DENMARK",e:"scm.export@lns.maersk.com"},{n:"KANI MAGASSOUBA",t:"0777893962"},{n:"IMEX CORPORATE SA",e:"soft.ops@imexcorporate.com"},{n:"EDTCI",e:"edtci@edtci.com"},{n:"MAERSK LOGISTICS AND SERVICES TOGO",e:"ur-tg02@lns.maersk.com"},{n:"RAINBOW AGROSCIENCES SARL",c:"2117434 C",t:"0707839022",e:"omar.coulibaly@rainbowagro.com"},{n:"COMPAGNIE IVOIRIENNE DE LITERIE",t:"0272358256",e:"bendefrederick@gmail.com"},{n:"ETS NIANGLO TRADING",c:"2136128L",t:"0709321227",e:"hnianglo@yahoo.fr"},{n:"MAERSK LINE INDIA PRIVATE LIMITED",e:"anurag.dhiman@maersk.com"},{n:"TIM TIM MARKET",c:"1837236N",t:"0707132091",e:"oyao340@gmail.com"},{n:"BRASSIVOIRE SA",c:"1503101S",e:"CI1.payable@heineken.com"},{n:"IVOIRE BOISSONS SA",c:"1634268J",e:"CI1.payable@heineken.com"},{n:"MAERSK LOGISTICS & SERVICES SENEGAL",e:"marie.pierre.maganga@lns.maersk.com"},{n:"GOOD MARKET ET COMPAGNIE SARL",t:"0545528568"},{n:"MAERSK LOGISTICS & SERVICES BENIN S",e:"bnnlogvas@maersk.com"},{n:"SOCIETE DE COMMERCE ET DE TOUS TRAV",e:"scttsarl2@gmail.com"},{n:"STI ABIDJAN",t:"0788667442"},{n:"HAWA COULIBALY",t:"0702937956"},{n:"MIRACLE TRANSIT & TRANSPORT",t:"0758366377"},{n:"NOUVEAU SOLEIL TRANSPORT CI",t:"0707636629"},{n:"DS TECHNOLOGIE SARL (SAMBA DIALLO)",c:"1521096H",t:"0707166576",e:"diallosamba@live.fr"},{n:"ETABLISSEMENT ST",t:"0505263748"},{n:"IVOIRE AGRO",t:"0565905450"},{n:"MINISTERE DE L'ECONOMIE ET DES FINA",t:"0505460707",e:"baskob3@gmail.com"},{n:"SOCIFAB",e:"daoudakerold58@gmail.com"},{n:"AGRUMEX",c:"2021201W",t:"0709858517",e:"bakarydebako@yahoo.fr"},{n:"AHENKRO TRADING LTD",t:"0101763303"},{n:"BONDOUKOU MANGANESE SA",c:"1103308Q",e:"reception.abidjan@bmsamines.com"},{n:"BOULANGERIE TOP PAIN SARL",t:"0779395393"},{n:"CONSEIL HEVEA PALMIER A HUILE PURGA",c:"1865964U",t:"0707024682",e:"rgoule.chph@outlook.com"},{n:"FIP",c:"7700065P",t:"0788711063",e:"logistique@fipci.com"},{n:"ICOGEF",t:"0707337878"},{n:"MAERSK LINE AGENCY CAMEROUN SA",e:"cmrcusimp@maersk.com"},{n:"MAERSK LOGISTICS & SERVICES NETHERL",e:"nutricia.ct.eu@lns.maersk.com"},{n:"MAMA AFRICA",t:"0142978041"},{n:"NOUVEAU SOLEIL SARL",t:"0707636629"},{n:"NOUVELLE MICI EMBACI",t:"0272124885",e:"ange.outou@nme.com.ci"},{n:"SINOHYDRO CORPORATION LIMITED CI",t:"0757531626"},{n:"SOCIETE N'GOTCHI",t:"0707073811"},{n:"TROPICAL TRANSIT INTER - TTI",t:"0759099849"},{n:"VIDDA INTERNATIONAL SERVICES",t:"0748663735"},{n:"BELYMAS MULTISERVICES IMPORT-EXPORT",c:"2302663E",t:"0708160486",e:"bmc2013@yahoo.fr"},{n:"CONEC CI SARL",c:"2401980S",t:"0708015151",e:"coneci755@gmail.com"},{n:"COTRAF SA",c:"1113051J",t:"0544909090",e:"asthma@hotmail.com"},{n:"FREE LABEL",c:"1840371L",t:"0708762704"},{n:"GROUPE-IMANA SARL",t:"0757328213"},{n:"LITTORAL TRADING ASSOCIATE",e:"info@victory-export.com"},{n:"MAERSK LIBERIA LTD",e:"lr.import@maersk.com"},{n:"SIAD",t:"0778485723"},{n:"ELITE CARRIERE",c:"2301458D",t:"0504390252",e:"djenebou.diallo@elitecarrières.com"},{n:"ZOUNGRANA ISSOUF",c:"4258187C"},{n:"AFRICA GLOBAL LOGISTICS COTE D'IVOI",c:"0101142A",e:"aalinedesiree@gmail.com"},{n:"KARTA TRANSIT SA",c:"2030831J",t:"0101551113",e:"kartatransit@outlook.com"},{n:"SA PACKING SERVICE INTERNATIONAL",c:"7603114Y",t:"0779123991",e:"alioukouassi@packing-service.com"},{n:"AGENCE GENERAL TRANSIT COTE D'IVOIR",c:"1647902C",t:"0709590990",e:"agtrans_ci@yahoo.fr"},{n:"GLOBAL MANUTENTION COTE D'IVOIRE -",c:"0218583H",e:"abou.ouattara@globalmanut.ci"},{n:"MANTRA IVOIRE",c:"4106056U",t:"0585252533",e:"adama.nebie@olamnet.com"},{n:"MAINLAND GROUP RARE RUBBER",c:"1869904D",e:"b.dido@mainlandgroup-rr.ci"},{n:"SUNSTEEL",c:"1725004Z",t:"0749185074",e:"sunsteelcotedivoire@gmail.com"},{n:"TGR",c:"8700036K",e:"j.troa@tgr-ci.com"},{n:"GTCI",c:"9800844Q",e:"andersonakouandi@gmail.com"},{n:"INTER TRANSIT ET SERVICES ITS",c:"1011294Q",e:"behibro98@gmail.com"},{n:"GRANDA LOGISTICS S.A",c:"2300601E",t:"0758061695",e:"commercial.gl@mainland-global.com"},{n:"SOCIETE NOUVELLE ISAK TRANSIT",c:"0804443H",t:"0272135118",e:"societenouvelleisaktransit@gmail.com"},{n:"TAN IVOIRE SARL",c:"4111053M",t:"0272241928",e:"admin2@tanmondial.com"},{n:"TRANSIT TRANSPORT SERVICES -TTS",c:"9413271G",e:"a.akouli@tts-ci.com"},{n:"WORLD WOOD AFRICA",c:"1434509V",t:"0707712682",e:"khermann@worldwoodafrica.com"},{n:"PROFESSIONNEL TRANSIT",c:"1739150R",e:"e.carolle@protransit-ci.com"},{n:"TRANSAKO",c:"0601296J",e:"issoufnonni68@gmail.com"},{n:"STRACOTRANS",c:"1108198F",e:"adangbaetienne@gmail.com"},{n:"SHAZA TRANSIT",c:"1225149H",e:"fadel.amer@shazatransit.com"},{n:"ETS DCAT",c:"4271716A",e:"entrinj@yahoo.fr"},{n:"MOVIS COTE D'IVOIRE S A",c:"7300134G",e:"MELISSA.KOUA@MOVISGROUP.COM"},{n:"SONAL SARL",c:"9502090D",e:"transit@sonalci.com"},{n:"GTCCC",c:"1754855F",t:"0575621561",e:"ashyt.abe@gtccc-ci.com"},{n:"TGA CI",c:"9817464X",t:"0272124258",e:"bile_aka@tga-ci.com"},{n:"SITRACOM",c:"11875V",e:"export@sitracom.net"},{n:"ONYX TRANS",c:"1852442U",t:"0272137848",e:"kouame.c@onyx-hub1.com"},{n:"SOCIETE DE DEDOUANEMENT MARITIME ET",c:"0732282E",e:"alphonse.traore@sdma.ci"},{n:"MEDLOG COTE D'IVOIRE",c:"1108243K",e:"a.attiba@jfhillebrand.com"},{n:"AFRICA SOURCING",c:"0215804C",e:"armajaroci@aviso.ci"},{n:"BALAJI IMPEX SARL U",c:"1863102T",t:"0788060600",e:"kushal_singhal@yahoo.com"},{n:"COOPARES",c:"1349788W",t:"0779046252",e:"bema.diabate@coopares.com"},{n:"PRIME PRESTIGE SARL",c:"1658956K",t:"0768753961",e:"adnaneachirou@gmail.com"},{n:"IVORY BRIDGE TRANSIT - IBT",c:"2238808M",t:"0758765837",e:"asoro@ivorybridgetransit.ci"},{n:"SARL BOWE TRANSIT COTE D'IVOIRE BTC",e:"btcirecuperationtc@gmail.com"},{n:"AFIC LOGISTICS SARL",c:"2045433N",t:"0749726747",e:"rln.gb<rln.gb@aficlogistics.com>"},{n:"ECOTRAM SARL",c:"0902582X",t:"0103808483",e:"daniel.thienpondt@wanadoo.fr"},{n:"FALEX-IMPORT",c:"2245253K",e:"echangefalex@gmail.com"},{n:"SOGENA COTE D'IVOIRE",c:"1750736P",e:"a.ouattara@sogena-ci.com"},{n:"N I G T (NOUVELLE IVOIRE GROUPAGE &",c:"0731392B",t:"0102313233",e:"depieuh@yahoo.fr"},{n:"HOLY PRICE LOGISTICS WORLDWIDE SARL",c:"2035885A",t:"0707402708",e:"orpheekonan5@gmail.com"},{n:"IVOIRE COMMODITY TRANSIT",c:"2244881X",t:"0505844020",e:"bossonjeanjosias@gmail.com"},{n:"SGT",c:"1019772E",t:"0709477534",e:"alsayed73@gmail.com"},{n:"CAMA FRET",c:"9611780R",e:"baloumbapingoin03@gmail.com"},{n:"TRANSIT COSS SARL TCS",c:"1601374L",t:"0272159531",e:"jeandaniel.masund@gmail.com"},{n:"SUD COMOE CAOUTCHOUC",c:"0812126J",t:"0272134345",e:"shippingscc@abosso.com"},{n:"PACIFIQUE TRANSIT IVOIRE",c:"2010607E",t:"0102151569",e:"pacifiqueivoire@gmail.com"},{n:"ATLANTIC TRANSIT",c:"9908471J",e:"atlantic-transit@hotmail.com"},{n:"ISOLDE TRANSIT INTERNATIONAL",c:"1426313P",e:"infos.isolde@gmail.com"},{n:"OPERATIONS TRANSIT LOGISTIQUE ( OTL",c:"1736664D",e:"a.kanga@transit-otl.com"},{n:"AFRICA FORWARDING SERVICES COTE D I",c:"92223E",e:"alisanogo918duplicate@gmail.com"},{n:"SAS CI TRANSIT",c:"0804892U",t:"0709007524",e:"sastransit21@gmail.com"},{n:"TIPHARA SERVICES SARL",c:"'1846032N",t:"0077728228",e:"adele.kande@tipharah.ci"},{n:"SOCAGC SCOOPS",c:"1439750N",e:"achijluc@socagc.com"},{n:"GENERALE DE TRANSIT & SHIPPING",c:"0800389 T",t:"0575868514",e:"gtstransit98@gmail.com"},{n:"E TRANSIT",c:"0617157D",e:"\"ETRANSIT\" <etransit@etransitci.com>"},{n:"TOP TRANSIT",c:"1212118V",e:"bakayoko_babou@live.fr"},{n:"GENERAL TRANSIT ABIDJAN",c:"9611930F",t:"0272125769",e:"benedictetouali@gmail.com"},{n:"OMA LOGISTICS CI",c:"1617358F",e:"agent.logistics@omagroup.com"},{n:"SAPH",c:"0105337H",t:"0709675164",e:"adjab@saph-ci.com"},{n:"BENEDICTION IMPORT-EXPORT",c:"1603869X",t:"0707905045",e:"benediction87@yahoo.fr"},{n:"KAMI TRANSIT",c:"1632931R",e:"blesskass@gmail.com"},{n:"MACSYL TRANSIT SARL",c:"1819373D",t:"0777397442",e:"aminata.citt@gmail.com"},{n:"EMERGENCE TRANSIT",c:"1437124D",e:"alpha.sako23@gmail.com"},{n:"UNILEVER COTE D'IVOIRE",c:"6900765R",e:"aboudramane.ouattara@unilever.com"},{n:"KAME SERVICES PLUS SARL",c:"1924334P",e:"daoudakone738@gmail.com"},{n:"SOCIETE GENERALE DE NEGOCE ABIDJAN",c:"1008471F",t:"0272125499",e:"ediarra@live.fr"},{n:"OUTSPAN",c:"9800049W",e:"akaffou.olivier@ofi.com"},{n:"SOCIETE IVOIRIENNE DE MANUTENTION E",c:"1762H",t:"0272175411",e:"aimee.attoubou@simat.ci"},{n:"NSTT-NOUVEAU SOLEIL TRANSIT ET TRAN",c:"2049680N",t:"0707636629",e:"secretariat@nstt-ci.com"},{n:"SOCIETE AGRICOLE DE CAFE ET DE CACA",c:"1934W",e:"abass.amer@sacc-ci.com"},{n:"MIENSAH TRANSIT ET MANUTENTION COTE",c:"1837705V",t:"0779063469",e:"a.assetoutransit@gmail.com"},{n:"FIRST TRANSIT CORPORATION - FITRACO",c:"2005230F",e:"laetiyao53@gmail.com"},{n:"IVOIRE AGRO LOGISTIQUE IVAL",c:"2052253G",t:"0709781930",e:"ivoireagrologistique@gmail.com"},{n:"GROUPE KELLY",c:"1735180U",t:"0768663949",e:"yaosolange552@gmail.com"},{n:"SICODEF TRANSIT",c:"1619872H",e:"attahouajean.sicodef@gmail.com"},{n:"SUSTAINABLE TECK EXPORT",c:"1438779N",e:"guysezan@ste-ci.com"},{n:"TRANSLOG INTER",c:"1102409D",e:"jose.ouattara@transloginter-ci.com"},{n:"SOCIETE NOUVELLE SOCOCI - SN SOCOCI",c:"2304664L",t:"0701010176",e:"felicite@snsococi.com"},{n:"SIVOP",c:"8504010D",e:"dept.commande@sivop.com"},{n:"STE IVOIRIENNE TRANSIT DEDOUANEMENT",c:"9900215M",e:"adeniran.yannick@yahoo.com"},{n:"SESOCOM",c:"1600115C",t:"0778179203",e:"doc.sesocom@gmail.com"},{n:"SOCIETE DE CONDITIONNEMENT DE CAFE",c:"2024256X",e:"brice.kouadio@scacc.ci"},{n:"COTIPLAST",c:"9104223 B",e:"cotiplastci@gmail.com"},{n:"REUDAN SHIPPING & LOGISTICS SERVICE",c:"2505284C",t:"0575545081",e:"abidjandocs@reudanshipping.com"},{n:"ELITRANS CI",c:"1100461A",t:"0707687365",e:"biscarlos@hotmail.fr"},{n:"EBURLOT (EBURNEENNE DE LOGISTIQUE E",c:"1736089Z",t:"0777040222",e:"doucouremoctar9md@gmail.com"},{n:"ALLO LOGISTIQUE",c:"1817610V",t:"0708525312",e:"info@allologistique.com"},{n:"GLOBAL LOGISTICS & CONSULTING",c:"1800278Y",t:"0707757139",e:"e.djoue@global-logistics-consulting.com"},{n:"ETS DUVICK",c:"675741Y",e:"agekouame@yahoo.fr"},{n:"GROUP LOGISTICS & TRANSIT COTE D'IV",c:"2304483M",t:"0757665511",e:"gltci.shipping@gmail.com"},{n:"EBURNEA TRANSIT ET SERVICE",c:"9815723Y",e:"ebutrans225@gmail.com"},{n:"IVORY COCOA PRODUCTS",c:"1100563G",e:"aikhalil@ivorycocoa.ci"},{n:"FISH & MEAT SA",c:"0418417T",t:"0272125884",e:"bahkouamedenis@yahoo.com"},{n:"RUDRA IMPEX",c:"2201797D",t:"0506738296",e:"info.balajiimpex13@gmail.com"},{n:"SOCIETE DE ORIGINLIFE SARL",c:"2302560G",t:"0708762704",e:"societeoriginlife@224gmail.com"},{n:"SOCIETE DE TRANSIT GENERAL (STG)",c:"1200225R",e:"amoussabd38@gmail.com"},{n:"MOI FOODS IVORY COAST LIMITED",c:"1423577P",t:"0055466452",e:"geetha@mewahgroup.com"},{n:"LA TULIPE FOOD",c:"1840412W",e:"support@latulipefood.ci"},{n:"2I TRANSIT - IVOIRE INTERNATIONAL T",c:"'1754702N",t:"0505596925",e:"2itransit@2itransit.com"},{n:"MASSOUK LOGISTIQUES",c:"1940193X",t:"0568255527",e:"aboi.somian@massouklog.com"},{n:"IMPROCI SARL IMP ET EXP",c:"1103936M",t:"0707087777",e:"abenanathanase155@gmail.com"},{n:"JUST INVEST",c:"2243407E",t:"0758593217",e:"justinvest.civ@gmail.com"},{n:"LTA(LAGUNE TRANSIT ABIDJAN)",c:"9103664L",t:"0272125119",e:"adimel.f-texp@lta.ci"},{n:"IVOIRIENNE DE TRANSIT ET DE MANUTEN",c:"9803947E",e:"itmagence@gmail.com"},{n:"SAHELIAN FORWARDING COMPANY - SFC",c:"2038865Y",t:"0134711929",e:"cissehamidou442@gmail.com"},{n:"COMPTOIR GENERAL DE TRANSIT (CGT)",c:"2052543T",e:"comptoirgeneraltransit@gmail.com"},{n:"SDCI",c:"1715838X",t:"0272246135",e:"Ouattara.Lassina@halcyonagri.com"},{n:"WORLD TRANSIT",c:"12486R",e:"ahui.alla@worldtransit-ci.com"},{n:"KANAUTRANS",c:"1103878 B",e:"olea@umaline.com"},{n:"MEDITERRANEAN CARGO COMPAGNY",c:"1447816M",e:"kouassi.tibet@mc2-ci.net"},{n:"APMT INLAND SERVICES COTE D IVOIRE",c:"2048658S",t:"0767436867",e:"arnaud.beda@apmterminals.com"},{n:"CHALLENGE AFRICAP TRANSIT",c:"1611913J",t:"0707420105",e:"africchallenge@gmail.com"},{n:"COTIERE TRANSIT ET MANUTENTION",c:"1967074Z",t:"0707315472",e:"anderson.gore@yahoo.fr"},{n:"NAFCO IMMEUBLE YARA",c:"2300035N",t:"0799894117",e:"aljawadtransit@gmail.com"},{n:"TRANSINTER",c:"9602989P",t:"0757941640",e:"assahoureelise@gmail.com"},{n:"ETS YANZUI",c:"1109022S",t:"0252114464",e:"gnebeyouandrecyrille@yahoo.fr"},{n:"SOUM CARGO TRANSIT",c:"1725737T",e:"damienanselme59@gmail.com"},{n:"SUTEC",c:"1544858G",e:"aka.thomas@sutec-ci.com"},{n:"KEDA COTE DIVOIRE COMPANY CERAMICS",c:"2006159D",t:"0574307198",e:"cote-ceramique@twyfordtile.com"},{n:"UNION TRANSIT INTERNATIONAL",c:"1600832B",e:"ismaelpefory@gmail.com"},{n:"EPAGRO ANIASSUE",c:"1830080X",t:"0707993875",e:"georgesarnold94@gmail.com"},{n:"KONATRANS LOGISTICS",c:"1747363J",e:"diabatekonatrans@gmail.com"},{n:"UNICEF ABIDJAN",c:"9102822S",t:"0272121185",e:"lkoffi@unicef.org"},{n:"ROCA BIANCA",c:"1020231V",e:"ettien.vera@roca-bianca.com"},{n:"ZARA TRANSIT",c:"'0906180C",t:"0272124282",e:"abdoulaye.coulibaly@zaratransit.com"},{n:"SERVICE TRANSIT INTER STI",c:"1818426J",e:"contact@transit-inter.com"},{n:"SOCIETE AFRICAINE DE PRESTATION ET",c:"1239611F",t:"0779238525",e:"lassitogo@gmail.com"},{n:"INTEGRAL LOGISTICS AGENCY",c:"0919997X",e:"integralogistics2@gmail.com"},{n:"SOCIAM",c:"0175265N",e:"eaplean@sociam.net"},{n:"CAPEWEST LOGISTICS COTE D'IVOIRE",c:"1619996W",t:"0272125343",e:"aco@capewest-logistics.com"},{n:"INTERNATIONAL KATEL TRANSIT SERVICE",c:"1110471V",e:"baboyves@ikts.net"},{n:"SOCIETE DE TRANSIT IVOIRO-BURKINABE",c:"0719441Q",e:"magasin312@gmail.com"},{n:"DROCOLOR SARL",c:"7700994G",t:"0272124243",e:"agneroakatiisidore@gmail.com"},{n:"POLYTRANS (S.P.T)",c:"9512434P",e:"diallo_amara@yahoo.fr"},{n:"FANAN & MAMADOU GENERAL SERVICES",c:"1015771Z",e:"aminata.gonde@yahoo.fr"},{n:"MONDI ABIDJAN S.A.",c:"133152L",e:"amani.yao@mondigroup.com"},{n:"RAIBA GROUPE SARL",c:"2244430A",e:"alexandre.kouame@raibagroupe.com"},{n:"ANADOLUM TRANSIT INTERNATIONAL SARL",c:"2245415B",e:"transit.ops@agl.group"},{n:"KANA IVOIRE TRANSIT",c:"0731152A",e:"dianebassiriky@yahoo.fr"},{n:"ELDATRANS",c:"1017972M",e:"charpier@aviso.ci"},{n:"DECATHLON CI",c:"1540783 D",e:"michel.gabou@decathlon.com"},{n:"MOHAMED DIAKITE",t:"0769589614",e:"moh3534242@gmail.com"},{n:"INTERNATIONAL LOGISTICS",c:"1327857Y",e:"desirejean32@gmail.com"},{n:"ETS DADANIHA",c:"2302652E",t:"0787128064",e:"etsdadaniha@gmail.com"},{n:"C M N P",c:"9604166P",e:"ynguessan@gmail.com"},{n:"DA TRANSIT",c:"1018508E",e:"anguessan@da-transit.com"},{n:"FEDIMEX",c:"1004883R",e:"cmpneus6@gmail.com"},{n:"CEVA LOGISTICS COTE D'IVOIRE",c:"4270988P",e:"andree.sehr@cevalogistics.com"},{n:"SADIA TRANSIT",c:"1743648U",t:"0709240524",e:"l.kouadio05@gmail.com"},{n:"INTERNATIONAL TRUCK TRANSPORT",c:"1860764J",t:"0708664500",e:"koneibrahime53@gmail.com"},{n:"TIMAR CI",c:"1502344B",e:"atodji28@gmail.com"},{n:"EMERGENCE FRUITS",c:"2404245H",t:"0797925191",e:"emergence.fruits@gmail.com"},{n:"SODAC",c:"2300551F",t:"0148264232",e:"contactsodac@gmail.com"},{n:"NEW TRANSIT SARL",c:"1942201D",e:"ndriremi@yahoo.fr"},{n:"AYACHE HAYTHAM AYACHKO IMPORT-EXPOR",c:"2164845X",t:"0709507050",e:"ayachehaytham223@gmail.com"},{n:"ATLANTIC AGRO-FORESTRY PRODUCT SAFP",c:"2300286Y",t:"0709047433",e:"marctonty@gmail.com"},{n:"INTRA GLOBE LOGISTICS - IGL",c:"1837290Z",t:"0748410596",e:"mhe@igl-ci.com"},{n:"SAMUEL INTERNATIONAL TRANSIT - SITA",c:"2135794P",t:"0272156398",e:"abdoulayec26@yahoo.fr"},{n:"FRET CONSIGNATION LOGISTIQUE",c:"1020584Q",t:"0272125796",e:"dirgen@fcl-ci.com"},{n:"ELKANA CORPORATION",c:"1321431L",e:"elkana16@gmail.com"},{n:"EXPORT TRADING CORPORATION CI",c:"1021063M",t:"0272125911",e:"abou.diabagate.etcci@gmail.com"},{n:"FM TRANSIT",c:"0511709M",e:"kaniguisebastienouattara@gmail.com"},{n:"NOUVELLE PARFUMERIE GANDOUR",c:"9904279V",t:"0707187979",e:"achat@npgandour.com"},{n:"A2Z TRANSIT",c:"1010827R",e:"acbor@hotmail.com"},{n:"CYRIAN INTERNATIONAL SA",c:"4263085W",t:"0707319211",e:"alexandre@cyrian-inter.com"},{n:"IVOIRE TRANSIT INTERNATIONAL ITI",c:"1344773R",e:"bariyele@yahoo.fr"},{n:"COMEXAS COTE D'IVOIRE",c:"1657136V",t:"0272159444",e:"customs@comexas.ci"},{n:"LIONPRO GROUP COTE DE IVORIE",c:"1948214F",t:"0720113354",e:"aristide.mbella@lionpro.com"},{n:"SOCIETE MUTLTISERVICE DE L'INDENIE",c:"1217413J",t:"0272359623",e:"mohamedamine.mezgar@starcontainer.eu"},{n:"ETABLISSEMENT DRAMERA & FILS GROUP",c:"1917268E",e:"edfgroupdramera@gmail.com"},{n:"UNIVERSAL LOGISTICS WAC",c:"1345924S",e:"b_koffi@universallogistics-ci.com"},{n:"CMB",c:"7401717S",e:"secretariat@cmbabj.com"},{n:"UNION CENTER TRANSIT",c:"1014607V",e:"kouassiloukou11@yahoo.fr"},{n:"CODHY TRANSIT",c:"1730494 S",t:"0565580958",e:"codhytransit@cimmetalgroup.com"},{n:"TRANSIT DES LEADERS SARL",c:"1735416L",e:"transleaders1@gmail.com"},{n:"USHUAIA TRANSIT INTERNATIONAL - UTI",c:"2230584Y",e:"barronne7@gmail.com"},{n:"ITRAMCO",c:"1439012J",t:"0757049564",e:"infos@itramco.com"},{n:"B VISION SERVICES",c:"1830882L",t:"0758107470",e:"telhassane82@gmail.com"},{n:"MULTI-TECH SARL",c:"2404559G",t:"0712385726",e:"mtsci.gerard@multitechuk.com"},{n:"CENTRALE D'ACHAT DE PRODUITS AGRICO",c:"0409500T",t:"0077554724",e:"aboubakar.ouattara@capsa.ci"},{n:"DREAM COSMETICS",c:"1013503L",e:"a.kouadio@dreamcosmetics.net"},{n:"SOCIETE CHEICK SOW POULO",c:"2208798V",t:"0778191816",e:"cheick@societecsp.com"},{n:"DIKAN TRANSIT",c:"1231696U",t:"0272125171",e:"bamig83@gmail.com"},{n:"IVCOM",c:"1625460E",t:"0708178007",e:"moussa@ivcom.ci"},{n:"SIAT - SOCIETE IVOIRIENNE DES AUXIL",c:"1014177M",e:"pacomeyeboue4@gmail.com"},{n:"STE KOIRA SARL",c:"0816219B",t:"0272127498",e:"cesse1@hotmail.com"},{n:"CTLM",c:"1741934Z",t:"0505459600",e:"gf.gnangne@ctlm-sa.com"},{n:"ENVOL TRANSIT COTE D'IVOIRE",c:"2021695M",t:"0709157440",e:"Epiphane.edoukou@protrading.ci\n Epiphane.edoukou@protrading.ci\n Epiphane.edoukou@protrading.ci"},{n:"GLOBAL TRANSIT",c:"0532668Q",e:"adouaugustin2@gmail.com"},{n:"WOOD SYNERGY",c:"1975309J",e:"marctonty@gmail.com"},{n:"COMPAGNIE DES CAOUTCHOUS DU PAKIDIE",c:"6014528J",t:"0707236986",e:"akitikpa.marius@pakidie.com"},{n:"DYAMA IMPORT EXPORT SARL (DIES)",c:"1848330K",e:"sanss_2007@yahoo.fr"},{n:"SOLEIL TRANSIT",c:"1935952N",t:"0749579326",e:"info@sotrans.ci"},{n:"QUANG THIEN IMEX",c:"0916672D",e:"bobby_vo22@yahoo.com"},{n:"MALARA TRANSIT",c:"1651256P",t:"0706051743",e:"malaratransit@gmail.com"},{n:"SOCIETE COOPERATIVE AGRICOLE ALLIAN",c:"1546117K",t:"0545266667",e:"coulibaly_inza@hotmail.com"},{n:"FRACHT COTE D'IVOIRE",c:"1867962U",e:"elie.kokou.codjovi@ci.fracht.africa"},{n:"DORADO IVORY",c:"1945025J",t:"0758395077",e:"abd.ekapet@cc-inland.com"},{n:"SACO (SOCIETE AFRICAINE DE CACAO) E",c:"6000427U",t:"0708085235",e:"aime_gueuyode@barry-callebaut.com"},{n:"PRO TRANS SARL",c:"1603780J",e:"ops2.protrans@gravir.com"},{n:"SOGELUX SARL",c:"0314246N",e:"aboucamara87@gmail.com"},{n:"MANUTENTION TRANSIT TRANSPORT COTE",c:"1509311H",e:"ag.transit@mtt-ci.com"},{n:"NOUVELLE GENERALE DE TRANSIT",c:"9901152B",e:"bricearthurlorng@yahoo.fr"},{n:"SONIATRANS",c:"1316420Y",e:"infos@soniatrans.com"},{n:"COTREX-CI COMPAGNIE DE TRANSIT EXPR",c:"1824594H",t:"0272137718",e:"amidoud3@gmail.com"},{n:"MELEDJE TRADING COMPANY - MTC",c:"1988427N",e:"amenanelisakouadio@gmail.com"},{n:"IBVS GROUP AND EDEN CORPORATION ASS",c:"1989271A",t:"0505781649",e:"julienkoffi947@gmail.com"},{n:"BLE TRANSIT",c:"1318713B",e:"bletransit@yahoo.fr"},{n:"CEMOI TRADING",c:"0043280R",t:"0707120853",e:"camarahmed7@yahoo.fr"},{n:"SUCDEN",c:"1105355G",e:"amallah@sucden.com"},{n:"THAMARA TRANSIT",c:"2242830C",t:"0797797842",e:"adou.diaby@thatrans.com"},{n:"AGS FRASERS COTE D'IVOIRE",c:"9320808  S",e:"ABIDJAN@AGS-GLOBALSOLUTIONS.COM"},{n:"COMPAGNIE IVOIRIENNE DE TRANSIT INT",c:"2045318A",e:"infos@cit-inter.com"},{n:"AFRICA TERMINAL AND LOGISTIC",c:"1733046S",e:"hermann.asseman@atelog-ci.com"},{n:"ACTIVA TRADE INTERNATIONAL COMPANY",c:"2400016Z",t:"0101276262",e:"2565846744@qq.com"},{n:"ASIA AFRICA RUBBER INDUSTRY SA",c:"1222697U",e:"kamano.bernard@asafrubbersa.com"},{n:"SUPERMARITIME CI",c:"9724862G",t:"0272175211",e:"lenatty2@gmail.com"},{n:"GIREX SARL",c:"2245253M",t:"0101763303",e:"maketkobe90@gmail.com"},{n:"SAF IMPEX",c:"1721439V",t:"0707670067",e:"abbaskassem44@gmail.com"},{n:"GLOBAL TRADING CIS SARL",c:"2404826R",t:"0757060983",e:"cotetransit-doc@sunda.com"},{n:"MAM TRANSIT",c:"1020314Y",e:"hamj2412@gmail.com"},{n:"TRIANGLE TRANSIT",c:"1613550C",t:"0757253405",e:"jeanlouis.ouehi@gmail.com"},{n:"AK INTL",c:"1016527E",t:"0789655387",e:"amjad@suryaexim.com"},{n:"SUNSHINE SHIPPING CI",c:"1845857V",t:"0556583662",e:"china.panxinlei@gmail.com"},{n:"SAPTRANS-CI SARL",c:"1008479P",e:"barresdelacote@gmail.com"},{n:"WOOD AFRIQUE",c:"1925997A",t:"0767569979",e:"gauravjain.woodafrique@gmail.com"},{n:"GREEN IMPORT",c:"1919283Y"},{n:"KOTRANSIM COTE D'IVOIRE",c:"1721471V",e:"info@kotransim.com"},{n:"UTMCI",c:"0699149Y",e:"cyrillemohy.utmci.ci@gmail.com"},{n:"SOCIETE IVOIRIENNE DE TRANSIT & DIS",c:"1002515M",t:"0777040407",e:"mariam.konate@sitdci.com"},{n:"AFRICAN DISTRIBUTION COMPANY ADC",c:"0517069C"},{n:"APMT TRUCKING",c:"2051124N",e:"nonro.ouattara@apmterminals.com"},{n:"ENVOL TRANSIT",c:"0173017X",e:"etransit@aviso.ci"},{n:"GOLDEN RUBBER SA",c:"2001971W",t:"0554511939",e:"goldenrubber1888@gmail.com"},{n:"MSN IMPORT-EXPORT SARL",c:"1723440C",t:"0708047471",e:"jerome.able@msn.ci"},{n:"SOCIETE IVOIRIENNE DE MANUTENTION E",c:"0176020H",t:"0272175411",e:"info@simat.ci"},{n:"LORD TRADING AND INVESTMENT",c:"1744724H",e:"e.mambo@ltiafrica.com"},{n:"NICE PRESTATIONS ET SERVICES",c:"2043548F",t:"0709118158",e:"niceprestations@gmail.com"},{n:"JOHN MOR TRANSIT TRANSPORT - JMTT S",c:"2401516K",t:"0708664500",e:"morjohn985@gmail.com"},{n:"TAMARO FISH",c:"1532604W",t:"0708676713",e:"adikyapo@gmail.com"},{n:"SOCIETE DE IMPORTATION COTE D'IVOIR",c:"2404876B",t:"0585193792",e:"cotetransit-doc@sunda.com"},{n:"TRANSIT CENTER",c:"8302351Y",e:"lydemonde@yahoo.fr"},{n:"TROPICAL RESOURCES",c:"1952538Y",t:"0272178378",e:"rebecca.kouassi@tropical-resources.com"},{n:"GLOBAL INVESTISSEMENT CORPORATION -",c:"2044685S",t:"0707034926",e:"damesmc1711@gmail.com"},{n:"MYRTHE TRANSIT",c:"0812168C",t:"0708951757",e:"import@myrtans-ci.com"},{n:"AFRILOG",c:"0044113W",e:"a.memel@afrilogci.com"},{n:"INTEGRATED CUSTOM SOLUTIONS",c:"2114748B",e:"m.olloh@icustoms-solutions.com"},{n:"ESATMCI",c:"1507649J",t:"0757290797",e:"alisanogo321@gmail.com"},{n:"INTERNATIONALE DE TRANSIT ET DE LOG",c:"1740651Y",e:"ahmed.ouedraogo@itl.ci"},{n:"MAERSK COTE D IVOIRE SA",c:"868277H",e:"ahmed.kone@lns.maersk.com"},{n:"SUPER TRANSIT",c:"1656268Y",e:"supertransit1421@gmail.com"},{n:"ICM CI SA",c:"9411557V",e:"flyppi274boni@yahoo.fr"},{n:"SAPROCHIM",c:"0818827X",e:"rogermbiamandodja@yahoo.fr"},{n:"ENTREPRISE DE TRANSPORT DE MANUTENT",c:"1503333Z",t:"0504800000",e:"fadel.amer@shazatransit.com"},{n:"LOGISTICS CORPORATE GROUP - (LCG-SA",c:"1724161Z",e:"c.adama@lcg-sa.com"},{n:"NDG LOGISTICS SARL",c:"1808325B",t:"0171313171",e:"j.kra@ndglogistics.com"},{n:"STREAMLINE TRANSIT",c:"1854010U",t:"0758711843",e:"cyrillekpatche@yahoo.fr"},{n:"IVORY TRADE COMPANY",c:"2203599H",t:"0709000057",e:"ivorytcom@gmail.com"},{n:"AMON LIZ JUDICAELLE KOUADIO TRANSIT",c:"2432605B",t:"0565062215",e:"alktransit77@gmail.com"},{n:"ANDY TRANSIT INTERNATIONAL",c:"1713393X",e:"andytransitinternational@gmail.com"},{n:"ZENITH PLASTICS CI",c:"8204214M",e:"info@zenithplastic.com"},{n:"SANATA TRADING",c:"1833998P",t:"0769058494",e:"mohammed-bousmaha@hotmail.fr"},{n:"COOPERATIVE NOUVEL ESPRIT DE KETESSO(CNEK)",c:"0731661Q",e:"jsomplei@cnek.com"},{n:"CONNECT GLOBAL FORWARDING SARL (CGF",c:"2051195N",t:"0709002640",e:"a.koulibaly@connectgf.com"},{n:"FISH AFRIC SARL",c:"2304903U",t:"0103754545",e:"fishafric.ohybrahym@gmail.com"},{n:"EXODIS",c:"2216068B",t:"0170004017",e:"exodis.ohybrahym@gmail.com"},{n:"GROUPEMENT PPROFESSIONNEL DES EXPOR",c:"2045905Y",t:"0749750050",e:"adiagola@gie-geppa.com"},{n:"INPROBOIS",c:"8204594B",e:"a.krou@sitbai.ci"},{n:"VALENCY INTERNATIONAL TRADING SARL",c:"1347386H",e:"accounts.abj@valencyinternational.com"},{n:"ETS CHRIST MAEL ECM",c:"2245407X",t:"0777967197",e:"nguessanmael886@gmail.com"},{n:"SABIMEX",c:"7204606N",e:"ayaoparfait19@gmail.com"},{n:"SODIF & TIM GROUP - S.T.G",c:"2402141L",t:"0709093666",e:"sodif221@gmail.com"},{n:"SOCIETE IVOIRIENNE DE TOUT ACHAT DE",c:"1532352Y",e:"hassanmoussa@sitapa.ci"},{n:"ESPE RUBBER INDUSTRY",c:"2159010C",t:"0140976662",e:"coulseydou@yahoo.com"},{n:"OSMOZ AFRICA",c:"1950754J",t:"0079841177",e:"konan@osmoz.site"},{n:"JFE ENGINEERING",c:"2242868Q",e:"kobayashi-marina@jfe-eng.co.jp"},{n:"SOCIETE NATIONALE DE TRANSIT",c:"1432676Z",e:"sonatci@gmail.com"},{n:"RIAM BOUTIQUE SARL",c:"2244998M",t:"0798369659",e:"riamboutiquesarl2025@yahoo.com"},{n:"AL-PAST IMPORT",c:"2303331Y",t:"0759509557",e:"akkouchepro17@outlook.fr"},{n:"EVIOSYS PACKAGING SIEM SA",c:"0100451K",e:"siebou-william.kambire@eviosys.com"},{n:"SOCODENI",c:"1434255V",t:"0707010004",e:"ahouaetchien@gmail.com"},{n:"K METAL CI",c:"1338727D",e:"shipping.kmetal@yahoo.fr"},{n:"ATLI",c:"0708066Z",e:"binde.dir@atlici.net"},{n:"LOGIS TRANSPORT ET LOGISTIQUE",c:"1727554W",t:"0554370021",e:"ibrahim.coulibaly@logis-ci.com"},{n:"NOBEL TRANSIT",c:"1809634A",t:"0707150473",e:"nobeltransit@gmail.com"},{n:"OLAM IVOIRE",c:"9406490B",e:"abhishek.mishra@olamnet.com"},{n:"SHIPPING INTERNATIONAL AGENCY",c:"1831183C",t:"0272125327",e:"infos@sia-ci.com"},{n:"AFRIQUE COMMERCE ET LOGISTIQUE GROU",c:"2033611L",t:"0749858538",e:"aclg.transit22@gmail.com"},{n:"WAGAJACA COOP-CA",c:"0434135Q",e:"carine.bleu@wagajaca.com"},{n:"COMPAGNIE IVOIRIENNE D HEVEA - CIH",c:"0735621C",t:"0272242397",e:"arnauddjiwa@gmail.com"},{n:"LOGITRANS",c:"1105992Q",e:"aimekouadio@logitrans-ci.com"},{n:"CHINA MALL COTE",c:"3041859C",t:"0769555955",e:"brimianmaruis@gmail.com"},{n:"FRESCO TRANSIT",c:"1947306B",e:"frescotransit@gmail.com"},{n:"IMPORTATION DE POISSONS ET D'ALIMEN",c:"843265Q",t:"0272125813",e:"arthur.dago@impac-ci.com"},{n:"IVOIRE MARINE",c:"1404841U",t:"0272125772",e:"dgivoiremarine@gmail.com"},{n:"KARIMEX TRANSIT",c:"9907073D",t:"0272124475",e:"broutita@gmail.com"},{n:"AFRICA TRANSIT SARL",c:"1628739L",e:"africatransitelie@gmail.com"},{n:"2K TRANSIT INTER",c:"2202191X",e:"baudryarmel3@gmail.com"},{n:"KING IVOIRE SARL",c:"0909042K",t:"0505465486",e:"baloukebe@yahoo.fr"},{n:"ARIELLE BLAISE SERVICE (ABS)",c:"2244231X",t:"0101763303",e:"fofanamohamedhabib@gmail.com"},{n:"ETS KKR",c:"1653041D",t:"0789133843",e:"cisse015@gmail.com"},{n:"HAINA FISHERY CO LTD",c:"1903705G",t:"0758490763",e:"desirejoseph28@gmail.com"},{n:"LKL TRANSIT ET LOGISTICS",c:"0040906G",t:"0768255527",e:"caba@lkltransit.com"},{n:"PERFORM WORLD SA",c:"1544728D",t:"0767206363",e:"doukoure.adama@perform.ci"},{n:"EURO IMPEX",c:"0307045J",t:"0747095476",e:"sri.yadavam@gmail.com"},{n:"ADK TRANSIT",c:"0730320Z",e:"adingra9@yahoo.fr"},{n:"ASSIA COMMODITIES ASSCOM",c:"2052831L",e:"bangaly8@hotmail.fr"},{n:"FORTUNE RECOLTE SARL",c:"2192533B",e:"sales@fortunerecolte.com"},{n:"PRISMA GROUPE",c:"1906786U",t:"0709658585",e:"prisma99ci@gmail.com"},{n:"SINED SARL",c:"1518024M",e:"dgsinedsarl@gmail.com"},{n:"BAKARY KONE",c:"1355529G",t:"0747545657",e:"weezypat1@gmail.com"},{n:"KAM SERVICES",c:"1424253Z",t:"0788064081",e:"bangalysouleymane01@gmail.com"},{n:"B.B ART - SARL",c:"5011806N",t:"0707001403",e:"bbartss2022import@gmail.com"},{n:"TRANSIT INTERARMEE",c:"8900007Q",t:"0101177815",e:"arndd.27@live.fr"},{n:"SN SATRANS",c:"1310479 M",t:"0707728614",e:"berryabazza@gmail.com"},{n:"NEDEX SA",c:"1944793 Y",e:"info@nedex.ci"},{n:"OLAM COCOA PROCESSING COTE",c:"1105686U",e:"ayandokon.joel@olamnet.com"},{n:"AL KURSI LOGISTICS RUE",c:"305771H",t:"0707485879",e:"alkursilogistics@gmail.com"},{n:"OILS OF AFRICA",c:"2401675M",t:"0707041617",e:"infos@oils-of-africa.ci"},{n:"GREEN FUTURE INTERNATIONAL",c:"1943381S",t:"0585556063",e:"kproger@gmail.com"},{n:"SOUAD DISTRIBUTION",c:"4245310M",t:"0708062508",e:"ndolithomas@souaddistribution.com"},{n:"SY-LOG SERVICES",c:"2109463A",t:"0707330052",e:"kassem.s@hotmail.com"},{n:"ANAIS GROUPE",c:"2011745U",t:"0777967197",e:"charlestoure2287@gmail.com"},{n:"CHALLENGE IMPORT EXPORT - CIPEX",c:"0311172H",e:"hamedmeite636@gmail.com"},{n:"SIPARCO CI",c:"7402388A",t:"0272125554",e:"hussein.moussa@siparco.com"},{n:"SOCIETE PRIORITY TRANSIT COTED IVOI",c:"2243371E",t:"0779549419",e:"bonygoma7@gmail.com"},{n:"ISS GLOBAL FORWARDING COTE DIVOIRE",c:"2300552 G",t:"0586103535",e:"kevin.ano@iss-gf.com"},{n:"SOCIBAF PLUS",c:"1900340W",e:"growidea8@hotmail.com"},{n:"ETS SIABA ET COMPAGNIE",c:"2210317F",t:"0707294728",e:"emmanuelassouan95@gmail.com"},{n:"NFK TRANSIT SARLU",c:"2052585N",t:"0707111559",e:"agouaraymond@gmail.com"},{n:"SOCIETE COOPERATIVE AGRICOLE DE DAL",c:"1350270F",e:"cadscoops1@gmail.com"},{n:"TRANSPORT IVOIRE PLUS - TI PLUS",c:"2153956T",t:"0749688572",e:"antoinejim.its@gmail.com"},{n:"INTERNATIONAL DE NEGOCE ET DISTRIBU",c:"1731293V",e:"christian.konan@inedist.com"},{n:"JD EDITIONS",c:"1283750J",e:"grekimariepaule@gmail.com"},{n:"MOVIS TRANSPORT",c:"8400798Y",e:"MELISSA.KOUA@MOVISGROUP.COM"},{n:"PRO LOGISTICS",c:"1542409D",t:"0708990315",e:"h.hoballah@prolinelogistic.com"},{n:"SOCIETE COPERATIVE ALLAH BEKELE DE",c:"0503385H",t:"0272321964",e:"coopabf@yahoo.fr"},{n:"WARO SARL",c:"1941080S",t:"0103534141",e:"badrit41@gmail.com"},{n:"LEERY DISTRIBUTION",c:"2302187Z",e:"leerydistribution01@gmail.com"},{n:"ST LOGISTIC",c:"1555384Y",t:"0707550808",e:"konesadou@gmail.com"},{n:"BBC OPPORTUNITY",c:"1612509F",e:"bbc225opportunity@gmail.com"},{n:"CABINET D'EXPERTISE MARITIME ET TRA",c:"1715312X",e:"ynguessan@gmail.com"},{n:"AFRICA GLOBAL SERVICES",c:"2183431.C",t:"0140960588",e:"guyjoeltape@gmail.com"},{n:"EURO AFRIC TRANSIT",c:"1352562E",t:"0141532483",e:"bakarysamake216@gmail.com"},{n:"HAMBOL GLOBAL TRADING DMCC",e:"atraoreci@gmail.com"},{n:"HILANE TRANSIT",c:"1001434B",e:"abolikoffi5@gmail.com"},{n:"ITRAO",c:"9610630V",t:"0272125633",e:"a_ekou74@yahoo.fr"},{n:"RUBBER TRADING COOP",c:"1950089C",t:"0708999282",e:"info@rubbertradingcoop.com"},{n:"SCAN GLOBAL LOGISTICS",c:"1514794J",e:"aawa@scangl.com"},{n:"FEDEX / DISTRIMAT INTERCOURRIER EXP",c:"0735797D",t:"0272175412",e:"ckouassi@distrimatinter.com"},{n:"FIRST TRANSIT SA",c:"1271296B",e:"c.ibrahim15@yahoo.fr"},{n:"NEGTRANS CI",c:"1356241Q",e:"lassina@negtrans.com"},{n:"OCEAN TRANSIT SERVICE",c:"9702077K",e:"adjezakis16@gmail.com"},{n:"SOCIETE NOUVELLE SATRANS-CI",c:"131479M",t:"0141038254",e:"info.snsatrans218@gmail.com"},{n:"DIMA SARL",c:"2030471Z",t:"0575103442",e:"adc_ci@yahoo.fr"},{n:"SIFRET",c:"8500126A",e:"edipaul71@gmail.com"},{n:"IVOIRE TUNA SARL",c:"2304107K",t:"0707016692",e:"ivoiretunasarl@gmail.com"},{n:"LA LORRAINE",c:"0718956K",e:"a.traore@lalorraine.ci"},{n:"VASWANI FRERES ETS",c:"0171369S",t:"0272134287",e:"kamlal@hotmail.com"},{n:"AYEKOTCHAMI CI",c:"2301760G",t:"0712390270",e:"ayekotchamici@gmail.com"},{n:"SIVEM - SOCIETE IVOIRIENNE D'EMBALL",c:"7502313S",e:"admin@sivem.net"},{n:"TAMT-TRANSIT",c:"0608305A",t:"0758157005",e:"kassidesire83@gmail.com"},{n:"CONTINENTAL SHIPPING",c:"1521743V",e:"info@continentalshipping.net"},{n:"SANGEL CI",c:"1903387Z",e:"sonia.allah@sangel-ci.com\nfabiola.ligue@sangel-ci.com"},{n:"COMPAGNIE AFRICAINE DE DISTRIBUTION",c:"2003682X",e:"adiabate-cadimex@outlook.com"},{n:"ETS MAH F",c:"2301452L",t:"0586113535",e:"mahamadouf813@gmail.com"},{n:"ETS PROVIDENCE G.A",c:"2300865Z",e:"traorefousseni23@gmail.com"},{n:"KOIRA MULTI INDUSTRIES",c:"1821015C",t:"0272127498",e:"christophe@koiraholding.com"},{n:"TRANSNAVIRE",c:"1818248P",e:"transnavire222@gmail.com"},{n:"GREENROAD LOGISTICS CI SARL",c:"1740948S",t:"0708800186",e:"adjiblena215@gmail.com"},{n:"ECORIGINE SA",c:"2157554U",e:"ismael.kone@ecorigine.ci"},{n:"INTERNATIONAL TRANSIT LOGISTICS GRO",c:"0406879V",t:"0779914113",e:"elsie.djohore@itlg-ci.com"},{n:"TRANSCAO NEGOCE",c:"1953250L",e:"aka.serge@transcaonegoce.ci"},{n:"SOGENA TRANSPORT COTE D'IVOIRE - ST",c:"1800588G",e:"s.ayedegue@sogena-ci.com"},{n:"COMPAGNIE IMPORT EXPORT DES PRODUIT",c:"2018808C",t:"0140103120",e:"aguiemelaine@gmail.com"},{n:"OMA COTE D'IVOIRE",c:"4253773R",t:"0272125292",e:"abiba.ouattara@omagroup.com"},{n:"KF GLOBAL INTER",c:"2300056U",t:"0748701514",e:"agouaraymond@gmail.com"},{n:"MAYRA METAL",c:"2025269D",t:"0769692872",e:"mayrametal13@gmail.com"},{n:"CONCORDE TRANSIT ABIDJAN",c:"1108838G",e:"concordetransitabidjan@yahoo.fr"},{n:"EDEN AFRICA LOGISTICS",c:"2300888J",t:"0707624396",e:"edenafricalogisticssarl@gmail.com"},{n:"FORTRANS LOGISTIQUE ET TRANSIT",c:"2054415M",e:"fortrans@caplogistics.ci"},{n:"HUBLO CARS",c:"2302805D",t:"0707355230",e:"claudeolivierobicoa@gmail.com"},{n:"NESTLE COTE D'IVOIRE",c:"0100756U",t:"0504693609",e:"achille.yarabe@ci.nestle.com"},{n:"ETABLISSEMENT SORNA TRANSIT",c:"1707446F",t:"0757576131",e:"awahabib@hotmail.fr"},{n:"AFCOTT CI SARL",c:"0919204L",e:"balusund@hotmail.com"},{n:"AGRO BUSINESS INTER SARL",c:"1109767R",e:"agrobusinessinterolivier@gmail.com"},{n:"D-TRANSIT",c:"2171937J",e:"akaffoucharlesarnaud@gmail.com"},{n:"EOLIS-CI",c:"0309040B",e:"aka@eolis.ci"},{n:"ETS 2KJ CONSORTIUM",c:"2245075W",t:"0142004252",e:"bourji-moustapha@hotmail.com"},{n:"MARCH LIMITED COMPANY",c:"1847509B",t:"0566359148",e:"79321141@qq.com"},{n:"SOLS IVOIRE SARL",c:"2033854Q",t:"0077142249",e:"solsivoire6@gmail.com"},{n:"CAM CONSTRUCTION",c:"2303014G",t:"0471409496",e:"alice.bozzato@porteo-group.com"},{n:"MIGELEX SARL",c:"1941987Q",t:"0097747893",e:"ali.hani.sadek@gmail.com"},{n:"REDLINE",c:"2303899V",e:"alybourgi@hotmail.com"},{n:"DESTINY COCOA",c:"2242670Z",e:"info@destinycocoa.com"},{n:"DHL INTL",c:"8002061G",e:"ashyt.abe@dhl.com"},{n:"ETS RIMAJ",c:"9331676K",e:"kreaime20@gmail.com"},{n:"MERCY TRADING SOLUTION",c:"2400543A",t:"0747815286",e:"e.jules@gmail.com"},{n:"SOCIETE DE TRANSIT IMPORT EXPORT",c:"9908341X",e:"stie@aviso.ci"},{n:"TOUTON NEGOCE COTE D'IVOIRE",c:"9511998U",e:"a.sarrailh@touton.com"},{n:"SIMOFA IMPORT EXPORT",c:"2301364P",t:"0140561563",e:"simofaimportexport@gmail.com"},{n:"STAR CARS",c:"2203012X",t:"0709131318",e:"adangbabadjaetienne@gmail.com"},{n:"POLYFRIP SARL",c:"2244965A",t:"0707394220",e:"generalnest@yahoo.fr"},{n:"ALLIANCE MARITIME INTERNATIONALE -",c:"2301346Z",e:"dibrahim@ami-ci.com"},{n:"BUREAU IVOIRIEN DU CACAO - BICAO",c:"1501510V",e:"herve.alliali@bicao-ci.com"},{n:"DTE",c:"9704538Q",e:"d.meman@yahoo.fr"},{n:"ECU WORLDWIDE (COTE D'IVOIRE) SARL",c:"0179937C",e:"erictaylorassoumou@ecuworldwide.com"},{n:"ETS KOSS",c:"951163H",t:"0272158192",e:"54582139@qq.com"},{n:"ETS SH (SAWADOGO HAMIDOU)",c:"4259950V",t:"0757450123",e:"wousman@yahoo.fr"},{n:"PHENIX SERVICES",c:"1909517Z",t:"0707070059",e:"a.ouattara@phenix-service.ci"},{n:"CHINA STATE CONSTRUCTION ENGINEERIN",c:"1826949W",t:"0758542934",e:"2727236@qq.com"},{n:"KOIRA BTP",c:"1924576J",e:"doka2011@yahoo.fr"},{n:"LAGOMA TRANSIT",c:"1113142J",t:"0272124499",e:"fahejulien24@gmail.com"},{n:"ALL COMMODITIES COMPANY",c:"2011656T",t:"0777382309",e:"yaosylvain@allcommoditiescompany.ci"},{n:"ABJLH",c:"2302454L",t:"0708337186",e:"jd.ahoua@seafrigo.com"},{n:"ANH TAM IVORY COAST COMPANY",c:"0615583D",t:"0779197308",e:"ativc@anhtam.company"},{n:"APPROVISIONNEMENT MARITIME ET TECHN",c:"1929275H",t:"0747520302",e:"hermann.lolo@appromatech.com"},{n:"BAMBA LOGISTIQUE SARL",c:"1939235T",t:"0708394513",e:"bambalogistiquesp@gmail.com"},{n:"COLAS AFRIQUE SUCCURSALE DE LA CI",c:"1331921R",t:"0272175977",e:"colasci@colasafrique.com"},{n:"ELOHIM SHIPPING LIMITED",c:"1819350J",e:"account@elohimshippingltd.com"},{n:"SOCIETE COPERATIVE ANONKLON DE BIAN",c:"0406266Q",e:"emilebleindou@yahoo.fr"},{n:"TOP SERVICE TRANSIT",c:"0906352K",e:"gustaveamani@yahoo.fr"},{n:"GROUPE INTERNATIONAL DE TRANSIT",c:"1006418Y",e:"gitransit@yahoo.fr"},{n:"KAOU INTERNATIONAL TRANSIT - KIT",c:"2208613K",e:"fofanakit@gmail.com"},{n:"KM LOGISTICS",c:"1853516P",e:"kmlogistics9@gmail.com"},{n:"LOGISTICS BUSINESS CENTER",c:"164269N",t:"0272125382",e:"bakayoko.lbc@gmail.com"},{n:"MABICO MARITIME ABIDJAN CORP",c:"9103215A",e:"janaca21@gmail.com"},{n:"SBM TRANSIT",c:"1338272M",e:"badey78@yahoo.fr"},{n:"SELF SELL SERVICES",c:"1302212E",t:"0707799515",e:"kbitian45@gmail.com"},{n:"SG AGRICULTURE SA - SG AGRO",c:"1833644T",e:"athena23_83@yahoo.fr"},{n:"SICOVEM",c:"1200576R",e:"achi48@hotmail.fr"},{n:"SOCIETE DE VALORISATION DU CACAO -",c:"2112344U",e:"b.bessi@sivaco.net"},{n:"PHENIX MARITIME CORP",c:"1854048E",t:"0142474265",e:"operations@phenixmaritimecorp.com"},{n:"CEMOI",c:"9709364E",t:"0707120853",e:"a.kouman@cemoi.com"},{n:"INTERNATIONAL TRANSIT IMPORT EXPORT",c:"0800589L",e:"ttmcompta@yahoo.fr"},{n:"OUTRE HAIR SARL",c:"4117046L",e:"cipo2@isolpia.com"},{n:"PROGRAMME ALIMENTAIRE MONDIAL",c:"0315404F",e:"abidjan.manager@wfp.org"},{n:"S3C",c:"0815951Y",e:"aicha.woni@s3c-ci.net"},{n:"SONATA AGRI INTERNATIONAL",c:"1856339G",e:"kayieu.hilaire@sonatagroup.com"},{n:"TROPICALE TRANSIT INTERNATIONALE",c:"1169930H",e:"abibatousanogo7@gmail.com"},{n:"APM TERMINALS COTE D'IVOIRE",c:"8202156R",e:"kathy.laure.magne@apmterminals.com"},{n:"BOOKMARK ZAHRA",c:"2304635Q",e:"bookmark_zahra@bookmarkzahra.com"},{n:"GENERAL IMPEX SARL",c:"2404570F",t:"0708909313",e:"generalimpex.infos@gmail.com"},{n:"KEITA ZACHO",c:"1752130A",t:"0747916585",e:"juliusnguessan.sgtl@gmail.com"},{n:"MOTA-ENGIL COTE D'IVOIRE SARL",c:"1809219J",t:"0779421269",e:"tiago.at.almeida@mota-engil.ci"},{n:"STEPHGOD",c:"1354763R",e:"215125886@qq.com"},{n:"TRANS EXPRESS CI",c:"1342744J",t:"0272127323",e:"elzein@aviso.ci"},{n:"2A LOGISTICS & TRADING SARL",c:"1649791N",e:"2alogisticssarl@gmail.com"},{n:"AGTRANS",c:"2304034X",t:"0709052997",e:"sackomou12@gmail.com"},{n:"INALCA CI",c:"4259718Y",t:"0749703408",e:"arun.babu@inalca.it"},{n:"KENTOO",c:"1836607S",t:"0272348547",e:"napole.weng@kentoo-inds.com"},{n:"NESCO TRADING SARL",c:"2304302Q",t:"0767175915",e:"nescotradingsarl@gmail.com"},{n:"OCEAN SA",c:"1335130Y",e:"augustin.planty@ocean-ci.com"},{n:"OLAM AGRI RUBBER CI",c:"0720147N",t:"0507395360",e:"ardenne.koffi@olamnet.com"},{n:"SD NEGOCE GENERAL",c:"2302746H",e:"ahipeaudyvhannboubli@gmail.com"},{n:"SNPC STE NOUVELLE PRODUITS CHIMIQUE",c:"0552515T",e:"indus@afnet.net"},{n:"SOCIETE INDUSTRIELLE THANRY",c:"6906069D",e:"alex.thanry@aviso.ci"},{n:"SOPLAD COOP/CA",c:"0717191U",t:"0707986664",e:"christian.ossey@soplad.com"},{n:"GLOBAL EAT",c:"1918760Q",t:"0749339995",e:"logistique@global-eat.net"},{n:"SOCIETE AFRICAINE ENERGY SARL",c:"4266796E",e:"info@societyafrica.com"},{n:"CIMAC",c:"0805842A",e:"chriseli_96@yahoo.com"},{n:"COMPAGNIE INDUSTRIELLE DU BOIS",c:"0102560J",e:"nazem72@gmail.com"},{n:"ENTREPRISE NOAH",c:"1341211B",t:"0747752688",e:"asta.traore@entreprisenoah.com"},{n:"GROUPE MONDIAL TRANSIT SARL",c:"8800519R",t:"0707608476",e:"aekener@nurteks.com.tr"},{n:"I T S",c:"7801973U",e:"c.mel@tbxits.com"},{n:"KOUDIJS COTE DIVO",c:"2170086 U",t:"0272255194",e:"kbini@koudijs.com"},{n:"LY OUSMANE",t:"0707882934",e:"alfred3@live.fr"},{n:"MAKADJI SARL",c:"1851532M",t:"0555634786",e:"makadji_ilyass@yahoo.fr"},{n:"METWORLD ENERGY",c:"6224084L",t:"0055486351",e:"delelouisse@gmail.com"},{n:"MOUNA TRANSPORT LOGISTICS - MT LOGI",c:"1741636E",e:"mounatransportlogistics@gmail.com"},{n:"N.T.M.B TRANSIT SARL",c:"1707194T",t:"0272353949",e:"dmarianne@topchrono.ci"},{n:"ROYAL EXPRESS TRANSIT",c:"2168261R",t:"0707564034",e:"rextransit22@gmail.com"},{n:"SNG",c:"9104113V",e:"sng_bois@yahoo.fr"},{n:"SOGETRA",c:"0818428F",e:"secretariat@sogetra-ci.com"},{n:"CEMOI CHOCOLAT",c:"4259480P",t:"0777829445"},{n:"OUATTARA CHRISTOPHER",t:"0143014322",e:"alphamoaicha@yahoo.com"},{n:"ASIA COMMODITIES CI SARL",c:"0507678S",e:"ivc@asiacomglobal.com"},{n:"BAZIE ET FRERE",c:"1643552G",t:"0749002890",e:"ibrahimbazie58@gmail.com"},{n:"CHEGUS CI SARL",c:"4269132F",t:"0749677736",e:"sagbra@targettransit.com"},{n:"COMPAGNIE DE TRANSFORMATION DU CAOU",c:"1655295B",e:"eric.niamien@ctci-ci.com"},{n:"ETABLISSEMENT KOUMA SEKOU",c:"0542042A",t:"0546395336",e:"khariland@gmail.com"},{n:"FLYWAVE INTERNATIONAL TRANSIT",c:"1608008Z",t:"0102882551",e:"doudougchristian@gmail.com"},{n:"IDH",c:"0324314C",e:"a.shipping19@gmail.com"},{n:"INDUSTRAP",c:"9000831C",t:"0707239008",e:"industrap@afnet.net"},{n:"INTERNATIONAL TRANSIT SERVICES - IT",c:"1623312T",e:"mohamadsaab2488@gmail.com"},{n:"IVOIRE AGRO TRADING",c:"1650085B",t:"0749039022",e:"gnonsebe@yahoo.fr"},{n:"KALICE PROGRESS",c:"2302853K",t:"0142797422",e:"kaliceprogress@gmail.com"},{n:"KINEDEN COMMODITIES SA",c:"1430398D",e:"akoua@kineden.ci"},{n:"KSSTCI & FILS",c:"1334281T",e:"bambaraph@gmail.com"},{n:"NAHIM GROUP",c:"2230261K",t:"0707455149",e:"nahimgroup@gmail.com"},{n:"NANO SARL",c:"4251386C",e:"dpt.transit@nano-ci.com"},{n:"NAZ GROUPE",c:"2403224U",t:"0707455149",e:"boubacardagnon3@gmail.com"},{n:"RMG COTE D'IVOIRE SA",c:"793111J",t:"0272721215",e:"eric.kouakou@rmgconcept.com"},{n:"SAPCI - SOCIETE AFRICAINE DE PRODUI",c:"1100695D",e:"amercos1@yahoo.fr"},{n:"SOCIETE GUIROBO DE MARKETING - SOGM",c:"2212436M",t:"0749667494",e:"mguirobo@gmail.com"},{n:"STE IVOIRIENNE D'OPERATION DE TRANS",c:"1106877V",e:"dec1@sivotram-ci.com"},{n:"TRANSIT ET DEDOUANEMENT EXPRESS - T",c:"2041909G",e:"hermannattiendjie@yahoo.fr"},{n:"UNIRUBBER TRADING COTE D'IVOIRE",c:"1733381X",e:"ahmed.drame@sca.ci"},{n:"WORLD WAY ENERGY SARL - WWE",c:"1817613L",t:"0707028930",e:"gogosergeshonoredouka@gmail.com"},{n:"TSP (TERMINAL DE SAN PEDRO)",c:"0904622G",e:"info@tsp-ci.com"},{n:"ADIMEX SARL",c:"2026020L",t:"0771667803",e:"anzoumanediabate@yahoo.com"},{n:"AFCOTRADE AFRICA COMMODITY TRADING",c:"1536910Q",e:"afcotrade.sa@gmail.com"},{n:"ARIEL TRANSIT",c:"1111138L",t:"0749494987",e:"oceanesarlci@yahoo.fr"},{n:"BAYA TRANSIT",c:"2404961B",t:"0701603160",e:"hawa.diawara1@gmail.com"},{n:"CADESA COOP-CA COOPERATIVE AGRICOLE",c:"1534655S",e:"cdramane42@gmail.com"},{n:"CDPA - CI",c:"1645177A",t:"0708767908",e:"cdpa_ci@yahoo.fr"},{n:"CIVOTECH",c:"1853568B",e:"ibyne.kone@civotechgroup.com"},{n:"EGCIT",c:"9102702J",e:"egcit.2@yahoo.fr"},{n:"ELITE TRANSIT",c:"2210932Y",t:"0748580791",e:"ichaaitli@gmail.com"},{n:"ETABLISSEMENT KL SARL",c:"2042070E",e:"grace_cargo@yahoo.fr"},{n:"ETS NABIL MOUSTAPHA SARL",c:"2242428S",t:"0757343887",e:"etsnabilmoustapha2023@gmail.com"},{n:"IVCAO",c:"0719575N",t:"0272127952",e:"annidjahi@gmail.com"},{n:"IVOIRE ALIMENTATION GENERALE",c:"1343443E",t:"0272384178",e:"abdulah@gmail.com"},{n:"IVOIRE TRANSIT MANUTENTION",c:"0812717S",e:"alexiskakou83@gmail.com"},{n:"MAILVAGE SARL",c:"0504152G",e:"mailvage@gmail.com"},{n:"MARC MICHEL MARINA KONE TRADING -",c:"2113052L",t:"0272139423",e:"rinadegnan@yahoo.fr"},{n:"PARFUMERIE INDUSTRIELLE ET COSM CI",c:"9000113C",e:"deletrene@yahoo.com"},{n:"SIPS LOGISTICS",c:"2054893M",e:"contact@sips-logistics.com"},{n:"SOCIETE NOUVELLE CONFISERIE DE VRID",c:"7400363J",e:"cpolastron@ce-mp.com"},{n:"TRANSITEX",c:"0428933S",e:"transitex@aviso.ci"},{n:"TROPICAL BOIS",c:"8502325F",t:"0272354888",e:"export.tropicalbois@gmail.com"},{n:"ADAM'S GROUP CI",c:"0224124N",t:"0778875015",e:"adamsfaty223@gmail.com"},{n:"AFRICA NEWS LINES SHIPPING",c:"1521673X",e:"afnelsinfo@gmail.com"},{n:"AFRICANFISH STE",c:"0501951E",e:"africanfishrci@yahoo.fr"},{n:"AFRICOGE",c:"9311528B",e:"info@africoge.com"},{n:"SOCIETE IVOIRIENNE DE TRANSIT ET SE",c:"1443188U",e:"akpasits@gmail.com"},{n:"ASCOM SA",c:"'0507684H",e:"413134@qq.com"},{n:"BAOBAB ENERGY COTE D'IVOIRE",c:"1744337D",t:"0757934763",e:"mhesss@igl-ci.com"},{n:"CIIDPH",c:"1518503T",e:"adewuyi995@gmail.com"},{n:"COOPERATIVE AGRICOLE MODERNE DE BON",c:"1839566T",t:"0575050012",e:"copamobcoop@gmail.com"},{n:"COOPERATIVE AVENIR RURAL DE L AGNEB",c:"1010220B",t:"0101048775",e:"cooperativeavenir@yahoo.fr"},{n:"ETABLISSEMENT CISSE DAOUDA - ETS C.",c:"9503517S",t:"0749008810",e:"daoudacisse65@yahoo.fr"},{n:"ETS KEEMA",c:"2208672W",t:"0102694578",e:"etskeema3@gmail.com"},{n:"ETS KJS ELU",c:"0703768G",t:"0707468040",e:"ets_kjs_elu@yahoo.fr"},{n:"GLOBAL INDUSTRIES SARL",c:"0613744M",e:"globalciv@yahoo.fr"},{n:"GLOBAL TRADE & LOGISTICS COTE D'IVO",c:"2301457G",t:"0142452590",e:"johannagltci@gmail.com"},{n:"GROUP OLEA CI",c:"21288566W",t:"0749762747",e:"iblogistiques@gmail.com"},{n:"GROUPE BILAL MULTISERVICES",c:"2047135M",t:"0759649909",e:"sambode4@gmail.com"},{n:"KOFFI NDRI LAURENT",c:"2400320Z",t:"0707586925",e:"ndrilaurent49@gmail.com"},{n:"MAGIC TRANSIT & SERVICE DIVERS",c:"1014030R",t:"0272124778",e:"ahoussi_guy@yahoo.fr"},{n:"MON JARDIN",c:"0301847M",e:"charbeltouma@live.fr"},{n:"NOUVELLE SCIERIE DE DUEKOUE",c:"9333250W",e:"thanry.sp+charlene@gmail.com"},{n:"OCEANE TRANSIT",c:"9604338M",e:"aoissouf@yahoo.fr"},{n:"OK PLAST",c:"9201080M",e:"d.elriz@okplast-ci.com"},{n:"PALMEVA SARL",c:"1623027R",e:"ana@palmeva.com"},{n:"SECO SA",c:"0815049B",t:"0566202064",e:"virgile.adou@olamagri.com"},{n:"SOCIETE GMCI",c:"4257129G",e:"hassane@globalmanut.ci"},{n:"SOGB",c:"7901993M",e:"adesquith@sogbci.com"},{n:"SOLUTION TRANSIT - SOLUTRANS",c:"2243798Q",t:"0272153921",e:"info@solutrans.ci"},{n:"SOTICI - SOCIETE DE TRANSFORMATION",c:"9103016W",e:"claudia@sotici.com"},{n:"SOUTHLAND KATI COTE D IVOIRE",c:"1907981R",t:"0586338517",e:"colette.kadio@southlandglobal.africa"},{n:"TAFI SA",c:"0712035V",t:"0506594630",e:"antonia.olga@gmail.com"},{n:"TAN & CI",c:"1443927Q",e:"alexiscbiwi@gmail.com"},{n:"TIBONI COOP-CA",c:"1429731V",t:"0757492966",e:"info.tiboni@gmail.com"},{n:"TOP CHRONO CI",c:"96352K",t:"0151003194",e:"topchrono@topchrono.ci"},{n:"TOPEX AGRO ELEVAGE DEVELOPMENT SARL",c:"0721897U",e:"danibouh@gmail.com"},{n:"TRANSFRONTALIER IVOIRE SERVICES",c:"2052622S",e:"supertransit1421@gmail.com"},{n:"TRANSVAL INTERNATIONAL",c:"1113122E",e:"jrmeledje@logistictransit.com"},{n:"UNICAO",c:"8703401N",t:"0708085235",e:"adjepascal.kouame@olamnet.com"},{n:"UNIVERSAL SERVICES COMPAGNY SA",c:"0430024U",e:"b.duffi@usc-sa.org"},{n:"YATT HOLDING",c:"2176842Y",t:"0789625962",e:"gondosimmou@gmail.com"},{n:"TRACTAFRIC MOTORS",c:"0100474J",t:"0102171427",e:"Armand.Konan@tractafric.com"},{n:"AGRICULTURE COMMERCE IND",c:"8503417V",e:"flora.yao@acichimie.com"},{n:"ALMAO",c:"7500011Z",e:"a.daher@free.fr"},{n:"ATC COMAFRIQUE",c:"0421179S",e:"budget.ci@comafrique.com"},{n:"AUTO PLUS",c:"0409311Q",e:"autoplus.ci@gmail.com"},{n:"CACOMIAF",c:"0100343W",e:"amandine.yoboue@cacomiaf.com"},{n:"CARENA",c:"0100763T",e:"jakaffou@carena-ci.com"},{n:"CGC-CI (COMPAGNIE D'INGENIERIE GEOL",c:"9711791C",e:"83551823@qq.com"},{n:"CODIVET",c:"9415682X",t:"0272175457",e:"codivet@aviso.ci"},{n:"COTE D IVOIRE CACAO - CODICAO SA",c:"1939335X",e:"ahouaetchien@gmail.com"},{n:"DS GENERAL SERVICE COTE D IVOIRE -",c:"1943425N",e:"ds.generalservice@gmail.com"},{n:"EL PARADIS COSMETIC",c:"013082H",e:"achats@elparadiscosmetic.net"},{n:"ENGINEERING LOGISTICS AGENCY",c:"4265357L",e:"ela@ela-ci.com"},{n:"EPSA IVOIRE SA",c:"2004171X",t:"0748504134",e:"artur.valentim@epsagroup.com"},{n:"ETS MANUT-CI",c:"0730247U",e:"etsmanut_ci@aviso.ci"},{n:"ETS SANIMEX",c:"9607109S",t:"0505004434",e:"sanimex@hotmail.fr"},{n:"FABRICATION IVOIRIENNE DE PLASTIQUE",c:"1011366X",e:"alexiskouame8@gmail.com"},{n:"FEDERAL BUSINESS TRANSIT",c:"1649223L",t:"0707529095",e:"federalbusinesstransit@gmail.com"},{n:"FILTISAC SA",c:"0105274J",e:"adama.kone@filtisac.com"},{n:"FIRST EXIM",c:"0101075A",t:"0709098361",e:"ebrotie1@yahoo.com"},{n:"FISH COMPANY",c:"1409357K",t:"0505615071",e:"universfish.ci@gmail.com"},{n:"FLEXIBLE PACKAGING COTE D IVOIRE -",c:"4273143E",t:"0709778997",e:"ahmadezze@gmail.com"},{n:"GENERAL TRANSPORT SERVICES ET EQUIP",c:"1728475G",e:"moyeivoiretransit14@gmail.com"},{n:"INTERFREIGHT AND LOGISTICS - IFL",c:"2222899Y",e:"amozou@ifreightlog.com"},{n:"IVOIRIENNE PIECES RECHANGES",c:"7700599L",e:"atg.transit@gmail.com"},{n:"KAF LOGISTIQUES",c:"2401455T",t:"0077768398",e:"kaflogistiques3@gmail.com"},{n:"KOUMA AMARA",t:"0707797499",e:"digitaltradeci@gmail.com"},{n:"LC PACKAGING WEST AFRICA SARL",c:"1521983F",e:"ikonate@lcpackaging.com"},{n:"LES GRANDS MOULINS D'ABIDJAN",c:"5007123M",e:"atoban.toure@gma.ci"},{n:"MR. CAMARA MOHAMED",t:"0779964858",e:"camramo@live.fr"},{n:"NOUVELLE AFRIQUE TRANSIT ET TRANSPO",c:"1003617U",e:"victorien-loukou@yahoo.fr"},{n:"ORCA DECO",c:"0208793S",t:"0272123558",e:"abidjan1@setoa.it"},{n:"SAFPLAST",c:"9603839R",e:"hassanchour@hotmail.com"},{n:"SATOCI",c:"832794M",t:"0272353584",e:"comm.satoci@yahoo.fr"},{n:"SCOOP CA CPLC",c:"1317229D",t:"0707369508",e:"adamayolland1@gmail.com"},{n:"SIVIMI (SOCIETE IVOIRIENNE DE VITRE",c:"8300512L",e:"sivimi@aviso.ci"},{n:"SOCIETE ABIDJANNAISE DE TRANSIT - S",c:"1707306K",e:"infosatrapdg@gmail.com"},{n:"SOCIETE AFRICAINE DE PRODUITS ALIME",c:"7902030X",e:"amaclarissek@gmail.com"},{n:"SOCIETE DE CAOUTCHOUC D'ABOISSO SCA",c:"1547330D",t:"0787860978",e:"ahmed.drame@sca.ci"},{n:"SOCIETE DE FER COTE D IVOIRE SOFCI",c:"1923296R",e:"sofci.21@gmail.com"},{n:"SOCIETE DE TRANSIT EN AFRIQUE SOTRA",c:"1503971Z",e:"ousmanekone4143@gmail.com"},{n:"SOCIETE D'ETUDE ET DE DEVELOPPEMENT",c:"0100541M",e:"aka_ndafrance@live.fr"},{n:"SOCIETE IVOIRIENNE DE TRANSIT EN CI",c:"0815824R",e:"atg.transit@gmail.com"},{n:"SOCIETE MARITIME DE COTE D IVOIRE",c:"1020318C",e:"airfreight@somaci.com"},{n:"SOCODIFA INTERNATIONAL",c:"0019673N",e:"scttsarl9@gmail.com"},{n:"SOREF SA",c:"8102690R",e:"estelkoffi@groupereda.net"},{n:"SORIMPEX",c:"1400688K",t:"0708676372",e:"214587@qq.com"},{n:"STT-CI",c:"1703911W",t:"0272158978",e:"servicestransittransport@gmail.com"},{n:"SUCCESS ENTERPRISE",c:"4272157B",t:"0272334921",e:"christopheadou@gmail.com"},{n:"SUNSHINE AGRICOLE",c:"0816003X",t:"0101311551",e:"chinesebruceliu@hotmail.com"},{n:"TRANCHIVOIRE",c:"8603303X",e:"agomichel@gmail.com"},{n:"TRANS-MER",c:"9603149V",e:"sadmeuro@gmail.com"},{n:"TRANSPORTATION AND LOGISTIC CONSULT",c:"1717007U",e:"transit3.abj@tlc-com.ch"},{n:"TRAORE KABA INTERNATIONAL",c:"1222664A",t:"0272124974",e:"ykhenri@yahoo.fr"},{n:"UNITRA-RCI",c:"1502275E",t:"0708883344",e:"declarant.unitra@groupe-dieudonnebf.com"},{n:"UNIVERS TRANSIT ET TRANSPORT DE CI",c:"0688206X",e:"sabtuo@yahoo.fr"},{n:"ZAMACOM SA",c:"9817986K",e:"akouaaka@ecom.trading.com"},{n:"DIAMOND LOGISTICS COTE D’IVORE DLOG-CI",c:"1814526A",t:"0708677547",e:"commercial@dlogci.com"},{n:"PRO TRADING CI",c:"2021695M\nCI00194349",t:"0709157440",e:"Epiphane.edoukou@protrading.ci"},{n:"AFRIQUE INDUSTRIE CAJOU (AIC)",c:"1847423 L",t:"0749058760",e:"afriqueindustriecajou@gmail.com"},{n:"SOCIETE DE SERVICES ET D'INDUSTRIES",c:"2007420Y",t:"0556543853",e:"s2si28@hotmail.com\ns2si28@hotmail.com"},{n:"SIDCAO",c:"0812867Z",e:"info@sidcao.ci"},{n:"SITOL",c:"1012304 T",e:"cpt@atelog-ci.com"},{n:"ETOILE SERVICE",c:"2400526 Q",t:"0707735647",e:"samirmadinatransit@gmail.com"},{n:"SEA GROUP  INTERNATIONAL",c:"2500859D",t:"0707735647",e:"samirmadinatransit@gmail.com"},{n:"ETABLISSEMENT \nOUATTARA \nFRERE SERVICE",c:"2163688 H",t:"0707735647",e:"samirmadinatransit@gmail.com"},{n:"PROGRES SERVICE",c:"2402020 M",t:"0707735647",e:"samirmadinatransit@gmail.com"},{n:"AFRIQUE PHYTO PLUS",c:"1347929 H",t:"0788842129",e:"gp.ontonna@afriquephytoplus.com"},{n:"IDACG ( ivoire distribution alimentation ,commerce general)",c:"2164081M",t:"0707933912",e:"livraison02@gmail.com"},{n:"CFAO MOBILITY CI",c:"0100432G",t:"0709174119",e:"vekouassi@cfao.com"},{n:"SCHIBA SACS",c:"2244961F",t:"0505483030",e:"Myriam.bogui@schiba-sacs.com"},{n:"ELITE BETON",c:"2027254Y",t:"0501601555",e:"yeni.soro@elitebeton.ci"},{n:"NEEMBA CI",c:"0100925E",t:"0709863360",e:"aristide.kouadio@neemba.com"},{n:"NEEMBA FINANCE",c:"1801695U",t:"0798094397",e:"abiba.toure@neemba.com"},{n:"ALL-GRO",c:"0221016W",t:"0707664179",e:"Etekou.mel@allogro-ci.com"},{n:"CIVADIS SA",c:"9708745B",t:"0708207572",e:"severinokouame@gmail.com"},{n:"GLOBAL FINE WINES",c:"2232708J",t:"0708207572",e:"severinokouame@gmail.com"},{n:"ATELIER TECHNIQUE DE REPARATION",c:"9908512B",t:"0787178292",e:"franck.lowe@atrci.com"},{n:"ROSEBATE LTD",c:"0419086U",t:"0779665078",e:"rosebate33@gamil.com"},{n:"ATLANTIC COCOA CORPORATION COTE D'IVOIRE",c:"1543211W",t:"0102086141",e:"p.boli@atlantic-cocoacorporation.net"},{n:"SICMA-L1MA",c:"1337521N",t:"0747311570",e:"S.MEGAPTCHE@bouyguesconstruction.com"},{n:"TRACTO LENA WEST AFRICA",c:"2404671D",t:"0565213290",e:"jeanlouis.allangba@tracto-lena.com"},{n:"CATREPS SARL",c:"1439564Y",t:"0707300734",e:"etscatreps@gmail.com"},{n:"ETABLISSEMENT MULTI SERVICE SORO ZIE",c:"9410647J",t:"0586759877",e:"fabrice.diakoure@etssorozie.com"},{n:"LA ROUTE AFRICAINE (LRA)",c:"1017786K",t:"0142733889",e:"yessongui.soro@lragroupe.com"},{n:"Softcare Limited Cote d'ivoire",c:"2244367A",t:"0749185074",e:"cotetransit-terrestre@sunda.com"},{n:"PERFECT TRANSIT",t:"0758425663",e:"gbahi.celine@perfect-transit.com"},{n:"ISRAEL  LOGISTICS SERVICES - ILS",t:"0576911223",e:"israellogistics@outlook.com"},{n:"SOCIETE DE TRANSIT ET TRANSPORT MAR",e:"avitflorent@gmail.com"},{n:"AGACIA TRANSIT",e:"nadegeboko9@gmail.com"},{n:"SIFAD CI.",e:"topplasts4@gmail.com"},{n:"SOCIETE DIARE ET FRERES",e:"sodiaf3@gmail.com"},{n:"NOUVELLE ABIDJAN LOGISTICS COTE D I",e:"adangbaseverin455@gmail.com"},{n:"OCEANES FAMILY",t:"0707038535",e:"allomer.ar@gmail.com"},{n:"ETS AMAL",t:"0708310631",e:"hkone35@gmail.com"},{n:"SHALIMAR FOR HIGH SEAS",e:"nancy@shalimar.sl"},{n:"ETS GKI",t:"0545910991",e:"adangbaseverin455@gmail.com"},{n:"WEST AFRICA LOGISTICS TRANSPORT",t:"0758394839",e:"direction@waltgroup-ci.com"},{n:"SOCAT",t:"0102702123",e:"infonocoacy@gmail.com"},{n:"BAMS MULTI PREST BMP",t:"0555830033",e:"kmexport@yahoo.com"},{n:"SITA S A",c:"0213932Z",t:"0709590990",e:"sitasa6@yahoo.fr"},{n:"SIDIPA",t:"0797538453",e:"danielnacanabo@gmail.com"},{n:"TLPCI",t:"0272333435",e:"anselmepleya@seafem.com"},{n:"YAIS LOGISTICS SARL",e:"chemical7@tjjhwb.com"},{n:"CATTA CI SARL",t:"0709657055",e:"zoumana@koiraholding.com"},{n:"SUP INTERNATIONAL TRANSIT",t:"0546177532",e:"operationsuptransit@gmail.com"},{n:"VEO",e:"hamedouattara231@gmail.com"},{n:"CHAMPION'S CORPORATE COMPANY SARL",t:"0141001930",e:"2565846744@qq.com"},{n:"TRANSIT MANUTENTION TRANSPORT",e:"boamel22@yahoo.fr"},{n:"SNF CI INDUSTRIE",e:"fodeaboubacar91@gmail.com"},{n:"SOCIETE DE CONSIGNATION ET MANUTENT",t:"0757595939",e:"jeanlucakinola@gmail.com"},{n:"SY - LOG SERVICES",t:"0709097468",e:"sylogservices77@gmail.com"},{n:"BLESSING LOGISTICS AND SERVICES",t:"0757629536",e:"bls225@outlook.com"},{n:"ETS FIGNIGUE",t:"0506083622",e:"aboukeir@hotmail.com"},{n:"S M LOGISTIQUE SARL",e:"sannietimetnt@gmail.com"},{n:"SIM",e:"fdiragbou@simci.net"},{n:"CANAAN DISTRIBUTION",t:"0554573315",e:"info.canaandistribution@gmail.com"},{n:"OCEAN TRANSIT SERVICES",t:"0707083105",e:"kouameadjekouassi@gmail.com"},{n:"ROYALE GROUPE H",t:"0150426113",e:"j.kouadio@royalegroupeh.com"},{n:"SENATOR AUTO",t:"0707810084",e:"bebe_mariam@live.fr"},{n:"KURUKAN SARL",t:"0707677761",e:"krksarl@outlook.fr"},{n:"SOCIETE MATRELEC SARL",t:"0708921923",e:"info@matrelec.com"},{n:"SOGEMER SARL",t:"0505998953",e:"ho.nabilatie@gmail.com"},{n:"STE KRAMO NOUVELLE",t:"0748265310",e:"sskn94@gmail.com"},{n:"ARIMEX SARL",t:"0102228235",e:"aka_boka@yahoo.fr"},{n:"BEST OUEST AFRICA TRADERS",e:"konan.yoman@gmail.com"},{n:"DIGITAL SERVICES PLUS",t:"0747184090",e:"famangondo@gmail.com"},{n:"ETS KOBAM SARL",t:"0505126603",e:"288923791@qq.com"},{n:"ILO CO-ABIDJAN",t:"0707346100",e:"bakayoko@ilo.org"},{n:"JALO LOGISTICS ROUTE DE DABOU",t:"0272228132",e:"info@jalo-logistics.com"},{n:"SIM SARL IMMEUBLE",e:"fdiragbou@simci.net"},{n:"SOCIETE CAFE FORTUNA SARL",t:"0708020471",e:"guymariusdibon@hotmail.fr"},{n:"ZOUM BAK CORPORATION",t:"0708751999",e:"zoumbakcorporation@hotmail.com"},{n:"DIAMOND LOGISTICS COTE D IVOIRE DLO",t:"0708677547",e:"a.kablan@dlogci.com"},{n:"SAP COOP CA",t:"0709613199",e:"sapcoopcaexport@gmail.com"},{n:"SODISMAR SARL",t:"0707548824",e:"ikreidieh@accessmea.com"},{n:"CCIS",t:"0749785785",e:"abd.aakinlerou@ccis-network.com"},{n:"COGPCI",e:"doukourekaridja61@gmail.com"},{n:"ETS GNELE-SARLU",t:"0758568888",e:"2851635364@qq.com"},{n:"PHYTOTOP",t:"0747638335",e:"aboubacar.kourouma@phytotop.net"},{n:"SDK SERVICES",e:"adou.cyril@southlandglobal.africa"},{n:"SGCS SARL",e:"esika.sgcs.abidjan@gmail.com"},{n:"SIPPEC - SOCIETE INDUSTRIELLE DE PR",t:"0272358919",e:"achat.import@sippec.com"},{n:"STOCK SERVICES",t:"0554522254",e:"bharatbalani.ast@gmail.com"},{n:"TECHNIX SARL",e:"sergedjibre@yahoo.fr"},{n:"COMPAGNIE IVOIRIENNE AGRO-DISTRIBUT",t:"0701815774",e:"tolanijaikishan@gmail.com"},{n:"COTRIMEX SERVICES",t:"0759947405",e:"cotrimexservices@gmail.com"},{n:"ETS KHEIRA",t:"0707834711",e:"fadeali1@icloud.com"},{n:"ETS SEFIMEX",e:"bakayokoarafat1@gmail.com"},{n:"ETS TROPICA",t:"0709223254",e:"cathy@futurogrupo.com"},{n:"EXCELLENCE IMPORT EXPORT ET MULTISE",t:"0749045614",e:"excellenceimportexportmulti@gmail.com"},{n:"GLOBAL CARGO LEADER",t:"0173452916",e:"l.jawad@gclci.com"},{n:"GOOD MARKET ET SERVICES",t:"0707329937",e:"j.ballarin@foodibev.com"},{n:"KONATE MARINE LOGSTICS",t:"0748206748",e:"adama.konatekings@gmail.com"},{n:"MEDISOURCE SA",e:"angedesiredogbo@gmail.com"},{n:"PRESTIGE SO SERVICES",t:"0506396141",e:"ganamefidel@gmail.com"},{n:"USADF IVORY COAST",t:"0709163669",e:"jyapi@usadf.gov"},{n:"VOLCAGRO",e:"bia3_gn@yahoo.fr"},{n:"3S TRANSIT",c:"2302301U",e:"soga.raphael@yahoo.fr"},{n:"AUTO UNIVERS AFRIQUE PLUS",t:"0554170540",e:"latourkaramoko78@gmail.com"},{n:"D-TRANSI",t:"0545374899",e:"kidoudenisoungaloyeo@gmail.com"},{n:"ETS. ASC",t:"0099685900",e:"auto_service_commercial@hotmail.com"},{n:"FOODS MARKET",t:"0758625279",e:"enquiries@fpi-logistics.com"},{n:"HENNER AFRICA SAS",t:"0594318138",e:"network@henner.com"},{n:"INTL DE COMMERCE ET DE MANAGEMENT",e:"icm-ci@icmholding.net"},{n:"KOMETA",t:"0101518601",e:"florentbahv@hotmail.com"},{n:"RH LOGISTIQUE ET SERVICES",t:"0747470691",e:"romain@rhnetwork.net"},{n:"SOCIETE AL JAWAD",t:"0272327892",e:"aljawadtransit@gmail.com"},{n:"SOCIETE DE COMMERCE ET D IMPORT EXP",t:"0585193792",e:"scieimport@gmail.com"},{n:"TOTAL SERVICE EQUIPEMENT",t:"0707200874",e:"contact@tseciv.com"},{n:"DANAYA TRANSIT ET SERVICES",t:"0777167052",e:"kdahouda@yahoo.fr"},{n:"DUNLOP WEST AFRICA COTE D'IVOIRE",t:"0779044585",e:"keidaissahin@gmail.com"},{n:"ETS BAKPA",c:"4180036C",e:"koffijules@ymail.com"},{n:"EXPRESS TRANZACT",t:"0544041725",e:"jc_investment@yahoo.co.uk"},{n:"FER IVOIRE SARL U",t:"0506448663",e:"commercial.ferivoire@gmail.com"},{n:"FORTUNE STAR SHOP",t:"0778778601",e:"bintoutourek@gmail.com"},{n:"FRAPPE SECURITE",t:"0708751999",e:"roumiehanouar14@gmail.com"},{n:"GENERAL BATIMENT ET ALUMINIUM",t:"0252255126",e:"fofana.soualio@gmail.com"},{n:"MOHAVES SERVICES",t:"0505818966",e:"lilywang11@aliyun.com"},{n:"SIM CI",t:"0747330782",e:"fdiragbou@simci.net"},{n:"SOCIETE AMAIRA INTERNATIONAL",t:"0708572635",e:"guruvarltd@gmail.com"},{n:"SOCIETE NOUVELLE PC PLUS-SARL",e:"secretariat@ecom-ci.com"},{n:"SODIA",e:"abd.ksanin@cma-cgm.com"},{n:"UNITED MOTORS SARL",e:"thierrykela@gmail.com"},{n:"Y TRANSIT",e:"1363132369@163.com"},{n:"YAHAYA ADAMOU",t:"0707757570",e:"aboubak.stil@gmail.com"},{n:"ZOGBO MARGUERITE",t:"0102198846",e:"martialferrand@sfr.fr"},{n:"AGS MOVERS",t:"0759008291",e:"armand.atchori@ags-globalsolutions.com"},{n:"CELESTE EMPIRE TRADING",t:"0143482971",e:"lucascentenaire@gmail.com"},{n:"DAFANI SA",e:"coulibaliba5@gmail.com"},{n:"DISPRO IVOIRE",t:"0707022040",e:"nangonguessan1984@gmail.com"},{n:"ETABLISSEMENT BROU JEAN SAM",t:"0709226006",e:"faustinkonan1974@gmail.com"},{n:"FIRST IVOIRE BUSINESS",t:"0585336523",e:"ivoirefirst@gmail.com"},{n:"GROUPE TRINIS CI",t:"0777401286",e:"g.trinisci@hotmail.com"},{n:"GUYRO TECHNOLOGIES",t:"0747284829",e:"guy_ro@hotmail.fr"},{n:"INNOV TECHNOLOGY",t:"0105954592",e:"info@innovtechnology-ci.com"},{n:"KABOWD EBURNIE TRADING",t:"0505069347",e:"lance76sun@gmail.com"},{n:"KAEL OCEAN SHIPPING",t:"0709700757",e:"kaeloship@gmail.com"},{n:"KOUDIJS CI SARL",t:"0777654212",e:"kante.drissa@yahoo.fr"},{n:"LITA SERVICES",t:"0797983444",e:"aliky89h@gmail.com"},{n:"MDK ESPOIR",t:"0102318839",e:"adjaupatricia@yahoo.fr"},{n:"MOYE IVOIRE TRANSIT",t:"0707660425",e:"moyeivoiretransit14@gmail.com"},{n:"NEW INDUSTRY COMPANY",t:"0709012222",e:"camramo@live.fr"},{n:"PATHOCARE PATHOLOGY LABORATORY",t:"0702018591",e:"ppatani7@gmail.com"},{n:"SICA ABIDJAN",e:"elifaz1@hotmail.fr"},{n:"SOCIETE IVOIRIENNE DE BETON ET MANU",t:"0758287839",e:"v.kouame@sibmci.com"},{n:"SOPAL AFRIQUE",t:"0749000369",e:"tarak.fourati@sopal.com"},{n:"YEDJU S.A",t:"0707355251",e:"kouakouvalery@gmail.com"},{n:"ZARO ENTREPRISE",t:"0707277791",e:"zahuirobyns@gmail.com"},{n:"SEA MAR MER SHIPPING SERVICES SARL",c:"2245191V",t:"0101602136",e:"Smm.ci@seamarmer.com\n\nClearing.ci@seamarmer.com"},{n:"MANUTENTION SERVICES",c:"2136740D",t:"0708084647",e:"jacques.kassi@manutentionservices.com"},{n:"GAZ SERVICES TECHNIQUE",c:"1846257C",t:"0070831310",e:"gazservicestech@gmail.com"},{n:"AKI",c:"1743159J",t:"0788003702",e:"c.logistics@winksyintl.com"},{n:"CARGILL COCOA SARL",c:"9729563R",t:"0151475440",e:"ninya_yeo@cargill.com"},{n:"CARGILL WEST AFRICA",c:"8607802Q",e:"mamadou_diarrassouba@cargill.com"},{n:"SCODI",c:"0102597U",t:"0707483997",e:"L.dery@scodi-ci.com"},{n:"MOTA",c:"2051089X",t:"0749303548",e:"djiguiba.kone@inalca.com"},{n:"SCCI",c:"7401730B",t:"0716349863",e:"yves.niahiro@scci.com"},{n:"jalo",c:"2302825K",t:"0759759409",e:"eric.agoua@jalo.com"},{n:"PFO CONSTRUCTION",c:"1205106C",t:"0787487475",e:"ghislain.kone@pfo-construction.com"},{n:"UBIPHARMA",c:"0100717M",t:"0770333638",e:"agencecentrale.cotedivoire@ubipharm.com"},{n:"AEOLUS TRADING",c:"1924124D",t:"0709444296",e:"herman.kossonou@aeolus.ci"},{n:"OLEA SA",c:"0223647M",t:"0160288568",e:"olealogistique@olea.ci"},{n:"Societe de CIMENT DE CI",c:"1543181R",t:"0173916024",e:"cedrictrah@sc-ci.com"},{n:"SEG CI",c:"5005986M",t:"0141014061",e:"jboni@seg-int.com"},{n:"TOTAL",c:"7603142C",t:"0707518240",e:"cesar.amouye@totalenergies.com"},{n:"CHIMTEC",c:"5006001W",t:"0504210103",e:"brahima.bamba@chimtec.ci"},{n:"NBCI",c:"0912617S",t:"0701027744",e:"ibrahim.kablan@nb-ci.com"},{n:"ORANGE",c:"9606123E",t:"0707226863",e:"christophe.brou@orange.com"},{n:"CIMAF",c:"1558199A",t:"0703560213",e:"emmanuel.Touré@cimentafrique.com"},{n:"SFMC",c:"8704920 J",t:"0707063293",e:"awaly594@gmail.com"},{n:"CDFI",c:"2300869K",t:"0708475591",e:"jfzak2000@gmail.com"},{n:"CODIPAC",c:"9804300T",t:"0707076200",e:"<codipacsarl@outlook.fr> <hotait-amigo@hotmail.com> <codipac.logistics@gmail.com>"},{n:"SOTACI",c:"7800178J",t:"0707988639",e:"mtraore@sotaci.com"},{n:"SARCI",c:"1311655A",t:"0749263817",e:"esaie.moni@sarci.ci"},{n:"SOCIFAD",c:"0522743H",t:"0708300725",e:"socifad@yahoo.fr"},{n:"ACIERIES",c:"0815154Z",t:"0103218957",e:"dncho@acieries-ci.com"},{n:"CGEM",c:"1657003C",t:"0788850000",e:"jamel.ghorbel@gmail.com"},{n:"INGENIERIE SPECIALISEE",c:"2402110U",t:"0546525252",e:"zeinali@globalmanut.com"},{n:"ETG CURECHEM IVC",c:"2304683H",t:"0705117898",e:"balachander.m@curechem.com             achille.koffi@etgworld.com"},{n:"DMG",c:"1015101K",t:"0709778877",e:"jkamouh@hotmail.com"},{n:"PALMITA",c:"230507IM",t:"0768787845",e:"jaafarus.sdtm@gmail.com"},{n:"TIP",c:"960712C",t:"0050587330",e:"s.conde@tip.ci"},{n:"SOCIDA",c:"7562352H",t:"0707827039",e:"kiyali.koulibali@gbh.fr"},{n:"SPRINT-TECH",c:"11066004L",t:"0546048237",e:"transitlri@gmail.com"},{n:"PHENICIA",c:"0407056A",t:"0708080408",e:"nadine@phenicia.ci"},{n:"SIREDI",c:"2402235F",t:"0768787845",e:"jaafarus.sdtm@gmail.com"},{n:"SOLID",c:"1819973X",t:"0505964500",e:"zainab.zein@solid-ci.com"},{n:"PAPYRUS",c:"2122738Z",t:"0707205520",e:"direction@papyrusoffice.com"},{n:"MADDIS",c:"1821540T",t:"0576247575"},{n:"NVELLE MICI",c:"1301076G",t:"0779701773",e:"jean-michel.doh@nme.com.ci"},{n:"I2MH",c:"1860695E",t:"0768787845",e:"jaafarus.sdtm@gmail.com"},{n:"KHM SARL",c:"0205199L",t:"0708160463",e:"mr.khalil@hotmail.fr"},{n:"MATFORCE",c:"8904233E",t:"0546048202",e:"transit@matforce.ci"},{n:"BLS ENTREPRISES",c:"2403880P",t:"0708474782"},{n:"SAGID",c:"8500770B",t:"0707988621",e:"sagid225@gmail.com"},{n:"ETS MON JARDIN",c:"1655256K",t:"0798357555",e:"etsmonjardin@gmail.com"},{n:"SDTMCI",c:"9818944 H",t:"0709778997",e:"touficsdtm@gmail.com"},{n:"MMCI",c:"0701933 C",t:"0709778997",e:"touficsdtm@gmail.com"},{n:"CAPRACI",c:"9906783 H",t:"0709778997",e:"touficsdtm@gmail.com"},{n:"IPB",c:"1831433 E",t:"0709778997",e:"touficsdtm@gmail.com"},{n:"GPSCI",c:"2109416 T",t:"0709778997",e:"touficsdtm@gmail.com"},{n:"POLYCLINIQUE .FARAH",c:"1433432 E",t:"0709778997",e:"touficsdtm@gmail.com"}];
+var FNE_SEED_VERSION = "fneseed-20260627-886";
 var FNE_CONTACTS = { list:[], byCode:{}, byNcc:{}, byName:{} };
 var FNE_CONTACTS_KEY = "marki_fne_contacts";
 function fneNormKey(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,""); }
@@ -3327,9 +3397,37 @@ function fneContactsRebuild(list){
   });
   FNE_CONTACTS=c;
 }
+function fneSeedMerge(userList){
+  // Fusionne FNE_CONTACT_SEED dans la liste utilisateur. Cle = NCC si present, sinon nom normalise.
+  // Les entrees utilisateur sont PRIORITAIRES : on ne comble que les champs vides, on n'ecrase jamais.
+  if(typeof FNE_CONTACT_SEED==="undefined" || !FNE_CONTACT_SEED.length) return userList;
+  function keyOf(e){ return (e&&e.ncc)?fneNormKey(e.ncc):(e?fneNormName(e.nom):""); }
+  var byKey={};
+  (userList||[]).forEach(function(e){ var k=keyOf(e); if(k) byKey[k]=e; });
+  FNE_CONTACT_SEED.forEach(function(s){
+    var entry={ code:"", ncc:s.c||"", phone:s.t||"", email:s.e||"", nom:s.n||"" };
+    var k=keyOf(entry); if(!k) return;
+    if(byKey[k]){
+      var ex=byKey[k];
+      if(!ex.ncc && entry.ncc) ex.ncc=entry.ncc;
+      if(!ex.phone && entry.phone) ex.phone=entry.phone;
+      if(!ex.email && entry.email) ex.email=entry.email;
+      if(!ex.nom && entry.nom) ex.nom=entry.nom;
+    }else{ userList.push(entry); byKey[k]=entry; }
+  });
+  return userList;
+}
 function fneContactsLoad(){
-  try{ var raw=localStorage.getItem(FNE_CONTACTS_KEY); fneContactsRebuild(raw?JSON.parse(raw):[]); }
-  catch(e){ fneContactsRebuild([]); }
+  var list=[];
+  try{ var raw=localStorage.getItem(FNE_CONTACTS_KEY); list=raw?JSON.parse(raw):[]; }catch(e){ list=[]; }
+  if(!Array.isArray(list)) list=[];
+  try{
+    if(localStorage.getItem("marki_fne_seed_v")!==FNE_SEED_VERSION){
+      list=fneSeedMerge(list);
+      try{ localStorage.setItem(FNE_CONTACTS_KEY, JSON.stringify(list)); localStorage.setItem("marki_fne_seed_v", FNE_SEED_VERSION); }catch(e2){}
+    }
+  }catch(e){}
+  fneContactsRebuild(list);
   fneContactsRender();
 }
 function fneContactsSave(list){
@@ -3382,11 +3480,24 @@ function fneContactsUpload(file){
 function fneContactsRender(){
   var cnt=$("fneContactsCount"); if(cnt) cnt.textContent=FNE_CONTACTS.list.length?(FNE_CONTACTS.list.length+" contact(s) enregistr\u00e9(s)"):"Aucun contact enregistr\u00e9";
   var box=$("fneContactsList"); if(!box) return;
-  if(!FNE_CONTACTS.list.length){ box.innerHTML=""; return; }
-  var rows=FNE_CONTACTS.list.slice(0,300).map(function(e){
-    return '<tr style="border-bottom:1px solid var(--ice-line2)"><td style="padding:4px 8px;font-family:monospace">'+(e.code||"-")+'</td><td style="padding:4px 8px;font-family:monospace">'+(e.ncc||"-")+'</td><td style="padding:4px 8px">'+(e.phone||"-")+'</td><td style="padding:4px 8px">'+(e.email||"-")+'</td><td style="padding:4px 8px;font-size:11px">'+(e.nom||"")+'</td></tr>';
+  if(!FNE_CONTACTS.list.length){ box.innerHTML='<div style="font-size:12px;color:var(--txt3);padding:8px">Aucun client enregistr\u00e9 pour l\'instant.</div>'; return; }
+  var q=""; var si=$("fneContactsSearch"); if(si) q=fneNormKey(si.value);
+  var list=FNE_CONTACTS.list;
+  if(q){ list=list.filter(function(e){ return fneNormKey(e.code).indexOf(q)>=0 || fneNormKey(e.ncc).indexOf(q)>=0 || fneNormKey(e.nom).indexOf(q)>=0 || fneNormKey(e.email).indexOf(q)>=0 || fneNormKey(e.phone).indexOf(q)>=0; }); }
+  var shown=list.slice(0,300);
+  var rows=shown.map(function(e){
+    var c=(e.code||"").replace(/['"\\]/g,"");
+    return '<tr style="border-bottom:1px solid var(--ice-line2)">'
+      +'<td style="padding:4px 8px;font-family:monospace">'+(e.code||"-")+'</td>'
+      +'<td style="padding:4px 8px;font-family:monospace">'+(e.ncc||"-")+'</td>'
+      +'<td style="padding:4px 8px">'+(e.phone||"-")+'</td>'
+      +'<td style="padding:4px 8px">'+(e.email||"-")+'</td>'
+      +'<td style="padding:4px 8px;font-size:11px">'+(e.nom||"")+'</td>'
+      +'<td style="padding:4px 8px;text-align:center;white-space:nowrap"><button onclick="fneContactEditLoad(\''+c+'\')" style="background:none;border:none;color:var(--frost);cursor:pointer;font-size:13px;margin-right:8px" title="Modifier">\u270e</button><button onclick="fneDeleteContact(\''+c+'\')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:13px" title="Supprimer">\ud83d\uddd1</button></td>'
+      +'</tr>';
   }).join("");
-  box.innerHTML='<div style="max-height:200px;overflow:auto"><table class="adm-table" style="font-size:12px"><thead><tr><th>Code</th><th>NCC</th><th>T\u00e9l</th><th>Email</th><th>Nom</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  var more=list.length>shown.length?('<div style="font-size:11px;color:var(--txt3);padding:6px 8px">'+shown.length+' affich\u00e9s sur '+list.length+' \u2014 affinez la recherche.</div>'):'';
+  box.innerHTML='<div style="max-height:240px;overflow:auto"><table class="adm-table" style="font-size:12px"><thead><tr><th>Code</th><th>NCC</th><th>T\u00e9l</th><th>Email</th><th>Nom</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'+more;
 }
 function fneContactsTemplate(){
   var ws=XLSX.utils.aoa_to_sheet([["Code client","NCC","T\u00e9l\u00e9phone","Email","Nom"],["CI0011","9999999A","2721000000","contact@exemple.ci","AGENCE EXEMPLE"]]);
@@ -3398,16 +3509,16 @@ function fneContactsTemplate(){
 }
 function fneContactsClear(){
   if(!confirm("Vider toute la base contacts enregistr\u00e9e ?")) return;
-  try{ localStorage.removeItem(FNE_CONTACTS_KEY); }catch(e){}
+  try{ localStorage.removeItem(FNE_CONTACTS_KEY); localStorage.removeItem("marki_fne_seed_v"); }catch(e){}
   fneContactsRebuild([]); fneContactsRender();
   if(fneBatchQueue.length) fneReapplyContacts();
-  showToast("Base contacts vid\u00e9e","ok");
+  showToast("Base contacts vid\u00e9e (la base FNE int\u00e9gr\u00e9e sera restaur\u00e9e au prochain chargement)","ok");
 }
 function fneReapplyContacts(){
   fneBatchQueue.forEach(function(e){
     if(!e.parseOk) return;
     var code=e.code||"";
-    var ct=code?fneContactLookup(code, e.company):null;
+    var ct=fneContactLookup(code, e.company);   // tente code/NCC puis NOM d'entreprise (base FNE par nom)
     if(ct){
       e.ncc=ct.ncc||"";
       e.phone=ct.phone||""; e.email=ct.email||"";
@@ -3639,7 +3750,7 @@ function fneParseTextToObj(txt, fileName){
   var ref="";
   if(fileName){var mf=String(fileName).match(/(\d{6,})/);if(mf)ref=mf[1];}
   if(!ref){var mr=txt.match(/(\d{8,12})\s+Our\s+Reference/i)||txt.match(/Our\s+Reference\D*?(\d{8,12})/i);if(mr)ref=mr[1];}
-  r.footer=(inv&&ref)?(inv+" - "+ref):(inv||ref||"");
+  r.footer=(inv&&ref)?(inv+" | "+ref):(inv||ref||"");
   r.invNum=inv;   // numero de facture interne (II...)
   r.bl=ref;       // numero de BL / Our Reference (= prefixe du nom de fichier)
 
@@ -3729,7 +3840,9 @@ function fneRenderQueue(){
     }else if(e.contactMissing){
       statusBadge='<span style="padding:3px 8px;background:#b45309;color:#fff;border-radius:4px;font-size:11px;font-weight:700" title="'+(e.contactErr||"\u00e0 compl\u00e9ter")+' \u2014 compl\u00e9tez directement les cases (NCC/t\u00e9l/email) : la base est enrichie automatiquement">\u00c0 COMPL\u00c9TER</span>'+(e.ocr?' <span style="padding:3px 6px;background:#7c3aed;color:#fff;border-radius:4px;font-size:10px;font-weight:700" title="Lue par OCR \u2014 v\u00e9rifiez montants/NCC/codes">OCR \u26a0</span>':'');
     }else if(e.ocr){
-      statusBadge='<span style="padding:3px 8px;background:#7c3aed;color:#fff;border-radius:4px;font-size:11px;font-weight:700" title="Facture lue par OCR (PDF sans texte) \u2014 v\u00e9rifiez les montants, le NCC et les codes avant envoi. Vous pouvez la retirer si besoin.">OCR \u26a0 V\u00c9RIFIER</span>';
+      statusBadge= e.ocrValidated
+        ? '<span style="padding:3px 8px;background:var(--ok);color:#fff;border-radius:4px;font-size:11px;font-weight:700" title="Facture OCR valid\u00e9e">OCR \u2713</span>'
+        : '<span style="padding:3px 8px;background:#7c3aed;color:#fff;border-radius:4px;font-size:11px;font-weight:700" title="Facture lue par OCR \u2014 v\u00e9rifiez montants/NCC/codes puis Valider ou Rejeter. Non envoy\u00e9e tant que non valid\u00e9e.">OCR \u26a0 \u00c0 V\u00c9RIFIER</span>';
     }else{
       statusBadge='<span style="padding:3px 8px;background:#94a3b8;color:#fff;border-radius:4px;font-size:11px;font-weight:700">PR\u00caT</span>';
     }
@@ -3749,40 +3862,99 @@ function fneRenderQueue(){
       +'<td style="padding:6px 8px;text-align:center">'+(e.items?e.items.length:0)+'</td>'
       +'<td style="padding:6px 8px;text-align:right">'+fneFmtMoney(e.totalHt)+'</td>'
       +'<td style="padding:6px 8px;text-align:center">'+statusBadge+'</td>'
-      +'<td style="padding:6px 8px;text-align:center"><button onclick="fneRemoveFromQueue('+i+')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px" title="Retirer">\u00d7</button></td>'
+      +'<td style="padding:6px 8px;text-align:center">'+(
+        (e.ocr && !e.ocrValidated && e.parseOk)
+        ? '<button onclick="fneValidateOcr('+i+')" style="background:var(--ok);border:none;color:#fff;cursor:pointer;font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;margin-bottom:3px" title="Valider cette facture OCR">\u2713</button><br><button onclick="fneRejectEntry('+i+')" style="background:#dc2626;border:none;color:#fff;cursor:pointer;font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px" title="Rejeter (retirer du lot)">\u2715</button>'
+        : '<button onclick="fneRemoveFromQueue('+i+')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px" title="Retirer">\u00d7</button>'
+      )+'</td>'
       +'</tr>';
   }).join("");
   var miss=fneBatchQueue.filter(function(e){return e.contactMissing;}).length;
   var mb=$("fneContactMissingNote");
   if(mb){ if(miss){ mb.classList.remove("hid"); mb.innerHTML='\u270f\ufe0f '+miss+' facture(s) \u00e0 compl\u00e9ter (NCC, t\u00e9l ou email). \u00c9ditez directement les cases en orange ci-dessus \u2014 la saisie enrichit la base contacts pour les prochaines fois. Aucune facture n\'est bloqu\u00e9e.'; } else { mb.classList.add("hid"); } }
-  var nocr=fneBatchQueue.filter(function(e){return e.ocr;}).length;
+  var nocr=fneBatchQueue.filter(function(e){return e.ocr && !e.ocrValidated;}).length;
   var ob=$("fneOcrNote");
-  if(ob){ if(nocr){ ob.classList.remove("hid"); ob.innerHTML='\ud83d\udd0d '+nocr+' facture(s) lue(s) par <strong>OCR</strong> (PDF sans texte). L\'OCR peut se tromper sur les <strong>montants, le NCC et les codes</strong> \u2014 v\u00e9rifiez chaque ligne violette avant l\'envoi. Si possible, pr\u00e9f\u00e9rez le PDF d\'origine (avec texte). Vous pouvez retirer une facture avec \u00d7.'; } else { ob.classList.add("hid"); } }
+  if(ob){ if(nocr){ ob.classList.remove("hid"); ob.innerHTML='\ud83d\udd0d '+nocr+' facture(s) lue(s) par <strong>OCR</strong> \u00e0 v\u00e9rifier (montants, NCC, codes). <strong>Validez</strong> (\u2713) ou <strong>Rejetez</strong> (\u2715) chacune \u2014 une OCR non valid\u00e9e n\'est pas envoy\u00e9e. <button onclick="fneValidateAllOcr()" style="margin-left:8px;background:var(--ok);border:none;color:#fff;font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px">\u2713 Tout valider</button>'; } else { ob.classList.add("hid"); } }
 }
 
 function fneEditEntry(i, field, val){
   var e=fneBatchQueue[i]; if(!e) return;
   e[field]=(val||"").trim();
-  // enrichit la base contacts (keyee par code client) pour les prochaines factures
-  if(e.code){ fneUpsertContact(e.code, {ncc:e.ncc, phone:e.phone, email:e.email, nom:e.company}); }
-  e.contactMissing=!e.ncc||!e.phone||!e.email;
-  e.contactErr=e.contactMissing?(((!e.ncc?"NCC ":"")+(!e.phone?"t\u00e9l ":"")+(!e.email?"email":"")).trim()+" \u00e0 compl\u00e9ter"):"";
-  fneRenderQueue();
+  // Le syst\u00e8me RETIENT toujours la saisie en base FNE : par code si dispo, sinon NCC, sinon nom d'entreprise.
+  var res=fneUpsertContact({code:e.code, ncc:e.ncc, phone:e.phone, email:e.email, nom:e.company});
+  if(res) fneFlashSaved();
+  // Propage l'info aux autres factures du m\u00eame client d\u00e9j\u00e0 dans la file, puis r\u00e9affiche.
+  fneReapplyContacts();
 }
-function fneUpsertContact(code, data){
-  if(!code) return;
-  var list=FNE_CONTACTS.list.slice();
-  var k=fneNormKey(code), found=null;
-  for(var j=0;j<list.length;j++){ if(fneNormKey(list[j].code||list[j].ncc)===k){ found=list[j]; break; } }
+var _fneSavedToastAt=0;
+function fneFlashSaved(){
+  var now=Date.now();
+  if(now-_fneSavedToastAt>1500){ _fneSavedToastAt=now; showToast("\u2713 Enregistr\u00e9 en base FNE","ok"); }
+}
+function fneUpsertContact(data, forceNom){
+  // data = {code, ncc, phone, email, nom}. Cle de rapprochement = code, sinon NCC, sinon nom normalise.
+  if(!data) return false;
+  var keyCode=fneNormKey(data.code||""), keyNcc=fneNormKey(data.ncc||""), keyName=fneNormName(data.nom||"");
+  var key=keyCode||keyNcc||keyName;
+  if(!key) return false;   // rien pour identifier l'entreprise
+  function kOf(e){ return fneNormKey(e.code) || fneNormKey(e.ncc) || fneNormName(e.nom); }
+  var list=FNE_CONTACTS.list.slice(), found=null;
+  for(var j=0;j<list.length;j++){ if(kOf(list[j])===key){ found=list[j]; break; } }
+  var created=false;
   if(found){
+    if(data.code && !found.code) found.code=data.code;
     if(data.ncc) found.ncc=data.ncc;
     if(data.phone) found.phone=data.phone;
     if(data.email) found.email=data.email;
-    if(data.nom && !found.nom) found.nom=data.nom;
+    if(data.nom && (forceNom || !found.nom)) found.nom=data.nom;
   }else{
-    list.push({ code:code, ncc:data.ncc||"", phone:data.phone||"", email:data.email||"", nom:data.nom||"" });
+    list.push({ code:data.code||"", ncc:data.ncc||"", phone:data.phone||"", email:data.email||"", nom:data.nom||"" });
+    created=true;
   }
   fneContactsSave(list);   // persiste en localStorage + reconstruit les index + rafraichit la base
+  return created?"created":"updated";
+}
+// ----- Gestion manuelle de la base contacts (entreprise / NCC / tel / email), facon Business Partners -----
+function fneContactAddManual(){
+  var code=(($("fneCcCode").value)||"").trim();
+  var nom=(($("fneCcNom").value)||"").trim();
+  var ncc=(($("fneCcNcc").value)||"").trim();
+  var tel=fnePhoneNorm($("fneCcTel").value);
+  var mail=(($("fneCcMail").value)||"").trim();
+  if(!code && !nom){ showToast("Indiquez au moins le nom de l'entreprise (ou un code client)","err"); try{$("fneCcNom").focus();}catch(e){} return; }
+  fneUpsertContact({code:code, ncc:ncc, phone:tel, email:mail, nom:nom}, true);
+  fneContactFormClear();
+  showToast("Client enregistr\u00e9 dans la base contacts","ok");
+  if(fneBatchQueue.length) fneReapplyContacts();   // rafraichit les factures deja chargees
+}
+function fneContactFormClear(){
+  ["fneCcCode","fneCcNom","fneCcNcc","fneCcTel","fneCcMail"].forEach(function(id){ var el=$(id); if(el) el.value=""; });
+}
+function fneContactEditLoad(code){
+  var k=fneNormKey(code), c=null;
+  for(var j=0;j<FNE_CONTACTS.list.length;j++){ if(fneNormKey(FNE_CONTACTS.list[j].code||FNE_CONTACTS.list[j].ncc)===k){ c=FNE_CONTACTS.list[j]; break; } }
+  if(!c) return;
+  $("fneCcCode").value=c.code||""; $("fneCcNom").value=c.nom||""; $("fneCcNcc").value=c.ncc||""; $("fneCcTel").value=c.phone||""; $("fneCcMail").value=c.email||"";
+  try{ $("fneCcCode").scrollIntoView({behavior:"smooth",block:"center"}); $("fneCcNcc").focus(); }catch(e){}
+}
+function fneDeleteContact(code){
+  if(!confirm("Supprimer ce client de la base contacts ?")) return;
+  var k=fneNormKey(code);
+  var list=FNE_CONTACTS.list.filter(function(e){ return fneNormKey(e.code||e.ncc)!==k; });
+  fneContactsSave(list);
+  showToast("Client supprim\u00e9","ok");
+}
+function fneValidateOcr(i){ var e=fneBatchQueue[i]; if(e){ e.ocrValidated=true; fneRenderQueue(); } }
+function fneValidateAllOcr(){
+  var n=0; fneBatchQueue.forEach(function(e){ if(e.ocr && e.parseOk && !e.ocrValidated){ e.ocrValidated=true; n++; } });
+  fneRenderQueue();
+  showToast(n+" facture(s) OCR valid\u00e9e(s)","ok");
+}
+function fneRejectEntry(i){
+  if(!confirm("Rejeter cette facture ? Elle sera retir\u00e9e du lot.")) return;
+  fneBatchQueue.splice(i,1);
+  fneBatchQueue.forEach(function(e,j){e.idx=j+1;});
+  fneRenderQueue();
 }
 function fneRemoveFromQueue(i){
   if(!confirm("Retirer ce PDF de la file ?"))return;
@@ -3792,15 +3964,15 @@ function fneRemoveFromQueue(i){
 }
 
 function fneStartBatch(){
-  var pending=fneBatchQueue.filter(function(e){return e.parseOk&&e.status==="pending";});
+  var pending=fneBatchQueue.filter(function(e){return e.parseOk&&e.status==="pending"&&(!e.ocr||e.ocrValidated);});
   var incomplete=pending.filter(function(e){return e.contactMissing;}).length;
+  var ocrHeld=fneBatchQueue.filter(function(e){return e.parseOk&&e.status==="pending"&&e.ocr&&!e.ocrValidated;}).length;
   if(!pending.length){
-    alert("Aucune facture pr\u00eate \u00e0 envoyer.");
+    alert("Aucune facture pr\u00eate \u00e0 envoyer."+(ocrHeld?("\n\n"+ocrHeld+" facture(s) OCR \u00e0 valider (bouton \u2713 ou \u00ab Tout valider \u00bb) avant l'envoi."):""));
     return;
   }
   var msg="D\u00e9marrer le batch de "+pending.length+" facture(s) FNE ? Ces factures seront cr\u00e9\u00e9es de mani\u00e8re IRR\u00c9VERSIBLE sur le portail DGI.";
-  var nOcr=pending.filter(function(e){return e.ocr;}).length;
-  if(nOcr) msg+="\n\n\u26a0 "+nOcr+" facture(s) ont \u00e9t\u00e9 lue(s) par OCR (PDF sans texte). L'OCR peut se tromper sur les montants, le NCC ou les codes. V\u00c9RIFIEZ-les avant de continuer (ou retirez-les de la file avec \u00d7).";
+  if(ocrHeld) msg+="\n\n\ud83d\udd0d "+ocrHeld+" facture(s) OCR NON valid\u00e9es ne seront PAS envoy\u00e9es (validez-les avec \u2713 ou \u00ab Tout valider \u00bb).";
   if(incomplete) msg+="\n\n\u270f\ufe0f "+incomplete+" facture(s) ont encore un NCC, t\u00e9l ou email vide. Compl\u00e9tez les cases en orange si besoin \u2014 elles seront tout de m\u00eame envoy\u00e9es.";
   if(!confirm(msg)){
     return;
@@ -4168,7 +4340,7 @@ function fneBuildBookmarklet(){
         if(setText(["ncc","contribuable","identifiant fiscal"], inv.ncc)) filled++;
         if(setText(["telephone"], inv.phone)) filled++;
         if(setText(["email","e-mail","courriel"], inv.email)) filled++;
-        if(setText(["autres mention","autre mention","mention"], inv.footer)) filled++;
+        if(setText(["pied de page","pied"], inv.footer)) filled++;
         // 3) Articles (1 bloc par ligne, dans l'ordre)
         return fillArticles(inv.items || []);
       }).then(function(n){ filled += n; return filled; });
@@ -4183,9 +4355,9 @@ function fneBuildBookmarklet(){
         if(b.state !== "running"){ setStatus("Arr\u00eat\u00e9 (relancez \u00ab Pr\u00e9parer le batch \u00bb dans IVAN)"); stopped = true; busy = false; return; }
         var q = b.queue || [];
         var ok = q.filter(function(e){ return e.status==="success"; }).length;
-        var pendIdx = q.findIndex(function(e){ return e.parseOk && e.status==="pending"; });
+        var pendIdx = q.findIndex(function(e){ return e.parseOk && e.status==="pending" && (!e.ocr || e.ocrValidated); });
         var subgIdx = q.findIndex(function(e){ return e.parseOk && e.status==="submitting"; });
-        function morePending(){ return q.some(function(e){ return e.parseOk && e.status==="pending"; }); }
+        function morePending(){ return q.some(function(e){ return e.parseOk && e.status==="pending" && (!e.ocr || e.ocrValidated); }); }
         function finishIfDone(){ if(!morePending()){ b.state="done"; putBatch(b); stopped=true; setDoneUI(); setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9e(s))"); alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); return true; } return false; }
         if(pendIdx<0 && subgIdx<0){ b.state="done"; putBatch(b); setStatus("\u2713 Termin\u00e9 ("+ok+" cr\u00e9\u00e9es)"); setDoneUI(); stopped=true; busy=false; alert("IVAN-FNE-BATCH: Termin\u00e9. "+ok+" facture(s) cr\u00e9\u00e9e(s)."); return; }
 
@@ -4721,5 +4893,298 @@ checkLicense(function(){
     </div>
   </div>
 
+<script>
+/* ===================== MANIFESTE : facturation par lot depuis le rapport de manifeste =====================
+   Ne réimplémente AUCUNE logique de facturation. Par BL : /generate {echangeCharges} (mêmes charges que le
+   module Échange), puis CSV combiné via /generate {invoices:[...], bulk:true} (chemin déjà validé, Invoice
+   Grouping 1..N par BL). */
+var MAN_IO = "I";              // "I" import | "O" export
+var MAN_TARGET = "final";      // "final" (client final) | "transit" (transitaire)
+var manRows = [];              // BLs regroupés
+var MAN_PARTY = {};            // base parties réutilisable : "<target>:<normName>" -> {name,bp,ca,ecc}
+var MAN_PARTY_KEY = "ivans4_man_party";
+var MAN_DRAFT_KEY = "ivans4_man_draft";
+var MAN_LANDLOCK = /(mali|burkina|niger|bamako|ouaga|niamey|tchad|\bchad\b|faso)/i;
+var _manBpMatches = {};        // i -> matches BP
+var _manCommMatches = {};      // i -> matches marchandise
+
+function manNormName(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,28); }
+function manPartyKey(name){ return MAN_TARGET+":"+manNormName(name); }
+function manClean(s){ return String(s||"").replace(/_x000D_/g,"").replace(/[\r\n]+/g," ").replace(/\s+/g," ").trim(); }
+function manTonnes(kg){ return Math.round((kg/1000)*1000)/1000; }
+function manDetectSubtype(desc){ var d=String(desc||""); return (/transit/i.test(d) && MAN_LANDLOCK.test(d)) ? "transit" : "echange"; }
+function manFmt(n){ return (parseFloat(n)||0).toLocaleString("fr-FR"); }
+
+function manLoadParty(){ try{ MAN_PARTY=JSON.parse(localStorage.getItem(MAN_PARTY_KEY)||"{}")||{}; }catch(e){ MAN_PARTY={}; } }
+function manSaveParty(){ try{ localStorage.setItem(MAN_PARTY_KEY, JSON.stringify(MAN_PARTY)); }catch(e){ showToast("Stockage plein","err"); } }
+function manSaveDraft(){ try{ localStorage.setItem(MAN_DRAFT_KEY, JSON.stringify({io:MAN_IO,target:MAN_TARGET,rows:manRows,date:($("manDate")?$("manDate").value:"")})); }catch(e){} }
+function manLoadDraft(){ try{ var d=JSON.parse(localStorage.getItem(MAN_DRAFT_KEY)||"null"); if(d&&d.rows){ MAN_IO=d.io||"I"; MAN_TARGET=d.target||"final"; manRows=d.rows||[]; if(d.date&&$("manDate"))$("manDate").value=d.date; } }catch(e){} }
+
+function initManifest(){
+  manLoadParty();
+  if(!manRows.length) manLoadDraft();
+  manSyncToggles();
+  manRender();
+}
+function manSetIO(v){ MAN_IO=v; manSyncToggles(); manSaveDraft(); manRender(); }
+function manSetTarget(v){ MAN_TARGET=v; manSyncToggles(); manResolveParties().then(function(){ manSaveDraft(); manRender(); }); }
+function manSyncToggles(){
+  ["I","O"].forEach(function(x){ var b=$("manIO-"+x); if(b) b.classList.toggle("on", x===MAN_IO); });
+  ["final","transit"].forEach(function(x){ var b=$("manTg-"+x); if(b) b.classList.toggle("on", x===MAN_TARGET); });
+  var note=$("manTargetNote");
+  if(note) note.innerHTML = MAN_TARGET==="final"
+    ? "Le <strong>client final</strong> (consignee) est recherché automatiquement dans la base BP. Les manquants sont à compléter ci-dessous (sauvegardés pour les prochains manifestes)."
+    : "<strong>Transitaire</strong> : renseignez le BP et le compte contrat par BL (brouillons sauvegardés, à compléter quand vous voulez).";
+}
+
+/* ---------- Upload + parsing ---------- */
+function manUpload(file){
+  if(!file) return;
+  var info=$("manParseInfo"); info.classList.remove("hid"); info.textContent="Lecture du manifeste…";
+  var rd=new FileReader();
+  rd.onload=function(ev){
+    try{
+      var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});
+      var parsed=manParseWorkbook(wb);
+      if(!parsed.rows.length){ info.textContent="Aucune ligne BL exploitable (colonnes 'Shipment Number' / 'Container Size' introuvables)."; return; }
+      manRows=parsed.rows;
+      info.textContent=parsed.rows.length+" BL regroupés depuis "+parsed.lines+" lignes.";
+      manSaveDraft();
+      manResolveParties().then(function(){ manSaveDraft(); manRender(); });
+    }catch(e){ info.textContent="Erreur de lecture : "+e.message; }
+  };
+  rd.readAsArrayBuffer(file);
+  try{ $("manFileInput").value=""; }catch(e){}
+}
+function manParseWorkbook(wb){
+  var best=null;
+  wb.SheetNames.forEach(function(sn){
+    if(best) return;
+    var aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:""});
+    for(var i=0;i<Math.min(aoa.length,15);i++){
+      var rowU=(aoa[i]||[]).map(function(x){return String(x||"").toLowerCase().trim();});
+      if(rowU.indexOf("shipment number")>=0 && rowU.some(function(c){return c.indexOf("container size")>=0;})){ best={aoa:aoa,hi:i}; return; }
+    }
+  });
+  if(!best) return {rows:[],lines:0};
+  var hdr=best.aoa[best.hi].map(function(x){return String(x||"").toLowerCase().trim();});
+  function col(){ var names=[].slice.call(arguments); for(var i=0;i<hdr.length;i++){ for(var k=0;k<names.length;k++){ if(hdr[i].indexOf(names[k])>=0) return i; } } return -1; }
+  var iBL=col("shipment number"), iCons=col("consignee name"), iConsC=col("consignee code"),
+      iSize=col("container size"), iWt=col("stuffed weight"), iDesc=col("cargo documentation"), iCnum=col("container number");
+  if(iBL<0) return {rows:[],lines:0};
+  var map={}, order=[], lines=0;
+  for(var r=best.hi+1;r<best.aoa.length;r++){
+    var row=best.aoa[r]; if(!row) continue;
+    var bl=String(row[iBL]||"").trim(); if(!bl) continue;
+    lines++;
+    if(!map[bl]){ map[bl]={bl:bl,c20:0,c40:0,kg:0,consignee:"",consigneeCode:"",descs:[],cnums:{}}; order.push(bl); }
+    var g=map[bl];
+    var sz=String(iSize>=0?row[iSize]:"").replace(/[^0-9]/g,"");
+    var cn=String(iCnum>=0?row[iCnum]:"").trim();
+    if(!(cn && g.cnums[cn])){          // évite de recompter un conteneur listé 2 fois
+      if(cn) g.cnums[cn]=1;
+      if(sz.indexOf("20")===0) g.c20++; else if(sz.indexOf("40")===0) g.c40++;
+    }
+    var w=parseFloat(String(iWt>=0?row[iWt]:"0").replace(/[^0-9.]/g,"")); if(!isNaN(w)) g.kg+=w;
+    if(iCons>=0 && !g.consignee && row[iCons]) g.consignee=String(row[iCons]).trim();
+    if(iConsC>=0 && !g.consigneeCode && row[iConsC]) g.consigneeCode=String(row[iConsC]).trim();
+    if(iDesc>=0 && row[iDesc]){ var d=manClean(row[iDesc]); if(d && g.descs.indexOf(d)<0) g.descs.push(d); }
+  }
+  var rows=order.map(function(bl){
+    var g=map[bl]; var desc=g.descs.join(" ; ");
+    return { bl:bl, c20:g.c20, c40:g.c40, teu:(g.c20+2*g.c40), cnt:(g.c20+g.c40), tonnes:manTonnes(g.kg),
+      consignee:g.consignee, consigneeCode:g.consigneeCode, desc:desc, subtype:manDetectSubtype(desc),
+      commodityCode:"", commodityDesc:"", bp:"", ca:"", bpName:"", ecc:"" };
+  });
+  return {rows:rows, lines:lines};
+}
+
+/* ---------- Résolution des parties (client final) ---------- */
+function manResolveParties(){
+  var tasks=manRows.map(function(row){
+    return new Promise(function(resolve){
+      var nkey=manNormName(row.consignee);
+      var saved=MAN_PARTY[manPartyKey(row.consignee)];
+      if(saved && saved.bp){ row.bp=saved.bp; row.ca=saved.ca||""; row.bpName=saved.name||row.consignee; row.ecc=saved.ecc||""; return resolve(); }
+      if(MAN_TARGET!=="final" || !row.consignee){ return resolve(); }
+      apiCall("/data?action=bp&q="+encodeURIComponent(row.consignee)).then(function(res){
+        var rs=res.results||[], hit=null;
+        for(var i=0;i<rs.length;i++){ if(manNormName(rs[i].name)===nkey){ hit=rs[i]; break; } }
+        if(!hit && rs.length===1) hit=rs[0];
+        if(hit){
+          row.bp=hit.bp; row.bpName=hit.name; row.ecc=hit.ecc||"";
+          apiCall("/store?action=getca&bp="+encodeURIComponent(hit.bp)).then(function(c){
+            var acc=c.accounts||[]; if(acc.length) row.ca=acc[0].ca; resolve();
+          }).catch(function(){ resolve(); });
+        } else resolve();
+      }).catch(function(){ resolve(); });
+    });
+  });
+  return Promise.all(tasks);
+}
+
+/* ---------- Rendu ---------- */
+function manReady(row){ return !!(row.bp && row.ca && row.commodityCode); }
+function manRender(){
+  var area=$("manResultArea"); if(!area) return;
+  if(!manRows.length){ area.classList.add("hid"); return; }
+  area.classList.remove("hid");
+  var teu=manRows.reduce(function(s,r){return s+r.teu;},0);
+  var tons=manRows.reduce(function(s,r){return s+r.tonnes;},0);
+  var miss=manRows.filter(function(r){return !r.bp||!r.ca;}).length;
+  var noComm=manRows.filter(function(r){return !r.commodityCode;}).length;
+  var ready=manRows.filter(manReady).length;
+  $("manStats").innerHTML=
+    manStat(manRows.length,"BL")+manStat(teu,"TEU")+manStat(Math.round(tons)+" t","Tonnage")+
+    manStat(ready,"Prêts",ready===manRows.length?"var(--ok)":"var(--frost)")+
+    manStat(miss,"Parties à compléter",miss?"#f59e0b":"var(--ok)")+
+    manStat(noComm,"Codes à confirmer",noComm?"#f59e0b":"var(--ok)");
+  var body=$("manTableBody");
+  body.innerHTML=manRows.map(function(r,i){
+    var subOpts=["echange","transit"].map(function(s){return '<option value="'+s+'"'+(r.subtype===s?' selected':'')+'>'+(s==="transit"?"Transit":"Échange")+'</option>';}).join("");
+    var commVal=r.commodityCode?(r.commodityCode+" "+(r.commodityDesc||"")):"";
+    var commCell='<input class="ip mono" value="'+escAttr(commVal)+'" placeholder="'+escAttr((r.desc||"").slice(0,20)||"chercher…")+'" oninput="manCommSearch('+i+',this.value)" onfocus="manCommFocus('+i+')" style="width:160px;font-size:11px;padding:3px 5px;border-color:'+(r.commodityCode?'var(--ice-line2)':'#f59e0b')+'"><div id="manCommAc-'+i+'"></div>';
+    var partyCell;
+    if(r.bp && r.ca){
+      partyCell='<div style="font-size:11px"><span class="mono" style="color:var(--frost)">'+escAttr(r.bp)+'</span> · CA '+escAttr(r.ca)+'<br><span style="color:var(--txt3)">'+escAttr(r.bpName||"")+'</span> <button onclick="manOpenParty('+i+')" style="background:none;border:none;color:var(--frost);cursor:pointer;font-size:12px">&#9998;</button></div>';
+    } else {
+      partyCell='<button onclick="manOpenParty('+i+')" style="background:#f59e0b;border:none;color:#1a1300;border-radius:5px;padding:4px 9px;font-size:11px;cursor:pointer;font-weight:700">Compléter BP/CA</button>';
+    }
+    return '<tr style="border-bottom:1px solid var(--ice-line2)'+(manReady(r)?'':';background:rgba(245,158,11,.07)')+'">'+
+      '<td style="padding:5px 8px;font-family:monospace">'+escAttr(r.bl)+'</td>'+
+      '<td style="padding:5px 8px;text-align:center;font-size:11px">'+r.c20+'&times;20 '+r.c40+'&times;40<br><span style="color:var(--frost)">'+r.teu+' TEU</span></td>'+
+      '<td style="padding:5px 8px;text-align:right">'+manFmt(r.tonnes)+'</td>'+
+      '<td style="padding:5px 8px;font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escAttr(r.consignee)+'">'+escAttr(r.consignee||"-")+'</td>'+
+      '<td style="padding:5px 8px">'+commCell+'</td>'+
+      '<td style="padding:5px 8px"><select class="ip" onchange="manEditRow('+i+',\'subtype\',this.value)" style="font-size:11px;padding:3px 4px;width:92px">'+subOpts+'</select></td>'+
+      '<td style="padding:5px 8px">'+partyCell+'</td>'+
+      '<td style="padding:5px 8px;text-align:center">'+(manReady(r)?'<span style="color:var(--ok);font-weight:700">&#10003;</span>':'<span style="color:#f59e0b">&hellip;</span>')+'</td>'+
+      '</tr>'+
+      '<tr id="manPartyEditor-'+i+'" class="hid"><td colspan="8" style="padding:0 8px 8px"></td></tr>';
+  }).join("");
+  var gen=$("manGenInfo"); if(gen) gen.textContent = ready+" / "+manRows.length+" BL prêts à facturer.";
+}
+function manStat(v,l,col){ return '<div style="background:var(--void);border:1px solid var(--ice-line);border-radius:10px;padding:10px 8px;text-align:center"><div style="font-size:18px;font-weight:800;color:'+(col||"var(--frost)")+'">'+v+'</div><div style="font-size:10px;color:var(--txt3);text-transform:uppercase">'+l+'</div></div>'; }
+function manEditRow(i,f,v){ if(manRows[i]){ manRows[i][f]=v; manSaveDraft(); } }
+
+/* ---------- Marchandise : recherche serveur par BL ---------- */
+function manCommFocus(i){ var r=manRows[i]; if(!r||r.commodityCode) return; var q=(r.desc||"").replace(/[^A-Za-z ]/g," ").trim().split(/\s+/)[0]||""; if(q.length>=2) manCommSearch(i,q); }
+function manCommSearch(i,q){
+  q=(q||"").trim(); var box=$("manCommAc-"+i); if(!box) return;
+  if(q.length<2){ box.innerHTML=""; return; }
+  apiCall("/data?action=commodity&q="+encodeURIComponent(q)).then(function(res){
+    var rs=(res.results||[]).slice(0,8); _manCommMatches[i]=rs;
+    if(!rs.length){ box.innerHTML=""; return; }
+    box.innerHTML='<div style="background:var(--panel2);border:1px solid var(--ice-line2);border-radius:8px;max-height:190px;overflow:auto;margin-top:3px;box-shadow:0 8px 24px rgba(0,0,0,.4)">'+
+      rs.map(function(m,k){ return '<div onclick="manCommPick('+i+','+k+')" style="padding:6px 8px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--ice-line2)"><span class="mono" style="color:var(--frost)">'+escAttr(m.c)+'</span> '+escAttr(m.d)+'</div>'; }).join("")+'</div>';
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+}
+function manCommPick(i,k){ var m=(_manCommMatches[i]||[])[k]; if(!m||!manRows[i]) return; manRows[i].commodityCode=m.c; manRows[i].commodityDesc=(m.d||"").slice(0,30); manSaveDraft(); var b=$("manCommAc-"+i); if(b)b.innerHTML=""; manRender(); }
+
+/* ---------- Éditeur de partie (BP + compte contrat) par BL ---------- */
+function manOpenParty(i){
+  var tr=$("manPartyEditor-"+i); if(!tr) return;
+  if(!tr.classList.contains("hid")){ tr.classList.add("hid"); return; }
+  document.querySelectorAll('[id^="manPartyEditor-"]').forEach(function(e){e.classList.add("hid");});
+  tr.classList.remove("hid");
+  var r=manRows[i];
+  tr.querySelector("td").innerHTML=
+    '<div style="background:var(--void);border:1px solid var(--frost);border-radius:8px;padding:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">'+
+    '<div style="flex:1;min-width:200px;position:relative"><label class="lb" style="font-size:11px">'+(MAN_TARGET==="final"?"BP du client final":"BP du transitaire")+'</label>'+
+      '<input class="ip" id="manBp-'+i+'" value="'+escAttr(r.bpName?(r.bp+" - "+r.bpName):r.bp)+'" placeholder="Rechercher par nom/code ou saisir…" autocomplete="off" oninput="manBpSearch('+i+',this.value)"><div id="manBpAc-'+i+'" style="position:absolute;z-index:30;width:100%"></div></div>'+
+    '<div style="width:160px"><label class="lb" style="font-size:11px">Compte contrat</label><input class="ip mono" id="manCa-'+i+'" value="'+escAttr(r.ca)+'" placeholder="VKONT"></div>'+
+    '<button class="bt bt-ice" onclick="manSaveParty2('+i+')" style="font-size:12px;padding:9px 16px">Enregistrer</button>'+
+    '<span style="font-size:11px;color:var(--txt3)">Sauvegardé pour réutilisation (client : '+escAttr(r.consignee||"?")+').</span>'+
+    '</div>';
+}
+function manBpSearch(i,q){
+  q=(q||"").trim(); var list=$("manBpAc-"+i); if(!list) return;
+  if(manRows[i]){ manRows[i].bp=q; manRows[i].bpName=""; }
+  if(q.length<2){ list.innerHTML=""; return; }
+  apiCall("/data?action=bp&q="+encodeURIComponent(q)).then(function(res){
+    var rs=(res.results||[]).slice(0,12); _manBpMatches[i]=rs;
+    if(!rs.length){ list.innerHTML=""; return; }
+    list.innerHTML='<div style="background:var(--panel2);border:1px solid var(--ice-line2);border-radius:8px;max-height:180px;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.4)">'+
+      rs.map(function(m,k){ return '<div onclick="manBpPick('+i+','+k+')" style="padding:6px 8px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--ice-line2)"><span class="mono">'+escAttr(m.ecc||"")+'</span> &rarr; <span class="mono" style="color:var(--frost)">'+escAttr(m.bp)+'</span><div style="color:var(--txt3)">'+escAttr(m.name||"")+'</div></div>'; }).join("")+'</div>';
+  }).catch(function(e){ if(e&&e.blocked) showBlocked(); });
+}
+function manBpPick(i,k){
+  var m=(_manBpMatches[i]||[])[k]; if(!m||!manRows[i]) return;
+  manRows[i].bp=m.bp; manRows[i].bpName=m.name||""; manRows[i].ecc=m.ecc||"";
+  var bpEl=$("manBp-"+i); if(bpEl) bpEl.value=(m.ecc?m.ecc+" - ":"")+(m.name||m.bp);
+  var ac=$("manBpAc-"+i); if(ac) ac.innerHTML="";
+  apiCall("/store?action=getca&bp="+encodeURIComponent(m.bp)).then(function(c){
+    var acc=c.accounts||[]; if(acc.length){ manRows[i].ca=acc[0].ca; var caEl=$("manCa-"+i); if(caEl&&!caEl.value) caEl.value=acc[0].ca; }
+  }).catch(function(){});
+}
+function manSaveParty2(i){
+  var r=manRows[i]; if(!r) return;
+  var caEl=$("manCa-"+i); var ca=(caEl?caEl.value:"").trim();
+  if(!r.bp){ showToast("Renseignez le BP","err"); return; }
+  if(!ca){ showToast("Renseignez le compte contrat","err"); return; }
+  r.ca=ca;
+  var pk=manPartyKey(r.consignee);
+  if(r.consignee) MAN_PARTY[pk]={name:r.bpName||r.consignee, bp:r.bp, ca:ca, ecc:r.ecc||""};
+  // propage aux autres BL du même client (même clé partie)
+  if(r.consignee){ manRows.forEach(function(x){ if(x!==r && manPartyKey(x.consignee)===pk){ x.bp=r.bp; x.ca=ca; x.bpName=r.bpName||x.consignee; x.ecc=r.ecc||""; } }); }
+  manSaveParty(); manSaveDraft();
+  showToast("Partie enregistrée en base","ok");
+  manRender();
+}
+
+/* ---------- Génération du lot ---------- */
+function manGenerate(){
+  var ready=manRows.filter(manReady);
+  var notReady=manRows.length-ready.length;
+  if(!ready.length){ alert("Aucun BL prêt : il faut BP + compte contrat + code marchandise."); return; }
+  var msg="Générer le lot de "+ready.length+" facture(s) "+(MAN_IO==="I"?"(import)":"(export)")+" ?\nUn CSV combiné sera créé pour upload SAP FKKBIXBIT.";
+  if(notReady) msg+="\n\n"+notReady+" BL incomplets seront ignorés.";
+  if(!confirm(msg)) return;
+  var theDate=($("manDate")?$("manDate").value:"")||"";
+  var info=$("manGenInfo"); var payloads=[]; var idx=0;
+  function next(){
+    if(idx>=ready.length){ manFinalize(payloads); return; }
+    var r=ready[idx]; info.textContent="Calcul des charges "+(idx+1)+"/"+ready.length+" — BL "+r.bl+"…";
+    var params={ port:"abidjan", subtype:r.subtype, io:MAN_IO, cnt:(r.cnt||1), teu:(r.teu||1),
+      containers:[{count:r.c20,size:"20",type:"DRY"},{count:r.c40,size:"40",type:"DRY"}].filter(function(c){return c.count>0;}),
+      weight:r.tonnes, commodities:[{code:r.commodityCode, weight:r.tonnes}],
+      expMode:(MAN_IO==="O"), expCat:"PAS_PROPRE" };
+    apiCall("/generate",{method:"POST",body:{echangeCharges:params}}).then(function(res){
+      var lines=(res.lines||[]).map(function(l){ return {code:l.code,desc:l.desc,bit:l.bit||"COFR",qty:l.qty,rate:l.rate,unit:l.unit||"EA"}; });
+      payloads.push(manBuildPayload(r,lines,theDate));
+      idx++; next();
+    }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} info.textContent="Erreur charges BL "+r.bl+" : "+((e&&e.error)||"serveur"); });
+  }
+  next();
+}
+function manBuildPayload(r, lines, theDate){
+  var foot=r.bl+" | "+(r.consignee||"");
+  return { subprocess:"MIMN", bp:r.bp, contractAcc:r.ca,
+    sailingDate: MAN_IO==="O"?theDate:"", arrivalDate: MAN_IO==="I"?theDate:"", expImp:MAN_IO,
+    ubli:"", bl:r.bl, cbu:"", extFooter:foot, cliFinal:r.consignee||"", zone:"", invGrouping:"1",
+    clerkEmail:(curUser&&curUser.email)?curUser.email:"", clerkName:(curUser&&curUser.name)?curUser.name:"",
+    companyCode:"CI12", businessArea:"CI00", profitCenter:"CI12ML01", salesOffice:"CI12", currency:"XOF",
+    lines:lines };
+}
+function manFinalize(payloads){
+  var info=$("manGenInfo");
+  if(!payloads.length){ info.textContent="Aucune facture générée."; return; }
+  info.textContent="Assemblage du CSV combiné ("+payloads.length+" factures)…";
+  apiCall("/generate",{method:"POST",body:{invoices:payloads, bulk:true}}).then(function(res){
+    if(res.ok&&res.csv){
+      downloadCSV(res.csv,"IVAN_S4_MANIFESTE_"+MAN_IO+"_"+payloads.length+"BL_"+Date.now()+".csv");
+      info.textContent="\u2713 CSV généré ("+payloads.length+" factures). Uploadez-le via FKKBIXBIT_upload.";
+      showToast("Lot généré : "+payloads.length+" factures","ok");
+    } else { info.textContent="Erreur : "+((res&&res.error)||"inconnue"); }
+  }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} info.textContent="Erreur serveur lors de l'assemblage."; });
+}
+
+function manClearDraft(){
+  if(!confirm("Vider le manifeste chargé ? (La base des parties enregistrées est conservée.)")) return;
+  manRows=[]; try{ localStorage.removeItem(MAN_DRAFT_KEY); }catch(e){}
+  if($("manParseInfo")) $("manParseInfo").classList.add("hid"); manRender();
+}
+
+</script>
 </body>
 </html>
