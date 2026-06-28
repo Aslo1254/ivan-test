@@ -1148,7 +1148,11 @@ textarea.ip{resize:vertical;min-height:70px}
           <span style="font-size:11px;color:var(--txt3)">Le <strong>code client (CI...)</strong> est la cl&eacute; de rapprochement avec les factures.</span>
         </div>
       </div>
-      <input class="ip" id="fneContactsSearch" placeholder="Rechercher un client (code, NCC, nom, email...)" oninput="fneContactsRender()" autocomplete="off" style="margin-top:12px;font-size:13px">
+      <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
+        <input class="ip" id="fneContactsSearch" placeholder="Rechercher un client (code, NCC, nom, email...)" oninput="fneContactsRender()" autocomplete="off" style="flex:1;min-width:220px;font-size:13px">
+        <button id="fneInvBtn" class="bt bt-ghost" onclick="fneToggleInvalid()" style="font-size:12px;white-space:nowrap">&#9888; T&eacute;l&eacute;phones invalides</button>
+      </div>
+      <div id="fneInvNote" style="font-size:11.5px;color:#f59e0b;margin-top:8px"></div>
       <div id="fneContactsList" style="margin-top:12px"></div>
     </div>
 
@@ -3395,7 +3399,12 @@ var FNE_CONTACTS = { list:[], byCode:{}, byNcc:{}, byName:{} };
 var FNE_CONTACTS_KEY = "marki_fne_contacts";
 function fneNormKey(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,""); }
 function fneNormName(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,24); }
-function fnePhoneNorm(s){ var d=String(s||""); if(d.indexOf(";")>=0)d=d.split(";")[0]; if(d.indexOf("/")>=0)d=d.split("/")[0]; d=d.replace(/[^\d+]/g,"").replace(/^\+?00?225/,"").replace(/\D/g,""); return d; }
+function fnePhoneNorm(s){ var d=String(s||""); if(d.indexOf(";")>=0)d=d.split(";")[0]; if(d.indexOf("/")>=0)d=d.split("/")[0]; d=d.replace(/[^\d+]/g,"").replace(/^(?:\+|00)?225/,"").replace(/\D/g,""); return d; }
+// Numéro ivoirien valide = 10 chiffres, préfixe mobile 07/05/01 ou fixe 27/25/21 (après nettoyage du +225)
+function fnePhoneValid(p){ var d=fnePhoneNorm(p); return /^(01|05|07|21|25|27)\d{8}$/.test(d); }
+function fnePhoneBad(p){ var d=fnePhoneNorm(p); return d.length>0 && !fnePhoneValid(d); }   // renseigné mais invalide
+var fneShowInvalidOnly=false;
+function fneToggleInvalid(){ fneShowInvalidOnly=!fneShowInvalidOnly; var b=$("fneInvBtn"); if(b) b.classList.toggle("on", fneShowInvalidOnly); fneContactsRender(); }
 function fneContactsRebuild(list){
   var c={ list:list||[], byCode:{}, byNcc:{}, byName:{} };
   (list||[]).forEach(function(e){
@@ -3413,7 +3422,7 @@ function fneSeedMerge(userList){
   var byKey={};
   (userList||[]).forEach(function(e){ var k=keyOf(e); if(k) byKey[k]=e; });
   FNE_CONTACT_SEED.forEach(function(s){
-    var entry={ code:"", ncc:s.c||"", phone:s.t||"", email:s.e||"", nom:s.n||"" };
+    var entry={ code:"", ncc:s.c||"", phone:fnePhoneNorm(s.t||""), email:s.e||"", nom:s.n||"" };
     var k=keyOf(entry); if(!k) return;
     if(byKey[k]){
       var ex=byKey[k];
@@ -3435,6 +3444,8 @@ function fneContactsLoad(){
       try{ localStorage.setItem(FNE_CONTACTS_KEY, JSON.stringify(list)); localStorage.setItem("marki_fne_seed_v", FNE_SEED_VERSION); }catch(e2){}
     }
   }catch(e){}
+  // Normalisation unique des numéros existants (retire +225, espaces) pour fiabiliser la base + la saisie FNE
+  try{ if(localStorage.getItem("marki_fne_phone_v")!=="phn1"){ list.forEach(function(e){ if(e&&e.phone) e.phone=fnePhoneNorm(e.phone); }); localStorage.setItem(FNE_CONTACTS_KEY, JSON.stringify(list)); localStorage.setItem("marki_fne_phone_v","phn1"); } }catch(e4){}
   fneContactsRebuild(list);
   fneContactsRender();
 }
@@ -3489,16 +3500,19 @@ function fneContactsRender(){
   var cnt=$("fneContactsCount"); if(cnt) cnt.textContent=FNE_CONTACTS.list.length?(FNE_CONTACTS.list.length+" contact(s) enregistr\u00e9(s)"):"Aucun contact enregistr\u00e9";
   var box=$("fneContactsList"); if(!box) return;
   if(!FNE_CONTACTS.list.length){ box.innerHTML='<div style="font-size:12px;color:var(--txt3);padding:8px">Aucun client enregistr\u00e9 pour l\'instant.</div>'; return; }
+  var allC=FNE_CONTACTS.list; var invCount=0; for(var _vi=0;_vi<allC.length;_vi++){ if(fnePhoneBad(allC[_vi].phone)) invCount++; }
+  var invNote=$("fneInvNote"); if(invNote) invNote.innerHTML = invCount ? ('\u26a0 '+invCount+' num\u00e9ro(s) invalide(s) \u2014 format requis : 10 chiffres, 07/05/01 (mobile) ou 27/25/21 (fixe).'+(fneShowInvalidOnly?'':' Cliquez \u00ab T\u00e9l\u00e9phones invalides \u00bb pour les filtrer et corriger.')) : (allC.length?'\u2713 Tous les num\u00e9ros renseign\u00e9s sont au bon format.':'');
   var q=""; var si=$("fneContactsSearch"); if(si) q=fneNormKey(si.value);
-  var list=FNE_CONTACTS.list;
+  var list=allC;
   if(q){ list=list.filter(function(e){ return fneNormKey(e.code).indexOf(q)>=0 || fneNormKey(e.ncc).indexOf(q)>=0 || fneNormKey(e.nom).indexOf(q)>=0 || fneNormKey(e.email).indexOf(q)>=0 || fneNormKey(e.phone).indexOf(q)>=0; }); }
+  if(fneShowInvalidOnly){ list=list.filter(function(e){ return fnePhoneBad(e.phone); }); }
   var shown=list.slice(0,300);
   var rows=shown.map(function(e){
     var c=(e.code||"").replace(/['"\\]/g,"");
     return '<tr style="border-bottom:1px solid var(--ice-line2)">'
       +'<td style="padding:4px 8px;font-family:monospace">'+(e.code||"-")+'</td>'
       +'<td style="padding:4px 8px;font-family:monospace">'+(e.ncc||"-")+'</td>'
-      +'<td style="padding:4px 8px">'+(e.phone||"-")+'</td>'
+      +'<td style="padding:4px 8px">'+(e.phone?(fnePhoneValid(e.phone)?escAttr(e.phone):'<span style="color:#f59e0b;font-weight:600" title="Num\u00e9ro invalide (10 chiffres, 07/05/01 mobile ou 27/25/21 fixe)">\u26a0 '+escAttr(e.phone)+'</span>'):'-')+'</td>'
       +'<td style="padding:4px 8px">'+(e.email||"-")+'</td>'
       +'<td style="padding:4px 8px;font-size:11px">'+(e.nom||"")+'</td>'
       +'<td style="padding:4px 8px;text-align:center;white-space:nowrap"><button onclick="fneContactEditLoad(\''+c+'\')" style="background:none;border:none;color:var(--frost);cursor:pointer;font-size:13px;margin-right:8px" title="Modifier">\u270e</button><button onclick="fneDeleteContact(\''+c+'\')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:13px" title="Supprimer">\ud83d\uddd1</button></td>'
@@ -3859,7 +3873,7 @@ function fneRenderQueue(){
       ? '<input value="'+escAttr(e.ncc||"")+'" placeholder="NCC" onchange="fneEditEntry('+i+',\'ncc\',this.value)" style="width:108px;font-family:monospace;font-size:11px;padding:3px 5px;background:var(--void);border:1px solid '+(e.ncc?'var(--ice-line2)':'#b45309')+';border-radius:4px;color:var(--crystal)">'
       : (e.ncc||"-");
     var contactCell = e.parseOk
-      ? '<input value="'+escAttr(e.phone||"")+'" placeholder="t\u00e9l" onchange="fneEditEntry('+i+',\'phone\',this.value)" style="width:96px;font-size:10px;padding:2px 4px;margin-bottom:3px;background:var(--void);border:1px solid '+(e.phone?'var(--ice-line2)':'#b45309')+';border-radius:4px;color:var(--crystal)"><br><input value="'+escAttr(e.email||"")+'" placeholder="email" onchange="fneEditEntry('+i+',\'email\',this.value)" style="width:140px;font-size:10px;padding:2px 4px;background:var(--void);border:1px solid '+(e.email?'var(--ice-line2)':'#b45309')+';border-radius:4px;color:var(--crystal)">'
+      ? '<input value="'+escAttr(e.phone||"")+'" placeholder="t\u00e9l" onchange="fneEditEntry('+i+',\'phone\',this.value)" style="width:96px;font-size:10px;padding:2px 4px;margin-bottom:3px;background:var(--void);border:1px solid '+(fnePhoneValid(e.phone)?'var(--ice-line2)':'#b45309')+';border-radius:4px;color:var(--crystal)"><br><input value="'+escAttr(e.email||"")+'" placeholder="email" onchange="fneEditEntry('+i+',\'email\',this.value)" style="width:140px;font-size:10px;padding:2px 4px;background:var(--void);border:1px solid '+(e.email?'var(--ice-line2)':'#b45309')+';border-radius:4px;color:var(--crystal)">'
       : '-';
     return '<tr style="border-bottom:1px solid var(--ice-line2)'+rowTint+'">'
       +'<td style="padding:6px 8px">'+e.idx+'</td>'
@@ -3888,6 +3902,7 @@ function fneRenderQueue(){
 function fneEditEntry(i, field, val){
   var e=fneBatchQueue[i]; if(!e) return;
   e[field]=(val||"").trim();
+  if(field==="phone") e.phone=fnePhoneNorm(e.phone);   // normalise (retire +225, espaces)
   // Le syst\u00e8me RETIENT toujours la saisie en base FNE : par code si dispo, sinon NCC, sinon nom d'entreprise.
   var res=fneUpsertContact({code:e.code, ncc:e.ncc, phone:e.phone, email:e.email, nom:e.company});
   if(res) fneFlashSaved();
@@ -3930,6 +3945,7 @@ function fneContactAddManual(){
   var tel=fnePhoneNorm($("fneCcTel").value);
   var mail=(($("fneCcMail").value)||"").trim();
   if(!code && !nom){ showToast("Indiquez au moins le nom de l'entreprise (ou un code client)","err"); try{$("fneCcNom").focus();}catch(e){} return; }
+  if(tel && !fnePhoneValid(tel)){ showToast("Num\u00e9ro invalide : 10 chiffres, pr\u00e9fixe 07/05/01 (mobile) ou 27/25/21 (fixe)","err"); try{$("fneCcTel").focus();}catch(e){} return; }
   fneUpsertContact({code:code, ncc:ncc, phone:tel, email:mail, nom:nom}, true);
   fneContactFormClear();
   showToast("Client enregistr\u00e9 dans la base contacts","ok");
