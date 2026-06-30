@@ -33,6 +33,7 @@ const K_DRAFTS = "ivan:drafts";
 const K_QUEUE = "ivan:queue";
 const K_CHB = "ivan:chb_templates";
 const K_ECHT = "ivan:echange_templates";
+const K_ECH_OV = "ivan:ech_charge_ov";  // overrides codes/libellés de charges par port/sous-type (managé)
 const K_HISTORY = "ivan:history";
 const K_CBU = "ivan:cbu_list";
 const K_CA_OVERRIDES = "ivan:ca_overrides";  // manager edits per BP: {bp: [{ca,name}]}
@@ -235,6 +236,25 @@ module.exports = async (req, res) => {
     if(action === 'resetecht'){
       await redis.set(K_ECHT, ECH_DEFAULTS);
       res.status(200).json({ ok:true, templates: ECH_DEFAULTS });
+      return;
+    }
+
+    // ===== PARAMÉTRAGE CODES/LIBELLÉS DES CHARGES (managé, partagé équipe) =====
+    if(action === 'getchargeov'){
+      let ov = await redis.get(K_ECH_OV);
+      res.status(200).json({ ok:true, overrides: ov || {} });
+      return;
+    }
+    if(action === 'setchargeov'){
+      const ov = (req.body && req.body.overrides);
+      if(ov === undefined || ov === null){ res.status(200).json({ ok:false, error:"overrides manquants" }); return; }
+      await redis.set(K_ECH_OV, ov);
+      res.status(200).json({ ok:true });
+      return;
+    }
+    if(action === 'resetchargeov'){
+      await redis.set(K_ECH_OV, {});
+      res.status(200).json({ ok:true, overrides: {} });
       return;
     }
 

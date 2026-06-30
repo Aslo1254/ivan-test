@@ -67,9 +67,18 @@ function buildEchangeCharges(params){
   if(!ECH_TPL[port] || !ECH_TPL[port].subtypes[sub]) return [];
   const template = ECH_TPL[port].subtypes[sub].charges;
   const lines = [];
+  // Overrides codes/libellés (managés, transmis par le client). N'affectent QUE le code et le libellé émis ;
+  // le calcul (rôle Portuaire/Municipale/Communale/Transit) reste détecté sur le libellé D'ORIGINE.
+  const _OV = (params.chargeOv && params.chargeOv[port] && params.chargeOv[port][sub]) || null;
+  function _ovApply(ch, idx){
+    var c = resolveEchCode(ch.code, io); var d = ch.d;
+    if(_OV && _OV[idx]){ var o=_OV[idx]; if(io==='I' && o.imp) c=o.imp; else if(io==='O' && o.exp) c=o.exp; if(o.d) d=o.d; }
+    return { code:c, d:d };
+  }
 
-  template.forEach(function(ch){
-    const code = resolveEchCode(ch.code, io);
+  template.forEach(function(ch, idx){
+    const eff = _ovApply(ch, idx);
+    const code = eff.code;
     // Commodity-driven charges: Redevance Portuaire / Municipale / Communale (base TO with commodity rate)
     const isPort = /portuaire|red port(?! transit)/i.test(ch.d) && ch.base==='TO';
     const isMun = /municipale|red mun/i.test(ch.d);
@@ -94,7 +103,7 @@ function buildEchangeCharges(params){
         else if(isMun) rate = comm ? comm.m : ch.rate;
         else rate = ch.rate; // communale flat (e.g. 20)
         const commName = comm ? comm.d.substring(0,30) : 'divers';
-        lines.push({code:code, desc:ch.d+' ('+commName+')', bit:'COFR', qty:w, rate:rate, unit:'TO', vat:ch.vat, redevance:true});
+        lines.push({code:code, desc:eff.d+' ('+commName+')', bit:'COFR', qty:w, rate:rate, unit:'TO', vat:ch.vat, redevance:true});
       });
     } else {
       // Standard charge
@@ -104,7 +113,7 @@ function buildEchangeCharges(params){
       else if(ch.base==='TEU') qty = teu;
       else if(ch.base==='TO') qty = totalWeight;
       else qty = 1;
-      lines.push({code:code, desc:ch.d, bit:'COFR', qty:qty, rate:ch.rate, unit:(ch.base==='TO'?'TO':'EA'), vat:ch.vat, redevance:isRedevance});
+      lines.push({code:code, desc:eff.d, bit:'COFR', qty:qty, rate:ch.rate, unit:(ch.base==='TO'?'TO':'EA'), vat:ch.vat, redevance:isRedevance});
     }
   });
   return lines;
