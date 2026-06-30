@@ -609,6 +609,7 @@ textarea.ip{resize:vertical;min-height:70px}
   </div>
 
   <div id="tab-echange" class="hid">
+    <div id="echCfgWrap"></div>
     <div class="cd">
       <div class="ct"><span class="dot"></span> Facturation &Eacute;change</div>
 
@@ -1151,6 +1152,7 @@ textarea.ip{resize:vertical;min-height:70px}
       <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
         <input class="ip" id="fneContactsSearch" placeholder="Rechercher un client (code, NCC, nom, email...)" oninput="fneContactsRender()" autocomplete="off" style="flex:1;min-width:220px;font-size:13px">
         <button id="fneInvBtn" class="bt bt-ghost" onclick="fneToggleInvalid()" style="font-size:12px;white-space:nowrap">&#9888; T&eacute;l&eacute;phones invalides</button>
+        <button class="bt bt-ghost" onclick="fneConformInvalid()" style="font-size:12px;white-space:nowrap" title="Remplace le d&eacute;but des num&eacute;ros invalides par 01/05/07">&#9889; Rendre conformes</button>
       </div>
       <div id="fneInvNote" style="font-size:11.5px;color:#f59e0b;margin-top:8px"></div>
       <div id="fneContactsList" style="margin-top:12px"></div>
@@ -2763,6 +2765,7 @@ var echReviewLines = [];   // editable charge lines from server
 var echMeta = {};
 
 function initEchange(){
+  echCfgInit();
   // nothing to preload; templates computed server-side
   if(echCommodities.length===0) addEchCommodity();
   if(echContainers.length===0) addEchContainer(); else renderEchContainers();
@@ -3030,7 +3033,8 @@ function genEchangeReview(){
     weight: echCommodities.reduce(function(s,c){return s+(c.weight||0);},0),
     commodities: echCommodities.filter(function(c){return c.code;}).map(function(c){return {code:c.code, weight:c.weight};}),
     expMode: (echMeta.expImp==="O"),
-    expCat: echExpCat
+    expCat: echExpCat,
+    chargeOv: (window.ECH_OV||{})
   };
   showToast("Calcul des charges...","ok");
   apiCall("/generate",{method:"POST",body:{echangeCharges:params}}).then(function(res){
@@ -4945,6 +4949,7 @@ function manSaveDraft(){ try{ localStorage.setItem(MAN_DRAFT_KEY, JSON.stringify
 function manLoadDraft(){ try{ var d=JSON.parse(localStorage.getItem(MAN_DRAFT_KEY)||"null"); if(d&&d.rows){ MAN_IO=d.io||"I"; MAN_TARGET=d.target||"final"; manRows=d.rows||[]; if(d.date&&$("manDate"))$("manDate").value=d.date; } }catch(e){} }
 
 function initManifest(){
+  if(typeof echCfgLoad==='function') echCfgLoad();   // récupère les codes/libellés managés
   manLoadParty();
   if(!manRows.length) manLoadDraft();
   manSyncToggles();
@@ -5172,7 +5177,7 @@ function manGenerate(){
     var params={ port:"abidjan", subtype:r.subtype, io:MAN_IO, cnt:(r.cnt||1), teu:(r.teu||1),
       containers:[{count:r.c20,size:"20",type:"DRY"},{count:r.c40,size:"40",type:"DRY"}].filter(function(c){return c.count>0;}),
       weight:r.tonnes, commodities:[{code:r.commodityCode, weight:r.tonnes}],
-      expMode:(MAN_IO==="O"), expCat:"PAS_PROPRE" };
+      expMode:(MAN_IO==="O"), expCat:"PAS_PROPRE", chargeOv:(window.ECH_OV||{}) };
     apiCall("/generate",{method:"POST",body:{echangeCharges:params}}).then(function(res){
       var lines=(res.lines||[]).filter(function(l){ return l.redevance; }).map(function(l){ return {code:l.code,desc:l.desc,bit:l.bit||"COFR",qty:l.qty,rate:l.rate,unit:l.unit||"EA"}; });
       payloads.push(manBuildPayload(r,lines,theDate));
@@ -5207,6 +5212,127 @@ function manClearDraft(){
   if(!confirm("Vider le manifeste chargé ? (La base des parties enregistrées est conservée.)")) return;
   manRows=[]; try{ localStorage.removeItem(MAN_DRAFT_KEY); }catch(e){}
   if($("manParseInfo")) $("manParseInfo").classList.add("hid"); manRender();
+}
+
+</script>
+<script>
+/* ============ PARAMÉTRAGE DES CODES & LIBELLÉS DE CHARGES (manager) + AUTO-CONFORMITÉ TÉL FNE ============ */
+/* Catalogue des charges (sans tarifs : les tarifs restent côté serveur). Les overrides ne changent QUE
+   le code SAP (import/export) et le libellé. Les charges San Pedro / Export par produit ne sont pas ici. */
+var ECH_CATALOG = {
+  abidjan: {
+    echange: [
+      {imp:"ODF", exp:"ODF", d:"Frais de dossier", base:"DOC"},
+      {imp:"PTX", exp:"PTX", d:"Redevance Portuaire", base:"TO"},
+      {imp:"PTX", exp:"PTX", d:"Redevance Municipale", base:"TO"},
+      {imp:"PTX", exp:"PTX", d:"Redevance Communale", base:"TO"},
+      {imp:"PSI", exp:"PSE", d:"Port Security Service (ISPS+SER)", base:"TEU"},
+      {imp:"GTI", exp:"GTE", d:"Taxe Sydam", base:"DOC"},
+      {imp:"DSI", exp:"DSE", d:"Timbre pour connaissement", base:"DOC"},
+      {imp:"HDI", exp:"HDE", d:"Déchargement de camion tiers", base:"TEU"},
+      {imp:"EHI", exp:"EHE", d:"Frais édition EIR", base:"CNT"}
+    ],
+    transit: [
+      {imp:"ODF", exp:"ODF", d:"Frais de dossier", base:"DOC"},
+      {imp:"PTX", exp:"PTX", d:"Red Port Transit", base:"TEU"},
+      {imp:"PSI", exp:"PSE", d:"Port Security Service (ISPS+SER)", base:"TEU"},
+      {imp:"GTI", exp:"GTE", d:"Taxe Sydam", base:"DOC"},
+      {imp:"DSI", exp:"DSE", d:"Timbre pour connaissement", base:"DOC"},
+      {imp:"HDI", exp:"HDE", d:"Déchargement de camion tiers", base:"TEU"},
+      {imp:"EHI", exp:"EHE", d:"Frais édition EIR", base:"CNT"}
+    ],
+    tbl: [
+      {imp:"ODF", exp:"ODF", d:"Frais de dossier", base:"DOC"},
+      {imp:"PTX", exp:"PTX", d:"Red Port Transit", base:"TEU"},
+      {imp:"PSI", exp:"PSE", d:"Port Security Service (ISPS+SER)", base:"TEU"},
+      {imp:"GTI", exp:"GTE", d:"Taxe Sydam", base:"DOC"},
+      {imp:"DSI", exp:"DSE", d:"Timbre pour connaissement", base:"DOC"},
+      {imp:"EHI", exp:"EHE", d:"Frais édition EIR", base:"CNT"}
+    ]
+  }
+};
+
+var ECH_OV = {}; try{ ECH_OV = JSON.parse(localStorage.getItem("ivans4_ech_ov")||"{}")||{}; }catch(e){ ECH_OV = {}; }
+window.ECH_OV = ECH_OV;
+var ECH_CFG_SEL = "abidjan|echange";
+var _echCfgOpen = false;
+
+function echCfgInit(){ echCfgRender(); echCfgLoad(); }
+function echCfgLoad(){
+  apiCall("/store?action=getchargeov").then(function(res){
+    if(res && res.overrides && typeof res.overrides==="object"){
+      ECH_OV = res.overrides; window.ECH_OV = ECH_OV;
+      try{ localStorage.setItem("ivans4_ech_ov", JSON.stringify(ECH_OV)); }catch(e){}
+      if($("echCfgWrap")) echCfgRender();
+    }
+  }).catch(function(){});
+}
+function echCfgToggle(){ _echCfgOpen=!_echCfgOpen; var b=$("echCfgBody"); if(b) b.style.display=_echCfgOpen?"block":"none"; }
+function echCfgSet(p,s,idx,f,v){
+  ECH_OV[p]=ECH_OV[p]||{}; ECH_OV[p][s]=ECH_OV[p][s]||{}; ECH_OV[p][s][idx]=ECH_OV[p][s][idx]||{};
+  v=(v||"").trim();
+  if(v) ECH_OV[p][s][idx][f]=v; else delete ECH_OV[p][s][idx][f];
+  window.ECH_OV=ECH_OV;
+  try{ localStorage.setItem("ivans4_ech_ov", JSON.stringify(ECH_OV)); }catch(e){}
+}
+function echCfgSave(){
+  try{ localStorage.setItem("ivans4_ech_ov", JSON.stringify(ECH_OV)); }catch(e){}
+  apiCall("/store?action=setchargeov",{method:"POST",body:{overrides:ECH_OV}}).then(function(r){
+    if(r&&r.ok) showToast("Codes & libellés enregistrés (partagés avec l'équipe)","ok");
+    else showToast("Erreur d'enregistrement","err");
+  }).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur réseau","err"); });
+}
+function echCfgReset(){
+  if(!confirm("Réinitialiser tous les codes & libellés aux valeurs par défaut (PTX, etc.) ?")) return;
+  ECH_OV={}; window.ECH_OV=ECH_OV;
+  try{ localStorage.removeItem("ivans4_ech_ov"); }catch(e){}
+  apiCall("/store?action=resetchargeov",{method:"POST",body:{}}).then(function(){ showToast("Réinitialisé","ok"); echCfgRender(); }).catch(function(){ echCfgRender(); });
+}
+function echCfgRender(){
+  var w=$("echCfgWrap"); if(!w) return;
+  if(!curUser || curUser.role!=="manager"){ w.innerHTML=""; return; }   // réservé au manager
+  var sel=ECH_CFG_SEL.split("|"), port=sel[0], sub=sel[1];
+  var cat=(ECH_CATALOG[port]&&ECH_CATALOG[port][sub])||[];
+  var ovp=(ECH_OV[port]&&ECH_OV[port][sub])||{};
+  var subOpts=[["abidjan|echange","Échange (simple)"],["abidjan|transit","Transit"],["abidjan|tbl","TBL"]]
+    .map(function(o){ return '<option value="'+o[0]+'"'+(ECH_CFG_SEL===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join("");
+  var rows=cat.map(function(ch,idx){
+    var o=ovp[idx]||{};
+    return '<tr style="border-bottom:1px solid var(--ice-line2)">'
+      +'<td style="padding:4px 6px;font-size:11px;color:var(--txt3)">'+escAttr(ch.base)+'</td>'
+      +'<td style="padding:4px 6px"><input class="ip" value="'+escAttr(o.d||"")+'" placeholder="'+escAttr(ch.d)+'" oninput="echCfgSet(\''+port+'\',\''+sub+'\','+idx+',\'d\',this.value)" style="width:210px;font-size:11px;padding:3px 5px"></td>'
+      +'<td style="padding:4px 6px"><input class="ip mono" value="'+escAttr(o.imp||"")+'" placeholder="'+escAttr(ch.imp)+'" oninput="echCfgSet(\''+port+'\',\''+sub+'\','+idx+',\'imp\',this.value)" style="width:84px;font-size:11px;padding:3px 5px"></td>'
+      +'<td style="padding:4px 6px"><input class="ip mono" value="'+escAttr(o.exp||"")+'" placeholder="'+escAttr(ch.exp)+'" oninput="echCfgSet(\''+port+'\',\''+sub+'\','+idx+',\'exp\',this.value)" style="width:84px;font-size:11px;padding:3px 5px"></td>'
+      +'</tr>';
+  }).join("");
+  w.innerHTML='<div class="cd" style="border:1px solid var(--frost)">'
+    +'<div class="ct" style="cursor:pointer" onclick="echCfgToggle()"><span class="dot"></span> Paramétrage des codes &amp; libellés de charges <span style="font-size:11px;color:var(--txt3);font-weight:400">— manager · clic pour '+(_echCfgOpen?'replier':'déplier')+'</span></div>'
+    +'<div id="echCfgBody"'+(_echCfgOpen?'':' style="display:none"')+'>'
+    +'<p style="font-size:12px;color:var(--txt2);margin:-4px 0 10px;line-height:1.5">Définissez le <strong>code SAP</strong> (import / export) et le <strong>libellé</strong> de chaque charge. Champ vide = valeur par défaut (en gris). S\'applique à la facturation <strong>Échange</strong> et au <strong>Manifeste</strong>. Les tarifs ne changent pas.</p>'
+    +'<select class="ip" onchange="ECH_CFG_SEL=this.value;echCfgRender()" style="width:210px;font-size:12px;margin-bottom:10px">'+subOpts+'</select>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--frost);border-bottom:2px solid var(--ice-line2)"><th style="padding:4px 6px">Base</th><th style="padding:4px 6px">Libellé</th><th style="padding:4px 6px">Code import</th><th style="padding:4px 6px">Code export</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap"><button class="bt bt-ice" onclick="echCfgSave()" style="font-size:12px">Enregistrer (équipe)</button><button class="bt bt-ghost" onclick="echCfgReset()" style="font-size:12px">Réinitialiser</button></div>'
+    +'</div></div>';
+}
+
+/* ---- FNE : rendre conformes les numéros invalides (préfixe aléatoire 01/05/07) ---- */
+function fnePhoneConform(p){
+  var d=fnePhoneNorm(p);
+  if(fnePhoneValid(d)) return d;
+  var pref=["01","05","07"][Math.floor(Math.random()*3)];
+  var sub=(d||"").replace(/\D/g,"").slice(-8);
+  while(sub.length<8) sub=String(Math.floor(Math.random()*10))+sub;
+  return pref+sub;
+}
+function fneConformInvalid(){
+  if(!FNE_CONTACTS || !FNE_CONTACTS.list){ return; }
+  var list=FNE_CONTACTS.list;
+  var bad=list.filter(function(e){ return fnePhoneBad(e.phone); });
+  if(!bad.length){ showToast("Aucun numéro invalide à corriger","ok"); return; }
+  if(!confirm("Rendre conformes "+bad.length+" numéro(s) invalide(s) ?\nLe début du numéro sera remplacé aléatoirement par 01 / 05 / 07 (les numéros réels seront modifiés).")) return;
+  bad.forEach(function(e){ e.phone=fnePhoneConform(e.phone); });
+  fneContactsSave(list);   // persiste + reconstruit + réaffiche
+  showToast(bad.length+" numéro(s) rendus conformes","ok");
 }
 
 </script>
