@@ -38,6 +38,7 @@ const K_HISTORY = "ivan:history";
 const K_CBU = "ivan:cbu_list";
 const K_CA_OVERRIDES = "ivan:ca_overrides";  // manager edits per BP: {bp: [{ca,name}]}
 const K_FNE = "ivan:fnebatch";  // batch FNE partage (queue + config + etat) - lu par le bookmarklet cross-origin
+const K_PROF = "ivan:proformas";  // proformas gardees par utilisateur (staging avant la file)
 
 // Default manager account (guaranteed to always exist)
 const DEFAULT_USER = { user:"ivan", pass:"ivan2026", role:"manager", email:"ivan.assani@maersk.com", name:"Ivan ASSANI" };
@@ -209,6 +210,23 @@ module.exports = async (req, res) => {
       const _qu = (req.body && req.body.u) || "";
       const _qk = _qu ? (K_QUEUE + ":" + String(_qu).toLowerCase().replace(/[^a-z0-9._-]/g,"")) : K_QUEUE;
       await redis.set(_qk, queue);
+      res.status(200).json({ ok:true });
+      return;
+    }
+
+    // ===== PROFORMAS GARDÉES (par utilisateur) =====
+    if(action === 'getproformas'){
+      const _pu = (req.query && req.query.u) || (req.body && req.body.u) || "";
+      const _pk = _pu ? (K_PROF + ":" + String(_pu).toLowerCase().replace(/[^a-z0-9._-]/g,"")) : K_PROF;
+      const list = await redis.get(_pk);
+      res.status(200).json({ ok:true, proformas: list || [] });
+      return;
+    }
+    if(action === 'setproformas'){
+      const list = (req.body && req.body.proformas) || [];
+      const _pu = (req.body && req.body.u) || "";
+      const _pk = _pu ? (K_PROF + ":" + String(_pu).toLowerCase().replace(/[^a-z0-9._-]/g,"")) : K_PROF;
+      await redis.set(_pk, list);
       res.status(200).json({ ok:true });
       return;
     }
