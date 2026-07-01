@@ -4,6 +4,7 @@
   "description": "IVAN S4 - Maersk Cote d'Ivoire Facturation",
   "private": true,
   "dependencies": {
-    "@upstash/redis": "^1.38.0"
+    "@upstash/redis": "^1.38.0",
+    "exceljs": "^4.4.0"
   }
 }
