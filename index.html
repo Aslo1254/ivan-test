@@ -752,6 +752,58 @@ textarea.ip{resize:vertical;min-height:70px}
           <button class="bt bt-ghost" onclick="echBackToReview()">&#8592; Retour r&eacute;vision</button>
         </div>
       </div>
+
+      <!-- PROFORMA ECHANGE (import & export) -->
+      <div class="cd" id="echProformaCard" style="margin-top:20px">
+        <div class="ct"><span class="dot"></span> G&eacute;n&eacute;rer une facture proforma (&Eacute;change &mdash; import &amp; export)</div>
+        <p style="font-size:12.5px;color:var(--txt2);margin-bottom:14px">Remplit le mod&egrave;le officiel <strong>ECHANGE</strong> (mise en forme, formules et redevances par marchandise conserv&eacute;es) et t&eacute;l&eacute;charge le fichier Excel. Cochez &laquo;&nbsp;garder pour la file&nbsp;&raquo; pour la mettre de c&ocirc;t&eacute; et l'ajouter plus tard.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><label class="lb">Nom du transitaire</label><input class="ip" id="pfTransitaire" placeholder="Ex: INTERNATIONAL PERFORM TRANSIT"></div>
+          <div><label class="lb">Code client Maersk (payeur)</label><input class="ip" id="pfPayer" placeholder="Ex: CI00251135"></div>
+          <div><label class="lb">Company code</label><input class="ip" id="pfCompany" value="CI01"></div>
+          <div><label class="lb">Code facturier</label><input class="ip" id="pfFacturier" placeholder="Code du facturier"></div>
+          <div><label class="lb">Vessel</label><input class="ip" id="pfVessel" placeholder="Nom du navire"></div>
+          <div><label class="lb">Voyage</label><input class="ip" id="pfVoyage" placeholder="N&deg; voyage"></div>
+          <div><label class="lb">N&deg; BL</label><input class="ip" id="pfBl" placeholder="N&deg; connaissement"></div>
+          <div><label class="lb">Nom du client</label><input class="ip" id="pfClient" placeholder="Nom du client"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px">
+          <div><label class="lb">Conteneurs 40' Frigo</label><input class="ip" id="pfC40f" type="number" min="0" value="0"></div>
+          <div><label class="lb">Conteneurs 20' Sec</label><input class="ip" id="pfC20s" type="number" min="0" value="0"></div>
+          <div><label class="lb">Conteneurs 40' Sec</label><input class="ip" id="pfC40s" type="number" min="0" value="0"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px">
+          <div><label class="lb">Code marchandise <span style="color:var(--txt3)">(Code Manifeste)</span></label><input class="ip" id="pfCommodity" placeholder="Ex: 220891"></div>
+          <div><label class="lb">Poids conteneur (tonnes)</label><input class="ip" id="pfWeight" type="number" min="0" step="0.001" placeholder="Ex: 48"></div>
+          <div><label class="lb">Zone de livraison</label><select class="ip" id="pfZone"><option>ABIDJAN</option><option>HORS_ABIDJAN</option><option>PROPRE_MOYEN</option></select></div>
+        </div>
+        <div style="margin-top:14px;border-top:1px solid var(--ice-line);padding-top:12px">
+          <label class="lb" style="font-size:12px">Lignes de livraison (optionnel)</label>
+          <div id="pfDelivWrap"></div>
+        </div>
+        <div style="margin-top:12px">
+          <label class="lb" style="font-size:12px">Charges additionnelles (optionnel) <span style="color:var(--txt3)">&mdash; Ctrl+clic pour plusieurs</span></label>
+          <select class="ip" id="pfAdd" multiple size="5" style="height:auto">
+            <option value="Frais de rectification connaissement 1">Frais de rectification connaissement 1</option>
+            <option value="Frais de rectification connaissement 2">Frais de rectification connaissement 2</option>
+            <option value="Frais de relache electronique">Frais de relache electronique</option>
+            <option value="Frais de courier express">Frais de courier express</option>
+            <option value="Frais d'amende douaniere">Frais d'amende douaniere</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:18px">
+          <button class="bt bt-ice" id="pfGenBtn" onclick="genProforma()">&#11015; G&eacute;n&eacute;rer la proforma</button>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--txt2);cursor:pointer"><input type="checkbox" id="pfKeep"> Garder pour la file (ajouter plus tard)</label>
+          <span id="pfGenStatus" style="font-size:12.5px;color:var(--frost)"></span>
+        </div>
+      </div>
+
+      <!-- PROFORMAS GARDÉES -->
+      <div class="cd" id="pfKeptCard" style="margin-top:16px;display:none">
+        <div class="ct"><span class="dot"></span> Proformas gard&eacute;es <span id="pfKeptCount" style="color:var(--txt3);font-weight:400"></span></div>
+        <p style="font-size:12px;color:var(--txt2);margin-bottom:10px">Proformas mises de c&ocirc;t&eacute; pour plus tard. Vous pouvez les re-t&eacute;l&eacute;charger, reprendre les infos dans le formulaire ci-dessus, ou les supprimer.</p>
+        <div style="overflow-x:auto"><table class="adm-table"><thead><tr><th>Date</th><th>Client</th><th>BL</th><th>M/se</th><th style="text-align:center">Conteneurs</th><th style="text-align:right"></th></tr></thead><tbody id="pfKeptBody"></tbody></table></div>
+      </div>
     </div>
   </div>
 
@@ -1767,7 +1819,7 @@ function sw(t){
   });
   // 3) Init différée d'un tick : le titre et le panneau s'affichent tout de suite, le contenu se remplit juste après
   setTimeout(function(){
-    if(t==="echange") initEchange();
+    if(t==="echange"){ initEchange(); if(typeof pfInit==="function") pfInit(); }
     if(t==="home") renderHome();
     if(t==="invoice"){ _factStep=0; renderFactStepper(); updateFactRecap(); }
     if(t==="dashboard") renderDashboard();
@@ -5460,6 +5512,164 @@ function fneBuildFromIfs(rows){
     count++;
   });
   return { count:count, skipped:skipped };
+}
+
+</script>
+<script>
+// ============ PROFORMA Échange : logique client ============
+var proformasKept = [];
+
+var PF_DELIV_OPTS = ["", "Livraison Zone 1", "Livraison Zone 2", "Livraison Zone 3", "Autochargeuse Zone 1", "Autochargeuse Zone 2", "Autochargeuse Zone 3", "Livraison - SCANNER"];
+
+function pfRenderDelivRows() {
+  var wrap = $("pfDelivWrap"); if (!wrap) return;
+  var h = "";
+  for (var i = 0; i < 3; i++) {
+    h += '<div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-top:8px">';
+    h += '<select class="ip" id="pfDelivZone_' + i + '">' + PF_DELIV_OPTS.map(function (o) {
+      return '<option value="' + o.replace(/"/g, "&quot;") + '">' + (o || "\u2014 aucune \u2014") + '</option>';
+    }).join("") + '</select>';
+    h += '<input class="ip" id="pfDelivQty_' + i + '" type="number" min="0" placeholder="Qt\u00e9 TEU">';
+    h += '</div>';
+  }
+  wrap.innerHTML = h;
+}
+
+function pfInit() {
+  if (!$("pfDelivWrap")) return;
+  if (!$("pfDelivWrap").dataset.done) { pfRenderDelivRows(); $("pfDelivWrap").dataset.done = "1"; }
+  loadProformas();
+}
+
+function buildProformaPayload() {
+  function v(id) { var e = $(id); return e ? e.value.trim() : ""; }
+  function n(id) { var e = $(id); return e ? (parseFloat(e.value) || 0) : 0; }
+  var deliv = [];
+  for (var i = 0; i < 3; i++) {
+    var z = $("pfDelivZone_" + i), q = $("pfDelivQty_" + i);
+    if (z && z.value) deliv.push({ zone: z.value, qty: q ? (parseFloat(q.value) || 0) : 0 });
+  }
+  var add = []; var sel = $("pfAdd");
+  if (sel) { for (var j = 0; j < sel.options.length; j++) { if (sel.options[j].selected) add.push(sel.options[j].value); } }
+  return {
+    transitaire: v("pfTransitaire"), payerCode: v("pfPayer"), companyCode: v("pfCompany") || "CI01",
+    facturier: v("pfFacturier"), vessel: v("pfVessel"), voyage: v("pfVoyage"),
+    bl: v("pfBl"), client: v("pfClient"),
+    c40frigo: n("pfC40f"), c20sec: n("pfC20s"), c40sec: n("pfC40s"),
+    commodityCode: v("pfCommodity"), weight: n("pfWeight"),
+    deliveryZone: (($("pfZone") && $("pfZone").value) || "ABIDJAN"),
+    deliveryLines: deliv, additionalLines: add
+  };
+}
+
+function pfDownloadB64(b64, filename) {
+  try {
+    var bin = atob(b64), len = bin.length, bytes = new Uint8Array(len);
+    for (var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+    var blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    var url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url; a.download = filename || "proforma.xlsx";
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1500);
+  } catch (e) { showToast("Erreur t\u00e9l\u00e9chargement : " + e.message, "err"); }
+}
+
+function genProforma() {
+  var payload = buildProformaPayload();
+  if (!payload.client && !payload.bl) { showToast("Renseignez au moins le client ou le n\u00b0 BL.", "err"); return; }
+  var keep = $("pfKeep") && $("pfKeep").checked;
+  var st = $("pfGenStatus"); if (st) st.textContent = "G\u00e9n\u00e9ration en cours\u2026";
+  var btn = $("pfGenBtn"); if (btn) btn.disabled = true;
+  apiCall("/proforma", { method: "POST", body: { proforma: payload } }).then(function (res) {
+    if (btn) btn.disabled = false;
+    if (!res || !res.ok) { if (st) st.textContent = ""; showToast((res && res.error) || "\u00c9chec de la g\u00e9n\u00e9ration.", "err"); return; }
+    pfDownloadB64(res.b64, res.filename);
+    if (st) st.textContent = "\u2713 Proforma g\u00e9n\u00e9r\u00e9e (" + (res.filename || "") + ").";
+    if (keep) {
+      payload._ts = new Date().toISOString();
+      payload._label = (payload.client || "") + " \u00b7 " + (payload.bl || "");
+      proformasKept.unshift(payload);
+      saveProformas();
+      renderProformasKept();
+      showToast("Proforma gard\u00e9e pour la file.", "ok");
+    }
+  }).catch(function (e) {
+    if (btn) btn.disabled = false; if (st) st.textContent = "";
+    if (e && e.blocked) { showBlocked(); return; }
+    showToast("Erreur : " + (e.message || e), "err");
+  });
+}
+
+function loadProformas() {
+  apiCall("/store?action=getproformas&u=" + encodeURIComponent((curUser && curUser.user) || "")).then(function (res) {
+    proformasKept = (res && res.proformas) || [];
+    renderProformasKept();
+  }).catch(function (e) {
+    if (e && e.blocked) { showBlocked(); return; }
+    proformasKept = []; renderProformasKept();
+  });
+}
+
+function saveProformas() {
+  apiCall("/store", { method: "POST", body: { action: "setproformas", proformas: proformasKept, u: (curUser && curUser.user) || "" } }).catch(function (e) {
+    if (e && e.blocked) showBlocked();
+  });
+}
+
+function renderProformasKept() {
+  var card = $("pfKeptCard"), body = $("pfKeptBody"); if (!body) return;
+  if (!proformasKept.length) { if (card) card.style.display = "none"; return; }
+  if (card) card.style.display = "";
+  if ($("pfKeptCount")) $("pfKeptCount").textContent = "(" + proformasKept.length + ")";
+  body.innerHTML = proformasKept.map(function (p, i) {
+    var d = p._ts ? new Date(p._ts).toLocaleDateString("fr-FR") : "";
+    var cnt = (p.c40frigo || 0) + "\u00d740F " + (p.c20sec || 0) + "\u00d720 " + (p.c40sec || 0) + "\u00d740";
+    return '<tr><td>' + d + '</td><td>' + escAttr(p.client || "") + '</td><td>' + escAttr(p.bl || "") + '</td><td>' + escAttr(p.commodityCode || "") + '</td>'
+      + '<td style="text-align:center;font-size:11px">' + cnt + '</td>'
+      + '<td style="text-align:right;white-space:nowrap">'
+      + '<button class="bt bt-ghost" style="font-size:11px;padding:5px 9px" onclick="pfDownloadKept(' + i + ')">&#11015; T&eacute;l&eacute;charger</button> '
+      + '<button class="bt bt-ghost" style="font-size:11px;padding:5px 9px" onclick="pfReuse(' + i + ')">&#8635; Reprendre</button> '
+      + '<button class="bt bt-ghost" style="font-size:11px;padding:5px 9px;color:var(--err)" onclick="pfDeleteKept(' + i + ')" title="Supprimer">&#10005;</button>'
+      + '</td></tr>';
+  }).join("");
+}
+
+function pfDownloadKept(i) {
+  var p = proformasKept[i]; if (!p) return;
+  apiCall("/proforma", { method: "POST", body: { proforma: p } }).then(function (res) {
+    if (!res || !res.ok) { showToast((res && res.error) || "\u00c9chec de la g\u00e9n\u00e9ration.", "err"); return; }
+    pfDownloadB64(res.b64, res.filename);
+  }).catch(function (e) { if (e && e.blocked) { showBlocked(); return; } showToast("Erreur : " + (e.message || e), "err"); });
+}
+
+function pfReuse(i) {
+  var p = proformasKept[i]; if (!p) return;
+  function set(id, val) { var e = $(id); if (e) e.value = (val == null ? "" : val); }
+  set("pfTransitaire", p.transitaire); set("pfPayer", p.payerCode); set("pfCompany", p.companyCode || "CI01");
+  set("pfFacturier", p.facturier); set("pfVessel", p.vessel); set("pfVoyage", p.voyage);
+  set("pfBl", p.bl); set("pfClient", p.client);
+  set("pfC40f", p.c40frigo || 0); set("pfC20s", p.c20sec || 0); set("pfC40s", p.c40sec || 0);
+  set("pfCommodity", p.commodityCode); set("pfWeight", p.weight || "");
+  if ($("pfZone")) $("pfZone").value = p.deliveryZone || "ABIDJAN";
+  for (var k = 0; k < 3; k++) {
+    var z = $("pfDelivZone_" + k), q = $("pfDelivQty_" + k);
+    var dl = (p.deliveryLines || [])[k];
+    if (z) z.value = dl ? dl.zone : "";
+    if (q) q.value = dl ? (dl.qty || "") : "";
+  }
+  var sel = $("pfAdd");
+  if (sel) { var chosen = (p.additionalLines || []); for (var j = 0; j < sel.options.length; j++) { sel.options[j].selected = chosen.indexOf(sel.options[j].value) >= 0; } }
+  showToast("Infos reprises dans le formulaire.", "ok");
+  if ($("echProformaCard")) $("echProformaCard").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function pfDeleteKept(i) {
+  if (!proformasKept[i]) return;
+  if (!confirm("Supprimer cette proforma gard\u00e9e ?")) return;
+  proformasKept.splice(i, 1);
+  saveProformas();
+  renderProformasKept();
+  showToast("Proforma supprim\u00e9e.", "ok");
 }
 
 </script>
