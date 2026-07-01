@@ -164,6 +164,7 @@ textarea.ip{resize:vertical;min-height:70px}
 .role-badge{display:inline-block;padding:2px 10px;border-radius:14px;font-size:11px;font-weight:600}
 .role-mgr{background:rgba(56,189,248,.15);color:var(--frost)}
 .role-agent{background:rgba(139,171,201,.12);color:var(--txt2)}
+.role-su{background:rgba(52,211,153,.15);color:var(--ok)}
 
 /* drop zones */
 .drop-zone{border:2px dashed var(--steel2);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:.2s}
@@ -373,7 +374,7 @@ textarea.ip{resize:vertical;min-height:70px}
     </div>
     <nav class="sb-nav" id="sbNav">
       <div class="sb-item" data-tab="home" onclick="sw('home')"><span class="sb-ic">&#127968;</span><span class="sb-nav-label">Accueil</span></div>
-      <div class="sb-item" data-tab="dashboard" data-mgr="1" onclick="sw('dashboard')" style="display:none"><span class="sb-ic">&#9638;</span><span class="sb-nav-label">Tableau de bord</span></div>
+      <div class="sb-item" data-tab="dashboard" data-su="1" onclick="sw('dashboard')" style="display:none"><span class="sb-ic">&#9638;</span><span class="sb-nav-label">Tableau de bord</span></div>
       <div class="sb-item" data-tab="invoice" data-acc="invoice" style="display:none" onclick="sw('invoice')"><span class="sb-ic">&#10052;</span><span class="sb-nav-label">Facturation</span></div>
       <div class="sb-item" data-tab="echange" data-acc="echange" style="display:none" onclick="sw('echange')"><span class="sb-ic">&#8644;</span><span class="sb-nav-label">&Eacute;change</span></div>
       <div class="sb-item" data-tab="history" data-acc="history" style="display:none" onclick="sw('history')"><span class="sb-ic">&#128340;</span><span class="sb-nav-label">Historique</span></div>
@@ -475,7 +476,7 @@ textarea.ip{resize:vertical;min-height:70px}
       </div>
       <div class="grid g2" style="margin-top:16px">
         <div class="fld">
-          <label>Contract Account <span class="req">*</span> <span data-mgr="1" style="display:none;float:right"><a href="#" onclick="openCaAdmin(_factCurrentBp);return false;" style="font-size:11px;color:var(--sky)">&#9881; g&eacute;rer</a></span></label>
+          <label>Contract Account <span class="req">*</span> <span data-su="1" style="display:none;float:right"><a href="#" onclick="openCaAdmin(_factCurrentBp);return false;" style="font-size:11px;color:var(--sky)">&#9881; g&eacute;rer</a></span></label>
           <input class="ip mono" id="contractAcc" placeholder="saisie manuelle ou auto si rattach&eacute;"><div style="font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.4">Num&eacute;ro de compte SAP du client (VKONT). Se remplit automatiquement si le client est connu.</div>
           <div id="factCaChooser"></div>
         </div>
@@ -667,7 +668,7 @@ textarea.ip{resize:vertical;min-height:70px}
             <div id="echBpAc" class="ac-list"></div>
           </div>
           <div>
-            <label class="lb">Compte Contrat (VKONT) <span data-mgr="1" style="display:none"><a href="#" onclick="openCaAdmin(echSelectedBp?echSelectedBp.bp:null);return false;" style="font-size:11px;color:var(--sky)">&#9881; g&eacute;rer</a></span></label>
+            <label class="lb">Compte Contrat (VKONT) <span data-su="1" style="display:none"><a href="#" onclick="openCaAdmin(echSelectedBp?echSelectedBp.bp:null);return false;" style="font-size:11px;color:var(--sky)">&#9881; g&eacute;rer</a></span></label>
             <input class="ip" id="echContractAcc" placeholder="Ex: 200010718138"><div style="font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.4">Num&eacute;ro de compte SAP du client. Se remplit automatiquement si le client est connu.</div>
             <div id="echCaChooser"></div>
           </div>
@@ -773,7 +774,7 @@ textarea.ip{resize:vertical;min-height:70px}
     </div>
 
     <!-- Business Partners sans Contract Account -->
-    <div class="cd" data-mgr="1" style="display:none">
+    <div class="cd" data-su="1" style="display:none">
       <div class="ct"><span class="dot"></span> Business Partners sans Contract Account</div>
       <p style="font-size:13.5px;color:var(--txt2);margin-bottom:14px">
         Liste de vos Business Partners <b>locaux</b> qui n'ont <b>aucun compte contrat</b>. Saisissez le compte directement puis enregistrez (sauvegard&eacute; sur le serveur pour toute l'&eacute;quipe).
@@ -786,7 +787,7 @@ textarea.ip{resize:vertical;min-height:70px}
     </div>
 
     <!-- Contract Account management (manager) -->
-    <div class="cd" data-mgr="1" style="display:none">
+    <div class="cd" data-su="1" style="display:none">
       <div class="ct"><span class="dot"></span> Gestion des Comptes Contrat</div>
       <p style="font-size:13.5px;color:var(--txt2);margin-bottom:14px">
         Recherchez un Business Partner pour voir, ajouter, modifier ou supprimer ses comptes contrat.
@@ -920,11 +921,11 @@ textarea.ip{resize:vertical;min-height:70px}
   <div id="tab-accounts" class="hid">
     <div class="cd">
       <div class="ct"><span class="dot"></span> Gestion des comptes</div>
-      <p style="font-size:13.5px;color:var(--txt2);margin-bottom:18px">Ajoutez ou supprimez des comptes utilisateurs. R&ocirc;le <b>Manager</b> = acc&egrave;s complet, <b>Agent</b> = facturation seulement.</p>
+      <p style="font-size:13.5px;color:var(--txt2);margin-bottom:18px">Ajoutez ou supprimez des comptes utilisateurs. R&ocirc;le <b>Manager</b> = acc&egrave;s complet ; <b>Super User</b> = comme Manager, sauf la gestion des comptes ; <b>Agent</b> = facturation seulement.</p>
       <div class="grid g3" style="margin-bottom:16px">
         <div class="fld"><label>Nom d'utilisateur</label><input class="ip" id="newUser" placeholder="prenom.nom"></div>
         <div class="fld"><label>Mot de passe</label><input class="ip" id="newPass" placeholder="mot de passe"></div>
-        <div class="fld"><label>R&ocirc;le</label><select class="ip" id="newRole"><option value="agent">Agent</option><option value="manager">Manager</option></select></div>
+        <div class="fld"><label>R&ocirc;le</label><select class="ip" id="newRole"><option value="agent">Agent</option><option value="superuser">Super User</option><option value="manager">Manager</option></select></div>
       </div>
       <div class="grid g2" style="margin-bottom:16px">
         <div class="fld"><label>Email agent (clerk email)</label><input class="ip" id="newEmail" placeholder="prenom.nom@maersk.com"></div>
@@ -1168,6 +1169,24 @@ textarea.ip{resize:vertical;min-height:70px}
         <input type="file" id="fnePdfInput" accept="application/pdf" multiple style="display:none" onchange="fneLoadFiles(this.files)">
       </div>
       <div id="fneParseProgress" class="hid" style="margin-top:12px;padding:10px 14px;background:var(--void);border:1px solid var(--frost);border-radius:8px;font-size:13px;color:var(--frost)"></div>
+    </div>
+
+    <!-- IMPORT RAPPORT IFS (CSV) -->
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> 1 bis. Importer un rapport de factures IFS (CSV)</div>
+      <p style="font-size:12.5px;color:var(--txt2);margin-bottom:12px">D&eacute;posez l'export IFS des factures de livraison. Chaque facture (regroup&eacute;e par num&eacute;ro) est ajout&eacute;e &agrave; la file FNE, pr&ecirc;te &agrave; g&eacute;n&eacute;rer. Les contacts (NCC, t&eacute;l, email) sont rapproch&eacute;s depuis la base contacts.</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+        <div><label class="lb" style="font-size:11px">Type</label><br><select class="ip" id="fneIfsSerie" style="font-size:12px;width:auto"><option value="II">Factures (II)</option><option value="CN">Avoirs (CN)</option><option value="ALL">Tous</option></select></div>
+        <div><label class="lb" style="font-size:11px">Du (optionnel)</label><br><input type="date" class="ip" id="fneIfsFrom" style="font-size:12px;width:auto"></div>
+        <div><label class="lb" style="font-size:11px">Au (optionnel)</label><br><input type="date" class="ip" id="fneIfsTo" style="font-size:12px;width:auto"></div>
+      </div>
+      <div id="fneIfsDrop" style="border:2px dashed var(--ice-line2);border-radius:12px;padding:24px;text-align:center;cursor:pointer;background:var(--void)" onclick="document.getElementById('fneIfsInput').click()">
+        <div style="font-size:30px;margin-bottom:6px">&#128202;</div>
+        <div style="font-size:13px;font-weight:600;color:var(--crystal)">Cliquez ou glissez le rapport IFS (.csv)</div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:4px">Colonnes IFS standard (Invoice No, Sales Obj Desc, Quantity, Unit Price&hellip;)</div>
+        <input type="file" id="fneIfsInput" accept=".csv,text/csv" style="display:none" onchange="fneImportIfs(this.files[0])">
+      </div>
+      <div id="fneIfsInfo" class="hid" style="margin-top:12px;padding:10px 14px;background:var(--void);border:1px solid var(--frost);border-radius:8px;font-size:13px;color:var(--frost)"></div>
     </div>
 
     <!-- STATS + FILE -->
@@ -1432,6 +1451,12 @@ function renderNewPerms(){
     return '<label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--txt2);cursor:pointer"><input type="checkbox" data-newperm="'+s.k+'" '+(on?'checked':'')+' style="width:15px;height:15px;cursor:pointer"> '+s.label+'</label>';
   }).join("");
 }
+function setUserRole(user, role){
+  apiCall("/store", {method:"POST", body:{action:"setrole", user:user, role:role}}).then(function(res){
+    if(res && res.ok){ renderAccounts(); showToast("R\u00f4le mis \u00e0 jour : "+user,"ok"); }
+    else showToast((res&&res.error)||"Erreur","err");
+  }).catch(function(e){ if(e&&e.blocked){ showBlocked(); return; } showToast("Erreur r\u00e9seau","err"); });
+}
 function renderAccounts(){
   var body = $("accountsBody");
   if(!body) return;
@@ -1441,12 +1466,20 @@ function renderAccounts(){
     var users = (res.users||[]).filter(function(x){ return x && x.user; });
     _accUsers = users;
     body.innerHTML = users.map(function(u){
-      var roleBadge = u.role==="manager" ? '<span class="role-badge role-mgr">Manager</span>' : '<span class="role-badge role-agent">Agent</span>';
+      var _roEd = (String(u.user).toLowerCase()!=="ivan") && (String(u.user)!==String(myName));
+      var roleBadge = _roEd
+        ? '<select class="ip" style="font-size:11px;padding:3px 6px;width:auto" onchange="setUserRole(\''+u.user+'\',this.value)">'
+          +'<option value="agent"'+(u.role==="agent"?" selected":"")+'>Agent</option>'
+          +'<option value="superuser"'+(u.role==="superuser"?" selected":"")+'>Super User</option>'
+          +'<option value="manager"'+(u.role==="manager"?" selected":"")+'>Manager</option></select>'
+        : (u.role==="manager" ? '<span class="role-badge role-mgr">Manager</span>' : (u.role==="superuser" ? '<span class="role-badge role-su">Super User</span>' : '<span class="role-badge role-agent">Agent</span>'));
       var isMe = String(u.user)===String(myName);
       var delBtn = isMe ? '<span style="color:var(--txt3);font-size:12px">(vous)</span>'
         : (String(u.user).toLowerCase()==="ivan" ? '<span style="color:var(--txt3);font-size:12px">&mdash;</span>' : '<button class="bt-del" onclick="delAccount(\''+u.user+'\')">&#128465; Supprimer</button>');
       var accessCell = (u.role==="manager")
         ? '<span style="color:var(--txt3);font-size:12px">Acc\u00e8s complet</span>'
+        : (u.role==="superuser")
+        ? '<span style="color:var(--txt3);font-size:12px">Acc\u00e8s \u00e9tendu (super user)</span>'
         : '<button class="bt bt-ghost" style="font-size:11px;padding:4px 12px" onclick="openPermsModal(\''+u.user+'\')">&#9881; G\u00e9rer l\'acc\u00e8s</button>';
       return '<tr><td style="font-weight:600">'+u.user+'</td><td>'+roleBadge+'</td><td>'+accessCell+'</td><td>'+delBtn+'</td></tr>';
     }).join("");
@@ -1573,7 +1606,7 @@ function startApp(){
   $("loginScreen").style.display = "none";
   var dispName = curUser.name || curUser.user;
   $("curUser").textContent = dispName;
-  $("curRole").textContent = curUser.role==="manager" ? "Administrateur" : "Agent";
+  $("curRole").textContent = curUser.role==="manager" ? "Administrateur" : (curUser.role==="superuser" ? "Super Utilisateur" : "Agent");
   // Avatar initials
   if($("avatarInitials")){
     var parts = (dispName||"").trim().split(/[\s.]+/).filter(Boolean);
@@ -1583,6 +1616,10 @@ function startApp(){
   // Show manager-only tabs
   document.querySelectorAll('[data-mgr="1"]').forEach(function(el){
     el.style.display = (curUser.role==="manager") ? "" : "none";
+  });
+  // Fonctions d'administration ouvertes aussi au super user (hors gestion des comptes)
+  document.querySelectorAll('[data-su="1"]').forEach(function(el){
+    el.style.display = (curUser.role==="manager" || curUser.role==="superuser") ? "" : "none";
   });
   // Accès par module : managers = tout ; agents selon ce que l'administrateur a autorisé
   applyAccess();
@@ -1704,6 +1741,7 @@ function canAccess(section){
   if(!curUser) return false;
   if(curUser.role==="manager") return true;             // admin = accès complet
   if(section==="home" || section==="aide") return true;  // toujours accessibles
+  if(curUser.role==="superuser") return section!=="accounts"; // super user : tout sauf gestion des comptes
   if(section==="accounts" || section==="dashboard") return false; // réservés à l'admin
   var p = curUser.perms || {};
   if(p[section] !== undefined) return !!p[section];
@@ -2229,7 +2267,7 @@ var K_QUEUE = "ivans4_queue";
 var invoiceQueue = [];
 function loadQueue(){
   // Load shared queue from server
-  apiCall("/store?action=getqueue").then(function(res){
+  apiCall("/store?action=getqueue&u="+encodeURIComponent((curUser&&curUser.user)||"")).then(function(res){
     invoiceQueue = res.queue || [];
     updQueueBadge();
     if(typeof renderQueue==="function" && $("queueList")) renderQueue();
@@ -2239,7 +2277,7 @@ function loadQueue(){
   });
 }
 function saveQueue(){
-  apiCall("/store", {method:"POST", body:{action:"setqueue", queue:invoiceQueue}}).catch(function(e){
+  apiCall("/store", {method:"POST", body:{action:"setqueue", queue:invoiceQueue, u:(curUser&&curUser.user)||""}}).catch(function(e){
     if(e&&e.blocked) showBlocked();
   });
   updQueueBadge();
@@ -4018,7 +4056,7 @@ function fneStartBatch(){
       queue: fneBatchQueue,
       config: { pauseEvery: parseInt($("fnePauseEvery").value)||0, delay: parseInt($("fneDelay").value)||2500 },
       state: "running"
-    }}}).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur: batch non synchronis\u00e9 au serveur","err"); });
+    }, u:(curUser&&curUser.user)||""}}).catch(function(e){ if(e&&e.blocked){showBlocked();return;} showToast("Erreur: batch non synchronis\u00e9 au serveur","err"); });
     $("fneBatchStatus").innerHTML='<strong style="color:#15803d">\u2713 Batch activ\u00e9 ('+pending.length+' factures).</strong><br>1) Cliquez "Ouvrir le portail FNE" \u2192 2) Connectez-vous \u2192 3) Restez sur la <strong>liste \u00ab Mes Factures et re\u00e7us \u00bb</strong> (PAS sur le formulaire) \u2192 4) Cliquez le favori <strong>IVAN-FNE-BATCH</strong> une seule fois. Il photographie les factures existantes, puis cr\u00e9e les nouvelles et r\u00e9cup\u00e8re leur n\u00b0 FNE.';
     $("fneResultsArea").classList.remove("hid");
     fneRefreshResults();
@@ -4036,7 +4074,7 @@ function fneResetBatch(){
     localStorage.removeItem(FNE_CONFIG_KEY);
   }catch(e){}
   // Vider aussi le batch cote serveur
-  apiCall("/store", {method:"POST", body:{action:"setfnebatch", fne:{queue:[], config:{}, state:"idle"}}}).catch(function(){});
+  apiCall("/store", {method:"POST", body:{action:"setfnebatch", fne:{queue:[], config:{}, state:"idle"}, u:(curUser&&curUser.user)||""}}).catch(function(){});
   fneRenderQueue();
   $("fneStatsArea").classList.add("hid");
   $("fneResultsArea").classList.add("hid");
@@ -4046,7 +4084,7 @@ function fneResetBatch(){
 function fneRefreshResults(){
   // L'avancement est ecrit par le bookmarklet sur le SERVEUR (pas le localStorage local) :
   // on relit donc le batch depuis /store, puis on affiche. Repli sur l'etat local si le serveur echoue.
-  apiCall("/store?action=getfnebatch").then(function(res){
+  apiCall("/store?action=getfnebatch&u="+encodeURIComponent((curUser&&curUser.user)||"")).then(function(res){
     if(res && res.fne && Array.isArray(res.fne.queue) && res.fne.queue.length){
       fneBatchQueue = res.fne.queue;
       fneRenderQueue();
@@ -4104,7 +4142,7 @@ function fneBuildBookmarklet(){
   // Le bookmarklet tourne sur le portail DGI (autre origine) : il recupere le batch depuis le serveur IVAN
   // par fetch et y renvoie l'avancement. Remplit le formulaire FNE (menus + client + articles) puis soumet.
   var API = location.origin + "/api/store";
-  function IVANFNE(API){
+  function IVANFNE(API, U){
     if(window.__ivanFne){ alert("IVAN-FNE-BATCH d\u00e9j\u00e0 actif sur cette page."); return; }
     window.__ivanFne = true;
     var delay = 2500, pauseEvery = 0, processedSinceLastPause = 0, busy = false, stopped = false, busySince = 0;
@@ -4118,8 +4156,8 @@ function fneBuildBookmarklet(){
     function setStatus(t){ var e = document.getElementById("ifs"); if(e) e.innerHTML = t; }
     function setDoneUI(){ var b = document.getElementById("ivanFneStop"); if(b){ b.textContent = "Fermer"; b.style.background = "rgba(40,200,120,.55)"; } }
     function log(){ try{ console.log.apply(console, ["[IVAN-FNE]"].concat([].slice.call(arguments))); }catch(e){} }
-    function getBatch(){ return fetch(API + "?action=getfnebatch", {cache:"no-store"}).then(function(r){ return r.json(); }).then(function(d){ return (d && d.fne) || {queue:[], config:{}, state:"idle"}; }); }
-    function putBatch(b){ return fetch(API, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action:"setfnebatch", fne:b})}).then(function(r){ return r.json(); }); }
+    function getBatch(){ return fetch(API + "?action=getfnebatch&u=" + encodeURIComponent(U||""), {cache:"no-store"}).then(function(r){ return r.json(); }).then(function(d){ return (d && d.fne) || {queue:[], config:{}, state:"idle"}; }); }
+    function putBatch(b){ return fetch(API, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action:"setfnebatch", fne:b, u:U||""})}).then(function(r){ return r.json(); }); }
     document.getElementById("ivanFneStop").onclick = function(){
       stopped = true;
       getBatch().then(function(b){ b.state = "paused"; return putBatch(b); }).catch(function(){});
@@ -4519,7 +4557,7 @@ function fneBuildBookmarklet(){
     setInterval(tick, 2000);
     setStatus("D\u00e9marrage du batch...");
   }
-  return "javascript:"+encodeURIComponent("("+IVANFNE.toString()+")("+JSON.stringify(API)+")");
+  return "javascript:"+encodeURIComponent("("+IVANFNE.toString()+")("+JSON.stringify(API)+","+JSON.stringify((curUser&&curUser.user)||"")+")");
 }
 
 function fneInstallBookmarklet(){
@@ -5290,7 +5328,7 @@ function echCfgReset(){
 }
 function echCfgRender(){
   var w=$("echCfgWrap"); if(!w) return;
-  if(!curUser || curUser.role!=="manager"){ w.innerHTML=""; return; }   // réservé au manager
+  if(!curUser || (curUser.role!=="manager" && curUser.role!=="superuser")){ w.innerHTML=""; return; }   // manager + super user
   var sel=ECH_CFG_SEL.split("|"), port=sel[0], sub=sel[1];
   var cat=(ECH_CATALOG[port]&&ECH_CATALOG[port][sub])||[];
   var ovp=(ECH_OV[port]&&ECH_OV[port][sub])||{};
@@ -5333,6 +5371,95 @@ function fneConformInvalid(){
   bad.forEach(function(e){ e.phone=fnePhoneConform(e.phone); });
   fneContactsSave(list);   // persiste + reconstruit + réaffiche
   showToast(bad.length+" numéro(s) rendus conformes","ok");
+}
+
+</script>
+<script>
+/* ============ IMPORT RAPPORT IFS (CSV) -> FILE FNE ============ */
+function fneImportIfs(file){
+  if(!file) return;
+  var info=$("fneIfsInfo"); if(info){ info.classList.remove("hid"); info.textContent="Lecture du rapport IFS\u2026"; }
+  var rd=new FileReader();
+  rd.onload=function(ev){
+    try{
+      var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});
+      var sh=wb.Sheets[wb.SheetNames[0]];
+      var rows=XLSX.utils.sheet_to_json(sh,{defval:""});
+      if(!rows.length){ if(info) info.textContent="Fichier vide ou illisible."; return; }
+      var res=fneBuildFromIfs(rows);
+      if(!res.count){ if(info) info.textContent="Aucune facture retenue (v\u00e9rifiez le type/les dates, ou les colonnes du rapport)."; return; }
+      if(typeof fneReapplyContacts==="function") fneReapplyContacts();   // rapproche NCC/tel/email
+      fneRenderQueue();
+      var sa=$("fneStatsArea"); if(sa) sa.classList.remove("hid");
+      if(info) info.innerHTML="<strong>"+res.count+" facture(s)</strong> ajout\u00e9e(s) \u00e0 la file"+(res.skipped?(" \u00b7 "+res.skipped+" ligne(s) \u00e9cart\u00e9e(s) par le filtre"):"")+". V\u00e9rifiez les cases en orange (contacts) puis lancez le batch.";
+    }catch(e){ if(info) info.textContent="Erreur de lecture : "+e.message; }
+  };
+  rd.readAsArrayBuffer(file);
+  try{ $("fneIfsInput").value=""; }catch(e){}
+}
+
+function fneBuildFromIfs(rows){
+  var serieSel=($("fneIfsSerie")&&$("fneIfsSerie").value)||"II";     // II | CN | ALL
+  var dFrom=($("fneIfsFrom")&&$("fneIfsFrom").value)||"";
+  var dTo=($("fneIfsTo")&&$("fneIfsTo").value)||"";
+  var fromD=dFrom?new Date(dFrom+"T00:00:00"):null;
+  var toD=dTo?new Date(dTo+"T23:59:59"):null;
+  function toDate(s){ var m=String(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m?new Date(+m[3], +m[1]-1, +m[2]):null; } // m/d/yyyy
+  function num(v){ return parseFloat(String(v).replace(/[^\d.\-]/g,""))||0; }
+
+  var groups={}, order=[], skipped=0;
+  rows.forEach(function(r){
+    var serie=String(r["Series Id"]||"").trim();
+    if(serieSel!=="ALL" && serie!==serieSel){ skipped++; return; }
+    var no=String(r["Invoice No"]||"").trim(); if(!no){ skipped++; return; }
+    if(fromD||toD){ var dt=toDate(r["Invoice Date"]); if(dt){ if(fromD&&dt<fromD){skipped++;return;} if(toD&&dt>toD){skipped++;return;} } }
+    var key=(r["Company"]||"")+"|"+serie+"|"+no;
+    if(!groups[key]){ groups[key]={rows:[], serie:serie, no:no, r0:r}; order.push(key); }
+    groups[key].rows.push(r);
+  });
+
+  var count=0;
+  order.forEach(function(key){
+    var g=groups[key], r0=g.r0;
+    var invNum=g.serie+g.no;                               // ex: II2607914 / CN...
+    var ref=String(r0["Our Reference"]||"").trim();
+    var payer=String(r0["Payer Identity"]||r0["Supplier Id"]||"").trim();
+    var mci=payer.match(/(CI\d{5,})/);                     // les payeurs ont parfois un préfixe (35-XX-CI...)
+    var code=mci?mci[1]:payer;
+    var company=String(r0["Supplier Name"]||"").trim();
+    var items=g.rows.map(function(r){
+      var vat=String(r["Vat Code"]||"").toUpperCase();
+      var tax=/VAT\s*18/.test(vat) ? "A" : "C";            // 18% -> A ; N / VAT00E / vide -> C (exonéré)
+      return { reference:String(r["Sales Obj Id"]||"").trim(),
+               description:String(r["Sales Obj Desc"]||"").trim(),
+               qty:num(r["Quantity"])||1,
+               unit:String(r["Unit Of Measure"]||"").toUpperCase(),
+               price:num(r["Unit Price"]),
+               tax:tax };
+    }).filter(function(it){ return it.description||it.reference; });
+    if(!items.length) return;
+    var ct=(typeof fneContactLookup==="function")?fneContactLookup(code, company):null;
+    var ncc=ct?(ct.ncc||""):"", phone=ct?(ct.phone||""):"", email=ct?(ct.email||""):"";
+    var contactMissing=(!ncc||!phone||!email);
+    var isCN=(g.serie==="CN");
+    fneBatchQueue.push({
+      idx: fneBatchQueue.length+1,
+      fileName: (isCN?"IFS avoir ":"IFS ")+invNum,
+      ncc:ncc, code:code, company:company,
+      footer:(invNum&&ref)?(invNum+" | "+ref):(invNum||ref||""),
+      bl:ref, invNum:invNum,
+      phone:phone, email:email,
+      items:items,
+      totalHt: items.reduce(function(s,it){return s+(it.qty*it.price);},0),
+      parseOk: true,
+      docType: isCN?"avoir":"facture",
+      contactMissing:contactMissing,
+      contactErr: contactMissing?(((!ncc?"NCC ":"")+(!phone?"t\u00e9l ":"")+(!email?"email":"")).trim()+" \u00e0 compl\u00e9ter"):"",
+      status:"pending", fneNum:""
+    });
+    count++;
+  });
+  return { count:count, skipped:skipped };
 }
 
 </script>
