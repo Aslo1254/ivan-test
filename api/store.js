@@ -97,10 +97,23 @@ module.exports = async (req, res) => {
     }
 
     // ===== ADD USER =====
+    if(action === 'setrole'){
+      const tu = (req.body && req.body.user || "").trim();
+      const _sr = (req.body && req.body.role);
+      const nrole = _sr === "manager" ? "manager" : (_sr === "superuser" ? "superuser" : "agent");
+      if(tu.toLowerCase() === "ivan"){ res.status(200).json({ ok:false, error:"Le compte principal reste Manager" }); return; }
+      const users = await getUsers();
+      const idx = users.findIndex(function(x){ return x.user.toLowerCase()===tu.toLowerCase(); });
+      if(idx < 0){ res.status(200).json({ ok:false, error:"Utilisateur introuvable" }); return; }
+      users[idx].role = nrole;
+      await redis.set(K_USERS, users);
+      res.status(200).json({ ok:true, users: users.map(function(x){ return {user:x.user, role:x.role, fne: !!x.fne, perms: effPerms(x)}; }) });
+      return;
+    }
     if(action === 'adduser'){
       const u = (req.body && req.body.user || "").trim();
       const p = (req.body && req.body.pass || "");
-      const role = (req.body && req.body.role) === "manager" ? "manager" : "agent";
+      const _rr = (req.body && req.body.role); const role = _rr === "manager" ? "manager" : (_rr === "superuser" ? "superuser" : "agent");
       const email = (req.body && req.body.email || "").trim();
       const name = (req.body && req.body.name || "").trim();
       if(!u || !p){ res.status(200).json({ ok:false, error:"Nom et mot de passe requis" }); return; }
@@ -185,13 +198,17 @@ module.exports = async (req, res) => {
 
     // ===== QUEUE =====
     if(action === 'getqueue'){
-      const queue = await redis.get(K_QUEUE);
+      const _qu = (req.query && req.query.u) || (req.body && req.body.u) || "";
+      const _qk = _qu ? (K_QUEUE + ":" + String(_qu).toLowerCase().replace(/[^a-z0-9._-]/g,"")) : K_QUEUE;
+      const queue = await redis.get(_qk);
       res.status(200).json({ ok:true, queue: queue || [] });
       return;
     }
     if(action === 'setqueue'){
       const queue = (req.body && req.body.queue) || [];
-      await redis.set(K_QUEUE, queue);
+      const _qu = (req.body && req.body.u) || "";
+      const _qk = _qu ? (K_QUEUE + ":" + String(_qu).toLowerCase().replace(/[^a-z0-9._-]/g,"")) : K_QUEUE;
+      await redis.set(_qk, queue);
       res.status(200).json({ ok:true });
       return;
     }
@@ -304,7 +321,9 @@ module.exports = async (req, res) => {
     // Le bookmarklet tourne sur services.fne.dgi.gouv.ci (autre origine) : il NE PEUT PAS lire le
     // localStorage du domaine IVAN. On stocke donc le batch ici (Redis) et il le recupere par fetch.
     if(action === 'getfnebatch'){
-      let fne = await redis.get(K_FNE);
+      const _fu = (req.query && req.query.u) || (req.body && req.body.u) || "";
+      const _fk = _fu ? (K_FNE + ":" + String(_fu).toLowerCase().replace(/[^a-z0-9._-]/g,"")) : K_FNE;
+      let fne = await redis.get(_fk);
       if(!fne) fne = { queue: [], config: {}, state: "idle" };
       res.status(200).json({ ok:true, fne: fne });
       return;
@@ -312,7 +331,9 @@ module.exports = async (req, res) => {
     if(action === 'setfnebatch'){
       const fne = (req.body && req.body.fne);
       if(!fne){ res.status(200).json({ ok:false, error:"Donn\u00e9es manquantes" }); return; }
-      await redis.set(K_FNE, fne);
+      const _fu = (req.body && req.body.u) || "";
+      const _fk = _fu ? (K_FNE + ":" + String(_fu).toLowerCase().replace(/[^a-z0-9._-]/g,"")) : K_FNE;
+      await redis.set(_fk, fne);
       res.status(200).json({ ok:true });
       return;
     }
