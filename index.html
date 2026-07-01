@@ -1760,6 +1760,7 @@ var PAGE_TITLES = {
   dashboard:["Tableau de bord","Vue d'ensemble de l'activit\u00e9"],
   invoice:["Cr\u00e9er une facture S/4HANA","Suivez les \u00e9tapes pour cr\u00e9er votre facture de mani\u00e8re guid\u00e9e"],
   echange:["Cr\u00e9er une facture \u00c9change","Op\u00e9rations d'\u00e9change import/export"],
+  proforma:["Proforma","Facture proforma \u00c9change (import & export)"],
   history:["Historique","Toutes les factures \u00e9mises par l'\u00e9quipe"],
   fne:["FNE Batch Auto","Automatisation des factures FNE sur le portail DGI"],
   queue:["File de g\u00e9n\u00e9ration","Factures en attente de t\u00e9l\u00e9chargement"],
@@ -1804,7 +1805,7 @@ function sw(t){
     else { var _sbl=document.querySelector('.sb-item[data-tab="'+t+'"] .sb-nav-label'); if(_sbl) $("pageTitle").textContent = _sbl.textContent.trim(); if($("pageSub")) $("pageSub").textContent = ""; }
   }
   // 2) Bascule des panneaux + menu
-  ["home","invoice","echange","queue","bp","upload","manifest","accounts","aide","dashboard","history","fne"].forEach(function(x){
+  ["home","invoice","echange","proforma","queue","bp","upload","manifest","accounts","aide","dashboard","history","fne"].forEach(function(x){
     var el = $("tab-"+x); if(el) el.classList.toggle("hid", x!==t);
     var sb = document.querySelector('.sb-item[data-tab="'+x+'"]'); if(sb) sb.classList.toggle("on", x===t);
   });
