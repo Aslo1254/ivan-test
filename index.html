@@ -5547,7 +5547,7 @@ function pfDownloadB64(b64, filename){
   try {
     var bin = atob(b64), len = bin.length, bytes = new Uint8Array(len);
     for (var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
-    var blob = new Blob([bytes], { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    var blob = new Blob([bytes], { type:"application/pdf" });
     var url = URL.createObjectURL(blob), a = document.createElement("a");
     a.href = url; a.download = filename || "proforma.xlsx";
     document.body.appendChild(a); a.click();
