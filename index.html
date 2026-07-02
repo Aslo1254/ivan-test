@@ -736,6 +736,8 @@ textarea.ip{resize:vertical;min-height:70px}
         <div id="echReviewTotals" style="margin-top:12px;padding:14px;background:var(--void);border-radius:10px;font-size:14px"></div>
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
           <button class="bt bt-ice" onclick="echTransferS4()">&#8594; Transfert S4</button>
+          <button class="bt bt-ghost" onclick="genEchProforma()">&#128196; G&eacute;n&eacute;rer la proforma</button>
+          <button class="bt bt-ghost" onclick="echAddToProformaQueue()">&#9783; Ajouter &agrave; la file des proformas</button>
           <button class="bt bt-ghost" onclick="echBackToForm()">&#8592; Retour</button>
         </div>
       </div>
@@ -758,43 +760,19 @@ textarea.ip{resize:vertical;min-height:70px}
   </div>
 
   <div id="tab-proforma" class="hid">
-    <div class="cd" id="echProformaCard">
-      <div class="ct"><span class="dot"></span> G&eacute;n&eacute;rer une facture proforma (&Eacute;change &mdash; import &amp; export)</div>
-      <p style="font-size:12.5px;color:var(--txt2);margin-bottom:14px">Remplit le mod&egrave;le officiel <strong>ECHANGE</strong> &mdash; mise en forme, formules et redevances par marchandise conserv&eacute;es &mdash; puis t&eacute;l&eacute;charge le fichier Excel. Cochez &laquo;&nbsp;garder pour la file&nbsp;&raquo; pour la mettre de c&ocirc;t&eacute; et l'ajouter plus tard.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div style="position:relative"><label class="lb">Business Partner (transitaire)</label><input class="ip" id="pfBp" placeholder="Rechercher par nom/code, ou saisir manuellement..." oninput="pfBpSearch(this.value)" onfocus="pfBpSearch(this.value)" autocomplete="off"><div id="pfBpAc" class="ac-list"></div><div style="font-size:11px;color:var(--txt3);margin-top:4px">Le libell&eacute; du BP = nom du transitaire sur la proforma.</div></div>
-        <div><label class="lb">Code payeur Maersk <span style="color:var(--txt3)">(auto depuis le BP)</span></label><input class="ip" id="pfPayer" placeholder="Ex: CI00251135"></div>
-        <div><label class="lb">Client final</label><input class="ip" id="pfClient" placeholder="Nom du client" oninput="updateProfFooter()"></div>
-        <div><label class="lb">N&deg; BL</label><input class="ip" id="pfBl" placeholder="N&deg; connaissement"></div>
-      </div>
-      <div style="position:relative;margin-top:12px"><label class="lb">Code marchandise</label><input class="ip" id="pfCommodity" placeholder="Rechercher une marchandise, ou saisir le code..." oninput="pfCommSearch(this.value)" onfocus="pfCommSearch(this.value)" autocomplete="off"><div id="pfCommAc" class="ac-list"></div></div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px">
-        <div><label class="lb">Conteneurs 40' Frigo</label><input class="ip" id="pfC40f" type="number" min="0" value="0"></div>
-        <div><label class="lb">Conteneurs 20' Sec</label><input class="ip" id="pfC20s" type="number" min="0" value="0"></div>
-        <div><label class="lb">Conteneurs 40' Sec</label><input class="ip" id="pfC40s" type="number" min="0" value="0"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px">
-        <div><label class="lb">Poids conteneur (tonnes)</label><input class="ip" id="pfWeight" type="number" min="0" step="0.001" placeholder="Ex: 48"></div>
-        <div><label class="lb">Zone de livraison</label><select class="ip" id="pfZone"><option>ABIDJAN</option><option>HORS_ABIDJAN</option><option>PROPRE_MOYEN</option></select></div>
-        <div><label class="lb">Company code</label><input class="ip" id="pfCompany" value="CI01"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px">
-        <div><label class="lb">Vessel</label><input class="ip" id="pfVessel" placeholder="Nom du navire"></div>
-        <div><label class="lb">Voyage</label><input class="ip" id="pfVoyage" placeholder="N&deg; voyage"></div>
-        <div><label class="lb">Code facturier</label><input class="ip" id="pfFacturier" placeholder="Code du facturier"></div>
-      </div>
-      <div style="margin-top:12px"><label class="lb">External billing footer <span style="color:var(--txt3)">(auto, modifiable &mdash; transitaire P/C client...)</span></label><input class="ip" id="pfFooter" placeholder="Se remplit automatiquement..." oninput="pfFooterEdited=true"></div>
-      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:18px">
-        <button class="bt bt-ice" id="pfGenBtn" onclick="genProforma()">&#11015; G&eacute;n&eacute;rer la proforma</button>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--txt2);cursor:pointer"><input type="checkbox" id="pfKeep"> Garder pour la file (ajouter plus tard)</label>
-        <span id="pfGenStatus" style="font-size:12.5px;color:var(--frost)"></span>
+    <div class="cd">
+      <div class="ct"><span class="dot"></span> File des proformas</div>
+      <p style="font-size:12.5px;color:var(--txt2);margin-bottom:14px">Les proformas se cr&eacute;ent depuis l'onglet <strong>&Eacute;change</strong> (bouton &laquo;&nbsp;Ajouter &agrave; la file des proformas&nbsp;&raquo; apr&egrave;s la r&eacute;vision des charges). La proforma reprend <strong>exactement les lignes coch&eacute;es</strong>. Ici vous g&eacute;n&eacute;rez le lot : tous les Excel + le CSV S/4HANA.</p>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        <button class="bt bt-ice" id="pfLotBtn" onclick="pfGenerateLot()">&#11015; G&eacute;n&eacute;rer le lot</button>
+        <button class="bt bt-ghost" onclick="loadProformas()">&#8635; Rafra&icirc;chir</button>
+        <span id="pfLotStatus" style="font-size:12.5px;color:var(--frost)"></span>
       </div>
     </div>
 
     <div class="cd" id="pfKeptCard" style="margin-top:16px;display:none">
-      <div class="ct"><span class="dot"></span> Proformas gard&eacute;es <span id="pfKeptCount" style="color:var(--txt3);font-weight:400"></span></div>
-      <p style="font-size:12px;color:var(--txt2);margin-bottom:10px">Proformas mises de c&ocirc;t&eacute; pour plus tard. Vous pouvez les re-t&eacute;l&eacute;charger, reprendre les infos dans le formulaire ci-dessus, ou les supprimer.</p>
-      <div style="overflow-x:auto"><table class="adm-table"><thead><tr><th>Date</th><th>Client</th><th>BL</th><th>M/se</th><th style="text-align:center">Conteneurs</th><th style="text-align:right"></th></tr></thead><tbody id="pfKeptBody"></tbody></table></div>
+      <div class="ct"><span class="dot"></span> Proformas en attente <span id="pfKeptCount" style="color:var(--txt3);font-weight:400"></span></div>
+      <div style="overflow-x:auto"><table class="adm-table"><thead><tr><th>Date</th><th>Client</th><th>BL / UBLI</th><th>Type</th><th style="text-align:center">Lignes</th><th style="text-align:center">Total TTC</th><th style="text-align:right"></th></tr></thead><tbody id="pfKeptBody"></tbody></table></div>
     </div>
   </div>
 
@@ -5509,217 +5487,139 @@ function fneBuildFromIfs(rows){
 
 </script>
 <script>
-// ============ PROFORMA Échange : logique client ============
+// ============ PROFORMA Échange : file + génération depuis la révision ============
 var proformasKept = [];
-var pfSelectedBp = null;       // {bp, name, ecc, manual}
-var pfBpMatches = [];
-var pfCommMatches = [];
-var pfFooterEdited = false;
 
-function pfInit() {
-  if (!$("echProformaCard")) return;
-  updateProfFooter();
-  loadProformas();
-}
-
-// ---- Business Partner (transitaire) : même logique que l'onglet Échange ----
-function pfCompanyName() {
-  if (pfSelectedBp && !pfSelectedBp.manual && pfSelectedBp.name) return pfSelectedBp.name;
-  if (pfSelectedBp && pfSelectedBp.manual) return pfSelectedBp.bp;
-  return (($("pfBp") && $("pfBp").value) || "").trim();
-}
-function pfBpSearch(q) {
-  q = (q || "").trim();
-  var list = $("pfBpAc"); if (!list) return;
-  pfSelectedBp = { bp: q, name: "(manuel)", manual: true };
-  updateProfFooter();
-  if (q.length < 2) { list.classList.remove("show"); return; }
-  var qU = q.toUpperCase();
-  pfBpMatches = [];
-  if (typeof BP_EXTRA !== "undefined") {
-    for (var ecc in BP_EXTRA) {
-      var p = BP_EXTRA[ecc].split("|"); var bpv = p[0], nm = p[1] || "";
-      if (ecc.toUpperCase().indexOf(qU) >= 0 || bpv.toUpperCase().indexOf(qU) >= 0 || nm.toUpperCase().indexOf(qU) >= 0) pfBpMatches.push({ ecc: ecc, bp: bpv, name: nm });
-    }
-  }
-  function paint() {
-    if (!pfBpMatches.length) { list.classList.remove("show"); return; }
-    list.innerHTML = pfBpMatches.slice(0, 30).map(function (m, i) {
-      return '<div class="ac-item" onclick="pfBpPick(' + i + ')"><span class="code">' + m.ecc + '</span> &rarr; <span class="code">' + m.bp + '</span><div class="nm">' + m.name + '</div></div>';
-    }).join("");
-    list.classList.add("show");
-  }
-  apiCall("/data?action=bp&q=" + encodeURIComponent(q)).then(function (res) {
-    var seen = {}; pfBpMatches.forEach(function (m) { seen[m.ecc] = 1; });
-    (res.results || []).forEach(function (m) { if (!seen[m.ecc]) pfBpMatches.push(m); });
-    paint();
-  }).catch(function (e) { if (e && e.blocked) { showBlocked(); return; } paint(); });
-}
-function pfBpPick(i) {
-  var m = pfBpMatches[i]; if (!m) return;
-  pfSelectedBp = { bp: m.bp, name: m.name, ecc: m.ecc, manual: false };
-  if ($("pfBp")) $("pfBp").value = m.ecc + " - " + m.name;
-  if ($("pfPayer")) $("pfPayer").value = m.bp;
-  if ($("pfBpAc")) $("pfBpAc").classList.remove("show");
-  updateProfFooter();
-}
-
-// ---- Marchandise : recherche -> code (Data!U Code Manifeste) ----
-function pfCommSearch(q) {
-  q = (q || "").trim();
-  var list = $("pfCommAc"); if (!list) return;
-  if (q.length < 2) { list.classList.remove("show"); return; }
-  apiCall("/data?action=commodity&q=" + encodeURIComponent(q)).then(function (res) {
-    pfCommMatches = res.results || [];
-    if (!pfCommMatches.length) { list.classList.remove("show"); return; }
-    list.innerHTML = pfCommMatches.map(function (m, i) {
-      var info = '<div style="font-size:10.5px;color:var(--txt3);margin-top:3px">Port: <b style="color:var(--frost)">' + ((m.p || 0).toLocaleString("fr-FR")) + '</b> &middot; Municipale: <b style="color:var(--frost)">' + ((m.m || 0).toLocaleString("fr-FR")) + '</b></div>';
-      return '<div class="ac-item" onclick="pfCommPick(' + i + ')"><span class="code">' + m.c + '</span> ' + m.d + info + '</div>';
-    }).join("");
-    list.classList.add("show");
-  }).catch(function (e) { if (e && e.blocked) showBlocked(); });
-}
-function pfCommPick(i) {
-  var m = pfCommMatches[i]; if (!m) return;
-  if ($("pfCommodity")) $("pfCommodity").value = m.c + " - " + m.d;
-  if ($("pfCommAc")) $("pfCommAc").classList.remove("show");
-}
-
-// ---- External billing footer (= B20 : transitaire P/C client//...) ----
-function buildPfFooter() {
-  var comp = pfCompanyName();
-  var cli = (($("pfClient") && $("pfClient").value) || "").trim();
-  return comp + " P/C " + cli + "//LIVRAISON ( A PRECISER ZONE DE LIVRAISON )// Frais de EIR-CH";
-}
-function updateProfFooter() {
-  if (pfFooterEdited) return;
-  if ($("pfFooter")) $("pfFooter").value = buildPfFooter();
-}
-
-function buildProformaPayload() {
-  function v(id) { var e = $(id); return e ? e.value.trim() : ""; }
-  function n(id) { var e = $(id); return e ? (parseFloat(e.value) || 0) : 0; }
-  var commRaw = v("pfCommodity");
-  var commCode = commRaw.split(" - ")[0].trim();
+// ---- Construit le payload proforma depuis la révision Échange courante ----
+function buildEchProformaPayload(){
+  var subMap = { transit:'TRANSIT', tbl:'TBL' };
+  var sub = (typeof getEchSubtype === 'function') ? getEchSubtype() : 'echange';
+  var type = subMap[sub] || 'ECHANGE';
+  var c40f = 0, c20s = 0, c40s = 0;
+  (typeof echContainers !== 'undefined' ? echContainers : []).forEach(function(ct){
+    var n = parseInt(ct.count) || 0;
+    if (ct.size === '40' && ct.type === 'FRIGO') c40f += n;
+    else if (ct.size === '20') c20s += n;
+    else if (ct.size === '40') c40s += n;
+  });
+  var comms = (typeof echCommodities !== 'undefined' ? echCommodities : []).filter(function(c){ return c.code; });
+  var commodityCode = comms.length ? comms[0].code : '';
+  var commodityName = comms.map(function(c){ return c.desc || ''; }).filter(Boolean).join(', ');
+  var lines = (typeof echReviewLines !== 'undefined' ? echReviewLines : []).filter(function(l){ return l.on; }).map(function(l){
+    return { desc:l.desc, code:l.code, qty:l.qty, rate:l.rate, vat:(l.vat ? 1 : 0), unit:(l.unit || 'EA') };
+  });
+  var m = collectEchMeta();
+  var transitaire = (typeof echSelectedBp !== 'undefined' && echSelectedBp) ? (echSelectedBp.name || echSelectedBp.bp) : (($("echBp") && $("echBp").value.trim()) || '');
+  var total = lines.reduce(function(s,l){ var ht = (parseFloat(l.qty)||0)*(parseFloat(l.rate)||0); return s + ht + (l.vat ? Math.round(ht*0.18) : 0); }, 0);
   return {
-    transitaire: pfCompanyName(),
-    payerCode: v("pfPayer"),
-    companyCode: v("pfCompany") || "CI01",
-    facturier: v("pfFacturier"),
-    vessel: v("pfVessel"), voyage: v("pfVoyage"),
-    bl: v("pfBl"), client: v("pfClient"),
-    c40frigo: n("pfC40f"), c20sec: n("pfC20s"), c40sec: n("pfC40s"),
-    commodityCode: commCode, weight: n("pfWeight"),
-    deliveryZone: (($("pfZone") && $("pfZone").value) || "ABIDJAN"),
-    footer: v("pfFooter")
+    transitaire: transitaire, bp: m.bp, contractAcc: m.contractAcc, companyCode: m.companyCode || 'CI12',
+    vessel: '', voyage: '',
+    commodityCode: commodityCode, commodityName: commodityName,
+    deliveryZone: m.zone || '', footer: m.extFooter || '', ubli: m.ubli || '', bl: m.bl || '',
+    client: m.cliFinal || '', type: type, facturier: '',
+    c40frigo: c40f, c20sec: c20s, c40sec: c40s,
+    lines: lines,
+    _ts: new Date().toISOString(), _total: total
   };
 }
 
-function pfDownloadB64(b64, filename) {
+function genEchProforma(){
+  if (!(typeof echReviewLines !== 'undefined' ? echReviewLines : []).some(function(l){ return l.on; })) { showToast("Aucune charge coch\u00e9e.", "err"); return; }
+  var payload = buildEchProformaPayload();
+  showToast("G\u00e9n\u00e9ration de la proforma\u2026", "ok");
+  apiCall("/proforma", { method:"POST", body:{ proforma:payload } }).then(function(res){
+    if (!res || !res.ok) { showToast((res && res.error) || "\u00c9chec de la g\u00e9n\u00e9ration.", "err"); return; }
+    pfDownloadB64(res.b64, res.filename);
+    showToast("Proforma g\u00e9n\u00e9r\u00e9e.", "ok");
+  }).catch(function(e){ if (e && e.blocked) { showBlocked(); return; } showToast("Erreur : " + (e.message || e), "err"); });
+}
+
+function echAddToProformaQueue(){
+  if (!(typeof echReviewLines !== 'undefined' ? echReviewLines : []).some(function(l){ return l.on; })) { showToast("Aucune charge coch\u00e9e.", "err"); return; }
+  var payload = buildEchProformaPayload();
+  proformasKept.unshift(payload);
+  saveProformas();
+  renderProformasKept();
+  showToast("Ajout\u00e9 \u00e0 la file des proformas (" + proformasKept.length + ").", "ok");
+}
+
+function pfDownloadB64(b64, filename){
   try {
     var bin = atob(b64), len = bin.length, bytes = new Uint8Array(len);
     for (var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
-    var blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    var blob = new Blob([bytes], { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     var url = URL.createObjectURL(blob), a = document.createElement("a");
     a.href = url; a.download = filename || "proforma.xlsx";
     document.body.appendChild(a); a.click();
-    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1500);
+    setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1500);
   } catch (e) { showToast("Erreur t\u00e9l\u00e9chargement : " + e.message, "err"); }
 }
 
-function genProforma() {
-  var payload = buildProformaPayload();
-  if (!payload.client && !payload.bl) { showToast("Renseignez au moins le client ou le n\u00b0 BL.", "err"); return; }
-  var keep = $("pfKeep") && $("pfKeep").checked;
-  var st = $("pfGenStatus"); if (st) st.textContent = "G\u00e9n\u00e9ration en cours\u2026";
-  var btn = $("pfGenBtn"); if (btn) btn.disabled = true;
-  apiCall("/proforma", { method: "POST", body: { proforma: payload } }).then(function (res) {
-    if (btn) btn.disabled = false;
-    if (!res || !res.ok) { if (st) st.textContent = ""; showToast((res && res.error) || "\u00c9chec de la g\u00e9n\u00e9ration.", "err"); return; }
-    pfDownloadB64(res.b64, res.filename);
-    if (st) st.textContent = "\u2713 Proforma g\u00e9n\u00e9r\u00e9e (" + (res.filename || "") + ").";
-    if (keep) {
-      payload._ts = new Date().toISOString();
-      payload._bpEcc = (pfSelectedBp && pfSelectedBp.ecc) || "";
-      payload._commLabel = (($("pfCommodity") && $("pfCommodity").value) || "");
-      proformasKept.unshift(payload);
-      saveProformas();
-      renderProformasKept();
-      showToast("Proforma gard\u00e9e pour la file.", "ok");
-    }
-  }).catch(function (e) {
-    if (btn) btn.disabled = false; if (st) st.textContent = "";
-    if (e && e.blocked) { showBlocked(); return; }
-    showToast("Erreur : " + (e.message || e), "err");
-  });
-}
-
-function loadProformas() {
-  apiCall("/store?action=getproformas&u=" + encodeURIComponent((curUser && curUser.user) || "")).then(function (res) {
+function loadProformas(){
+  apiCall("/store?action=getproformas&u=" + encodeURIComponent((curUser && curUser.user) || "")).then(function(res){
     proformasKept = (res && res.proformas) || [];
     renderProformasKept();
-  }).catch(function (e) {
+  }).catch(function(e){
     if (e && e.blocked) { showBlocked(); return; }
     proformasKept = []; renderProformasKept();
   });
 }
-function saveProformas() {
-  apiCall("/store", { method: "POST", body: { action: "setproformas", proformas: proformasKept, u: (curUser && curUser.user) || "" } }).catch(function (e) {
+function saveProformas(){
+  apiCall("/store", { method:"POST", body:{ action:"setproformas", proformas:proformasKept, u:(curUser && curUser.user) || "" } }).catch(function(e){
     if (e && e.blocked) showBlocked();
   });
 }
 
-function renderProformasKept() {
+function renderProformasKept(){
   var card = $("pfKeptCard"), body = $("pfKeptBody"); if (!body) return;
   if (!proformasKept.length) { if (card) card.style.display = "none"; return; }
   if (card) card.style.display = "";
   if ($("pfKeptCount")) $("pfKeptCount").textContent = "(" + proformasKept.length + ")";
-  body.innerHTML = proformasKept.map(function (p, i) {
+  body.innerHTML = proformasKept.map(function(p, i){
     var d = p._ts ? new Date(p._ts).toLocaleDateString("fr-FR") : "";
-    var cnt = (p.c40frigo || 0) + "\u00d740F " + (p.c20sec || 0) + "\u00d720 " + (p.c40sec || 0) + "\u00d740";
-    return '<tr><td>' + d + '</td><td>' + escAttr(p.client || "") + '</td><td>' + escAttr(p.bl || "") + '</td><td>' + escAttr(p.commodityCode || "") + '</td>'
-      + '<td style="text-align:center;font-size:11px">' + cnt + '</td>'
+    var tot = (p._total || 0).toLocaleString("fr-FR");
+    var nl = (p.lines || []).length;
+    return '<tr><td>' + d + '</td><td>' + escAttr(p.client || "") + '</td><td>' + escAttr(p.bl || p.ubli || "") + '</td><td>' + escAttr(p.type || "") + '</td>'
+      + '<td style="text-align:center">' + nl + '</td><td style="text-align:center" class="mono">' + tot + '</td>'
       + '<td style="text-align:right;white-space:nowrap">'
-      + '<button class="bt bt-ghost" style="font-size:11px;padding:5px 9px" onclick="pfDownloadKept(' + i + ')">&#11015; T&eacute;l&eacute;charger</button> '
-      + '<button class="bt bt-ghost" style="font-size:11px;padding:5px 9px" onclick="pfReuse(' + i + ')">&#8635; Reprendre</button> '
-      + '<button class="bt bt-ghost" style="font-size:11px;padding:5px 9px;color:var(--err)" onclick="pfDeleteKept(' + i + ')" title="Supprimer">&#10005;</button>'
+      + '<button class="bt bt-ghost" style="font-size:11px;padding:5px 9px" onclick="pfDownloadKept(' + i + ')" title="T\u00e9l\u00e9charger">&#11015;</button> '
+      + '<button class="bt bt-ghost" style="font-size:11px;padding:5px 9px;color:var(--err)" onclick="pfDeleteKept(' + i + ')" title="Retirer">&#10005;</button>'
       + '</td></tr>';
   }).join("");
 }
 
-function pfDownloadKept(i) {
+function pfDownloadKept(i){
   var p = proformasKept[i]; if (!p) return;
-  apiCall("/proforma", { method: "POST", body: { proforma: p } }).then(function (res) {
-    if (!res || !res.ok) { showToast((res && res.error) || "\u00c9chec de la g\u00e9n\u00e9ration.", "err"); return; }
+  apiCall("/proforma", { method:"POST", body:{ proforma:p } }).then(function(res){
+    if (!res || !res.ok) { showToast((res && res.error) || "\u00c9chec.", "err"); return; }
     pfDownloadB64(res.b64, res.filename);
-  }).catch(function (e) { if (e && e.blocked) { showBlocked(); return; } showToast("Erreur : " + (e.message || e), "err"); });
+  }).catch(function(e){ if (e && e.blocked) { showBlocked(); return; } showToast("Erreur : " + (e.message || e), "err"); });
 }
-
-function pfReuse(i) {
-  var p = proformasKept[i]; if (!p) return;
-  function set(id, val) { var e = $(id); if (e) e.value = (val == null ? "" : val); }
-  pfSelectedBp = { bp: p.payerCode || "", name: p.transitaire || "", ecc: p._bpEcc || "", manual: !(p._bpEcc) };
-  set("pfBp", (p._bpEcc ? (p._bpEcc + " - " + (p.transitaire || "")) : (p.transitaire || "")));
-  set("pfPayer", p.payerCode);
-  set("pfClient", p.client); set("pfBl", p.bl);
-  set("pfCommodity", p._commLabel || p.commodityCode || "");
-  set("pfC40f", p.c40frigo || 0); set("pfC20s", p.c20sec || 0); set("pfC40s", p.c40sec || 0);
-  set("pfWeight", p.weight || ""); set("pfCompany", p.companyCode || "CI01");
-  set("pfVessel", p.vessel); set("pfVoyage", p.voyage); set("pfFacturier", p.facturier);
-  if ($("pfZone")) $("pfZone").value = p.deliveryZone || "ABIDJAN";
-  pfFooterEdited = true; set("pfFooter", p.footer || "");
-  showToast("Infos reprises dans le formulaire.", "ok");
-  if ($("echProformaCard")) $("echProformaCard").scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-function pfDeleteKept(i) {
+function pfDeleteKept(i){
   if (!proformasKept[i]) return;
-  if (!confirm("Supprimer cette proforma gard\u00e9e ?")) return;
+  if (!confirm("Retirer cette proforma de la file ?")) return;
   proformasKept.splice(i, 1);
   saveProformas();
   renderProformasKept();
-  showToast("Proforma supprim\u00e9e.", "ok");
 }
+
+// Lot : génère chaque Excel (téléchargements séquentiels). ZIP + CSV S/4HANA combiné = étape suivante.
+function pfGenerateLot(){
+  if (!proformasKept.length) { showToast("La file est vide.", "err"); return; }
+  var st = $("pfLotStatus"), btn = $("pfLotBtn"); if (btn) btn.disabled = true;
+  var idx = 0;
+  function next(){
+    if (idx >= proformasKept.length) { if (btn) btn.disabled = false; if (st) st.textContent = "\u2713 Lot g\u00e9n\u00e9r\u00e9 (" + proformasKept.length + " proformas)."; showToast("Lot g\u00e9n\u00e9r\u00e9.", "ok"); return; }
+    if (st) st.textContent = "G\u00e9n\u00e9ration " + (idx + 1) + "/" + proformasKept.length + "\u2026";
+    apiCall("/proforma", { method:"POST", body:{ proforma:proformasKept[idx] } }).then(function(res){
+      if (res && res.ok) pfDownloadB64(res.b64, res.filename);
+      idx++; setTimeout(next, 900);
+    }).catch(function(e){ if (e && e.blocked) { showBlocked(); } idx++; setTimeout(next, 900); });
+  }
+  next();
+}
+
+function pfInit(){ loadProformas(); }
 
 </script>
 </body>
