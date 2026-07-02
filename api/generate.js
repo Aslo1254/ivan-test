@@ -43,8 +43,13 @@ function buildEchangeCharges(params){
     const isMun = /municipale|red mun/i.test(ch.d);
     const isCom = /communale|red com/i.test(ch.d);
 
-    // "Redevance" lines are visible by default in the review; others are masked
-    const isRedevance = isPort || isMun || isCom || /portuaire|s\u00e9curit|security|isps|communaut/i.test(ch.d);
+    // Cases cochées par défaut : transit/tbl -> Red Port Transit ; échange -> 3 redevances ; sanpedro -> redevances + communauté
+    const isRedPortTransit = /red port transit/i.test(ch.d);
+    const isCommunaute = /communaut/i.test(ch.d);
+    let isRedevance;
+    if (sub === 'transit' || sub === 'tbl') isRedevance = isRedPortTransit;
+    else if (sub === 'standard') isRedevance = isPort || isMun || isCom || isCommunaute;
+    else isRedevance = isPort || isMun || isCom;
 
     if((isPort || isMun || isCom) && commodities.length > 0){
       // One line per commodity
