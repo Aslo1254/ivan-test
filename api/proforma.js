@@ -49,6 +49,7 @@ async function fillProforma(ExcelJS, p){
   for (var i = 0; i < n; i++){
     var l = lines[i] || {};
     var r = FIRST_CHARGE_ROW + i;
+    try { ws.getRow(r).hidden = false; } catch(e){}   // démasquer la ligne écrite (le template masque 27-33,37 par défaut)
     var qty = num(l.qty), rate = num(l.rate), vat = (l.vat ? 1 : 0);
     var ht = qty * rate;
     var tva = vat ? Math.round(ht * 0.18) : 0;
@@ -68,6 +69,10 @@ async function fillProforma(ExcelJS, p){
     ws.getCell(r, 9).value = ttc;                     // I Montant TTC
     ws.getCell(r, 10).value = l.code || '';           // J Material Code
     ws.getCell(r, 11).value = l.desc || '';           // K libellé
+  }
+  // masquer les lignes de charges non utilisées (vidées) pour éviter des lignes blanches
+  for (var r2 = FIRST_CHARGE_ROW + n; r2 <= LAST_CHARGE_ROW; r2++){
+    try { ws.getRow(r2).hidden = true; } catch(e){}
   }
   // 3) total (viewer-proof)
   ws.getCell('I55').value = total;
